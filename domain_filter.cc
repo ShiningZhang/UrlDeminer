@@ -10,8 +10,6 @@ using namespace std;
 
 void DomainFilter::load_(char *p, uint64_t size)
 {
-    p_ = (char *)malloc(size);
-    char *offset = p_;
     char *e = p + size;
     char *s = p;
     DomainPortBuf b;
@@ -33,17 +31,11 @@ void DomainFilter::load_(char *p, uint64_t size)
             len = len - 2;
         }
         b.n = len;
-        b.start = offset;
-        --len;
-        while (len > 0)
-        {
-            *(offset++) = s[len--];
-        }
+        b.start = s;
         list_.push_back(b);
 
         s = se + 1;
     }
-    buf_size_ = offset - p_;
 }
 
 static inline int cmp64val(int64_t ia, int64_t ib)
@@ -62,23 +54,33 @@ static inline int cmp64val(int64_t ia, int64_t ib)
 
 static int cmpbuf(const char *pa, int na, const char *pb, int nb)
 {
-    int ret = 0;
     while (na >= 8 && nb >= 8)
     {
-        int64_t ia = *(int64_t *)pa;
-        int64_t ib = *(int64_t *)pb;
-        ret = cmp64val(ia, ib);
+        na -= 8;
+        nb -= 8;
+        int64_t ia = *(int64_t *)(pa + na);
+        int64_t ib = *(int64_t *)(pb + nb);
+        int ret = cmp64val(ia, ib);
         if (ret != 0)
         {
             return ret;
         }
-        na -= 8;
-        nb -= 8;
-        pa += 8;
-        pb += 8;
     }
-    int nc = min(na, nb);
-    return memcmp(pa, pb, nc);
+    while (na >= 0 && nb >= 0)
+    {
+        int sub = (int)((unsigned char)(*(pa + na))) - (int)((unsigned char)(*(pb + nb)));
+        if (sub < 0)
+        {
+            return -1;
+        }
+        else if (sub > 0)
+        {
+            return 1;
+        }
+        --na;
+        --nb;
+    }
+    return 0;
 }
 
 bool compare_char(const DomainPortBuf &e1, const DomainPortBuf &e2)
@@ -109,6 +111,8 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
 {
     DomainFilter *filter = new DomainFilter();
     filter->load_(p, size);
+    p_ = p;
+    size_ = size;
     pdqsort(filter->list_.begin(), filter->list_.end(), compare_char);
     return filter;
 }

@@ -1,4 +1,4 @@
-#include "domainload_module.h"
+#include "prefixload_module.h"
 #include "Global_Macros.h"
 #include "SP_Message_Block_Base.h"
 #include "Request.h"
@@ -6,24 +6,24 @@
 #include <string.h>
 #include <math.h>
 
-#include "domain_filter.h"
+#include "prefix_filter.h"
 
-DomainLoad_Module::DomainLoad_Module(int threads)
+PrefixLoad_Module::PrefixLoad_Module(int threads)
     : threads_num_(threads)
 {
 }
 
-DomainLoad_Module::~DomainLoad_Module()
+PrefixLoad_Module::~PrefixLoad_Module()
 {
 }
 
-int DomainLoad_Module::open()
+int PrefixLoad_Module::open()
 {
     activate(threads_num_);
     return 0;
 }
 
-void DomainLoad_Module::svc()
+void PrefixLoad_Module::svc()
 {
     static int sthread_num = 0;
     int thread_num;
@@ -41,8 +41,8 @@ void DomainLoad_Module::svc()
         data = c_data->request_;
         SP_DES(msg);
 
-        DomainFilter *filter = DomainFilter::load(c_data->buffer_, c_data->size_);
-        data->domain_filter_list_.push_back(filter);
+        PrefixFilter *filter = PrefixFilter::load(c_data->buffer_, c_data->size_);
+        data->prefix_filter_list_.push_back(filter);
         SP_DES(c_data);
 
         lock_.lock();
@@ -55,12 +55,12 @@ void DomainLoad_Module::svc()
         }
 
         gettimeofday(&t2, 0);
-        SP_DEBUG("DomainLoad_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
-        //SP_LOGI("DomainLoad_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);
+        SP_DEBUG("PrefixLoad_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
+        //SP_LOGI("PrefixLoad_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);
     }
 }
 
-int DomainLoad_Module::init()
+int PrefixLoad_Module::init()
 {
     return 0;
 }

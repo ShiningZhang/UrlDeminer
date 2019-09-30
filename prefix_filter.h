@@ -1,5 +1,5 @@
-#ifndef PREFIX_URL_H_
-#define PREFIX_URL_H_
+#ifndef PREFIX_FILTER_H_
+#define PREFIX_FILTER_H_
 
 #include <vector>
 #include <stdint.h>
@@ -24,6 +24,8 @@ public:
     std::vector<char*> list_http_[3][2];
     std::vector<char*> list_https_[3][2];
     uint64_t size_[3][2][2];
+    char * p_;
+    uint64_t size_;
     // * +
     std::vector<char *> list_inpass_http_;
     std::vector<char *> list_inpass_https_;

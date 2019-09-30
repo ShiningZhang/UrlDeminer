@@ -36,6 +36,7 @@ public:
     FILE *fp_in_;
     bool is_read_end_;
     vector<DomainFilter *> domain_filter_list_;
+    vector<PrefixFilter *> prefix_filter_list_;
     size_t recv_split_;
 };
 

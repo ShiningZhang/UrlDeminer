@@ -24,6 +24,7 @@ using namespace std;
 	}
 
 class DomainFilter;
+class PrefixFilter;
 
 struct GlobalST
 {
