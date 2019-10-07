@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -x
+set -v
+
+CXXFLAGS="-g -pipe -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wmissing-include-dirs -Wfloat-equal -Wpointer-arith -Wwrite-strings -Wshadow -O2 \
+		-march=corei7-avx -std=c++11"
+
+g++ ${CXXFLAGS} *.cc SP/*.cpp -o filter
+
