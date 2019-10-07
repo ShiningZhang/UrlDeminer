@@ -1,5 +1,9 @@
 #include "util.h"
 
+FilterCounters::FilterCounters() {
+	memset(this, 0, sizeof(*this));
+}
+
 uint64_t sizeoffile(FILE *handle)
 {
 	uint64_t filesize;

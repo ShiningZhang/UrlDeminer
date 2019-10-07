@@ -22,7 +22,7 @@ public:
 public:
 	std::vector<DomainPortBuf> list_;
 	char *p_;
-	uint32_t buf_size_;
+	uint32_t size_;
 };
 
 #endif

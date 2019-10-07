@@ -12,6 +12,9 @@
 using namespace std;
 
 class CRequest;
+class DomainFilter;
+class PrefixFilter;
+class UrlFilter;
 
 class Request : public SP_Data_Block
 {

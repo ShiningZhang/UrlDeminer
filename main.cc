@@ -67,7 +67,7 @@ int main(int argc, char **argv)
     {
         s_instance_stream->push_module(modules[i]);
     }
-    SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));
+    SP_NEW_RETURN(msg, SP_Message_Block_Base((SP_Data_Block *)data), -1);
     s_instance_stream->put(msg);
     s_instance_stream->get(msg);
     fclose(fp);
@@ -111,7 +111,7 @@ int main(int argc, char **argv)
     data->fp_out_ = stdout;
     s_instance_stream->put(msg);
     s_instance_stream->get(msg);
-    dumpCounters(stdout, &data.counter_);
+    dumpCounters(stdout, &data->counter_);
     fclose(fp);
 	return 0;
 }

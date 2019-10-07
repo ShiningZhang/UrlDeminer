@@ -17,7 +17,7 @@ void DomainFilter::load_(char *p, uint64_t size)
     {
         char *se = strchr(s, '\n');
         int len = se - s;
-        b.allow = s[len - 1] == '-';
+        b.hit = s[len - 1] == '-';
         s[len - 2] = '\0';
         char *port = strchr(s, ':');
         if (port != NULL)
@@ -42,8 +42,8 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
 {
     DomainFilter *filter = new DomainFilter();
     filter->load_(p, size);
-    p_ = p;
-    size_ = size;
+    filter->p_ = p;
+    filter->size_ = size;
     pdqsort(filter->list_.begin(), filter->list_.end(), compare_dp);
     return filter;
 }

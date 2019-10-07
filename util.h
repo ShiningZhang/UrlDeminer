@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <vector>
-#include<sys/time.h>
+#include <sys/time.h>
 
 using namespace std;
 
@@ -43,13 +43,7 @@ struct FilterCounters
 	int invalidUrl;
 	uint32_t passchecksum;
 	uint32_t hitchecksum;
-	FilterCounters:
-            pass(0)
-           ,hit(0)
-           ,miss(0)
-           ,passchecksum(0)
-           ,hitchecksum(0)
-        ();
+	FilterCounters();
 };
 
 struct DomainPortBuf
@@ -68,6 +62,6 @@ int cmp64val(int64_t ia, int64_t ib);
 int cmpbuf_dp(const char *pa, int na, const char *pb, int nb);
 bool compare_dp(const DomainPortBuf &e1, const DomainPortBuf &e2);
 int cmpbuf_pf(const char *pa, int na, const char *pb, int nb);
-bool compare_prefix(const char* e1, const char *e2);
+bool compare_prefix(const char *e1, const char *e2);
 
 #endif

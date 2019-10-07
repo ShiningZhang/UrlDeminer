@@ -41,15 +41,15 @@ void Write_Module::svc()
         data = c_data->request_;
         SP_DES(msg);
 
-        for(int i = 0; i < c_data.url_filter_list_.size(); ++i)
+        for(int i = 0; i < c_data->url_filter_list_.size(); ++i)
         {
-            UrlFilter &filter = c_data.url_filter_list_[i];
+            UrlFilter *filter = c_data->url_filter_list_[i];
             filter->write_tag(data->fp_out_);
-            data->counter_.pass += filter.counters_.pass;
-            data->counter_.hit += filter.counters_.hit;
-            data->counter_.miss += filter.counters_.miss;
-            data->counter_.passchecksum ^= filter.counters_.passchecksum;
-            data->counter_.hitchecksum ^= filter.counters_.hitchecksum;
+            data->counter_.pass += filter->counters_.pass;
+            data->counter_.hit += filter->counters_.hit;
+            data->counter_.miss += filter->counters_.miss;
+            data->counter_.passchecksum ^= filter->counters_.passchecksum;
+            data->counter_.hitchecksum ^= filter->counters_.hitchecksum;
         }
         SP_DES(c_data);
 

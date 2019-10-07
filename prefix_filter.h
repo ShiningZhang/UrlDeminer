@@ -18,14 +18,14 @@ public:
     static PrefixFilter *load(char *p, uint64_t size);
 
 public:
-    std::vector<std::string> list_str_;
+    std::vector<char*> list_str_;
     // *:0 +:1 =:2
     // +:0 -:1
     std::vector<char*> list_http_[3][2];
     std::vector<char*> list_https_[3][2];
     uint64_t size_[3][2][2];
     char * p_;
-    uint64_t size_;
+    uint64_t buf_size_;
     // * +
     std::vector<char *> list_inpass_http_;
     std::vector<char *> list_inpass_https_;

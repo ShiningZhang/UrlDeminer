@@ -27,6 +27,10 @@ public:
     void filter_prefix();
     void prepare_prefix();
 
+    int write_tag(FILE *fp);
+    void set_dp_list(vector<DomainFilter *> &list);
+    void set_pf_list(vector<PrefixFilter *> &list);
+
 public:
     char *p_;
     uint64_t size_;
