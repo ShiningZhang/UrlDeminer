@@ -113,59 +113,6 @@ void PrefixFilter::load_(char *p, uint64_t size)
     }
 }
 
-static inline int cmp64val(int64_t ia, int64_t ib)
-{
-    int64_t sub = ia - ib;
-    if (sub < 0)
-    {
-        return -1;
-    }
-    else if (sub > 0)
-    {
-        return 1;
-    }
-    return 0;
-}
-
-static int cmpbuf(const char *pa, int na, const char *pb, int nb)
-{
-    int ret = 0;
-    while (na >= 8 && nb >= 8)
-    {
-        int64_t ia = *(int64_t *)pa;
-        int64_t ib = *(int64_t *)pb;
-        ret = cmp64val(ia, ib);
-        if (ret != 0)
-        {
-            return ret;
-        }
-        na -= 8;
-        nb -= 8;
-        pa += 8;
-        pb += 8;
-    }
-    int nc = min(na, nb);
-    return memcmp(pa, pb, nc);
-}
-
-bool compare_prefix(const char* e1, const char *e2)
-{
-    const char *pa = e1;
-    const char *pb = e2;
-    int na = (int)*((uint16_t*)pa) - 3;
-    int nb = (int)*((uint16_t*)pb) - 3;
-    pa +=2;
-    pb+=2;
-    int ret = cmpbuf(pa, na, pb, nb);
-    if (ret != 0)
-        return ret == -1 ? true : false;
-    if (na < nb)
-        return true;
-    else if (na > nb)
-        return false;
-    return e1<e2;
-}
-
 
 PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
 {

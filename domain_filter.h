@@ -5,13 +5,7 @@
 #include <vector>
 #include <stdint.h>
 
-struct DomainPortBuf
-{
-	char *start;
-	uint16_t port;
-	uint16_t n : 15;
-	uint16_t allow : 1;
-};
+#include "util.h"
 
 class DomainFilter
 {

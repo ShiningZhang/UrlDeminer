@@ -17,16 +17,7 @@
 
 using namespace std;
 
-struct FilterCounters
-{
-	int pass;
-	int hit;
-	int miss;
-	int invalidUrl;
-	uint32_t passchecksum;
-	uint32_t hitchecksum;
-	FilterCounters();
-};
+
 
 GlobalST g_;
 
