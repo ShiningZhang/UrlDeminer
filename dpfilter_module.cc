@@ -1,4 +1,4 @@
-#include "prefixload_module.h"
+#include "dpfilter_Module.h"
 #include "Global_Macros.h"
 #include "SP_Message_Block_Base.h"
 #include "Request.h"
@@ -6,24 +6,24 @@
 #include <string.h>
 #include <math.h>
 
-#include "prefix_filter.h"
+#include "url_filter.h"
 
-PrefixLoad_Module::PrefixLoad_Module(int threads)
+DPFilter_Module::DPFilter_Module(int threads)
     : threads_num_(threads)
 {
 }
 
-PrefixLoad_Module::~PrefixLoad_Module()
+DPFilter_Module::~DPFilter_Module()
 {
 }
 
-int PrefixLoad_Module::open()
+int DPFilter_Module::open()
 {
     activate(threads_num_);
     return 0;
 }
 
-void PrefixLoad_Module::svc()
+void DPFilter_Module::svc()
 {
     static int sthread_num = 0;
     int thread_num;
@@ -41,8 +41,8 @@ void PrefixLoad_Module::svc()
         data = c_data->request_;
         SP_DES(msg);
 
-        PrefixFilter *filter = PrefixFilter::load(c_data->buffer_, c_data->size_);
-        data->prefix_filter_list_.push_back(filter);
+        DomainFilter *filter = DomainFilter::load(c_data->buffer_, c_data->size_);
+        data->domain_filter_list_.push_back(filter);
         SP_DES(c_data);
 
         lock_.lock();
@@ -50,18 +50,17 @@ void PrefixLoad_Module::svc()
         lock_.unlock();
         if (data->recv_split_ == data->size_split_buf && data->is_read_end_)
         {
-            data->reset_para();
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));
             put_next(msg);
         }
 
         gettimeofday(&t2, 0);
-        SP_DEBUG("PrefixLoad_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
-        //SP_LOGI("PrefixLoad_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);
+        SP_DEBUG("DPFilter_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
+        //SP_LOGI("DPFilter_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);
     }
 }
 
-int PrefixLoad_Module::init()
+int DPFilter_Module::init()
 {
     return 0;
 }

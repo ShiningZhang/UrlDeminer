@@ -21,6 +21,11 @@ public:
           is_read_end_(false),
           recv_split_(0){};
     virtual ~Request(){};
+    void reset_para(){
+        recv_split_ = 0;
+        size_split_buf = 0;
+        is_read_end_ = false;
+    }
 
 public:
     std::mutex lock_;
@@ -37,7 +42,9 @@ public:
     bool is_read_end_;
     vector<DomainFilter *> domain_filter_list_;
     vector<PrefixFilter *> prefix_filter_list_;
+    vector<UrlFilter *> url_filter_list_;
     size_t recv_split_;
+    FilterCounters counter_;
 };
 
 class CRequest : public SP_Data_Block
@@ -54,7 +61,7 @@ public:
     size_t size_;
     std::vector<uint8_t> idx_;
     Request *request_;
-    std::vector<Buffer_Element *> vec_buf_wt_;
+    vector<UrlFilter *> url_filter_list_;
 };
 
 #endif

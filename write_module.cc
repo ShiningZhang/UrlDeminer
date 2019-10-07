@@ -1,4 +1,4 @@
-#include "prefixload_module.h"
+#include "write_module.h"
 #include "Global_Macros.h"
 #include "SP_Message_Block_Base.h"
 #include "Request.h"
@@ -6,24 +6,24 @@
 #include <string.h>
 #include <math.h>
 
-#include "prefix_filter.h"
+#include "url_filter.h"
 
-PrefixLoad_Module::PrefixLoad_Module(int threads)
+Write_Module::Write_Module(int threads)
     : threads_num_(threads)
 {
 }
 
-PrefixLoad_Module::~PrefixLoad_Module()
+Write_Module::~Write_Module()
 {
 }
 
-int PrefixLoad_Module::open()
+int Write_Module::open()
 {
     activate(threads_num_);
     return 0;
 }
 
-void PrefixLoad_Module::svc()
+void Write_Module::svc()
 {
     static int sthread_num = 0;
     int thread_num;
@@ -41,8 +41,16 @@ void PrefixLoad_Module::svc()
         data = c_data->request_;
         SP_DES(msg);
 
-        PrefixFilter *filter = PrefixFilter::load(c_data->buffer_, c_data->size_);
-        data->prefix_filter_list_.push_back(filter);
+        for(int i = 0; i < c_data.url_filter_list_.size(); ++i)
+        {
+            UrlFilter &filter = c_data.url_filter_list_[i];
+            filter->write_tag(data->fp_out_);
+            data->counter_.pass += filter.counters_.pass;
+            data->counter_.hit += filter.counters_.hit;
+            data->counter_.miss += filter.counters_.miss;
+            data->counter_.passchecksum ^= filter.counters_.passchecksum;
+            data->counter_.hitchecksum ^= filter.counters_.hitchecksum;
+        }
         SP_DES(c_data);
 
         lock_.lock();
@@ -50,18 +58,17 @@ void PrefixLoad_Module::svc()
         lock_.unlock();
         if (data->recv_split_ == data->size_split_buf && data->is_read_end_)
         {
-            data->reset_para();
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));
             put_next(msg);
         }
 
         gettimeofday(&t2, 0);
-        SP_DEBUG("PrefixLoad_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
-        //SP_LOGI("PrefixLoad_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);
+        SP_DEBUG("Write_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
+        //SP_LOGI("Write_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);
     }
 }
 
-int PrefixLoad_Module::init()
+int Write_Module::init()
 {
     return 0;
 }

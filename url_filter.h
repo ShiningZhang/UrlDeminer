@@ -11,7 +11,7 @@
 class DomainFilter;
 class PrefixFilter;
 
-class URLFilter
+class UrlFilter
 {
 public:
     int filter(char *domainPort, uint16_t size) const;
@@ -21,10 +21,11 @@ public:
     void load_(char *p, uint64_t size);
 
 public:
-    static URLFilter *load(char *p, uint64_t size);
+    static UrlFilter *load(char *p, uint64_t size);
 
     void filter_domainport();
     void filter_prefix();
+    void prepare_prefix();
 
 public:
     char *p_;
@@ -34,6 +35,9 @@ public:
     FilterCounters counters_;
     std::vector<DomainFilter *> list_domainfilter_;
     std::vector<PrefixFilter *> list_prefixfilter_;
+    char *out_;
+    uint64_t out_size_;
+    int out_offset_;
 };
 
 #endif

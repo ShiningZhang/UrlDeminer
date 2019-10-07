@@ -638,7 +638,8 @@ void UrlFilter::filter_prefix()
             filter_prefix_(int, list_prefixfilter_[j], https, list_res[j]);
          }
          output = max_element(list_res.begin(), list_res.end(), cmp_pfres);
-         uint32_t tag = (uint32_t)strtoul(in + (*((uint16_t*)(in)))  - 2, NULL, 16);
+         char * tagbuf = in + (*((uint16_t*)(in)))  - 2;
+         uint32_t tag = (uint32_t)strtoul(tagbuf, NULL, 16);
          if (output.hit == 1)
          {
             counters_.hit++;
@@ -652,7 +653,25 @@ void UrlFilter::filter_prefix()
                 counters_.miss++;
             }
             counters_.pass++;
-            
+            counters_.passchecksum ^= tag;
+            memcpy(out_+out_offset_, tagbuf, 9);
+            out_offset_ += 9;
          }
     }
+}
+
+void UrlFilter::prepare_prefix()
+{
+    out_size_ = list_.size() * 9;
+    out_ = (char *)malloc(out_size_);
+    out_offset_ = 0;
+}
+
+int UrlFilter::write_tag(FILE *fp)
+{
+    int ret = fwrite_unblocked(out_, out_offset_, 1, fp);
+    free(out_);
+    out_size_ = 0;
+    out_offset_ = 0;
+    return ret;
 }
