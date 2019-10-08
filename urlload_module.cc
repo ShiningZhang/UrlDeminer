@@ -39,7 +39,6 @@ void UrlLoad_Module::svc()
         gettimeofday(&start, 0);
         c_data = reinterpret_cast<CRequest *>(msg->data());
         data = c_data->request_;
-        
 
         UrlFilter *filter = UrlFilter::load(c_data->buffer_, c_data->size_);
         lock_.lock();
@@ -49,8 +48,9 @@ void UrlLoad_Module::svc()
         filter->set_dp_list(data->domain_filter_list_);
         filter->filter_domainport();
         filter->set_pf_list(data->prefix_filter_list_);
+        filter->prepare_prefix();
         filter->filter_prefix();
-        
+
         put_next(msg);
 
         gettimeofday(&t2, 0);
