@@ -42,7 +42,8 @@ void PrefixLoad_Module::svc()
         SP_DES(msg);
 
         PrefixFilter *filter = PrefixFilter::load(c_data->buffer_, c_data->size_);
-        data->prefix_filter_list_.push_back(filter);
+        if (filter != NULL)
+            data->prefix_filter_list_.push_back(filter);
         SP_DES(c_data);
 
         lock_.lock();

@@ -18,12 +18,12 @@ void PrefixFilter::load_(char *p, uint64_t size)
     {
         char *se = strchr(s, '\n');
         int port_type = 0;
-        if (memcmp(s, "//", 2) == 0)
+        if (s[0] == '/')
         {
             s += 2;
             port_type = 0; //80 | 443
         }
-        else if (memcmp(s, "https", 5) == 0)
+        else if (s[7] == '/')
         {
             s += 8;
             port_type = 2; // 443
@@ -136,15 +136,22 @@ void PrefixFilter::load_(char *p, uint64_t size)
             *(str + tmp) = 0xff & 2;
             list_str_.emplace_back(str);
             list_https_[type][hit].push_back(str);
-        
+
             size_[type][hit][1] += len + 3;
         }
+        // *se = '\0';
+        // printf("PrefixFilter::load_:%d,%s\n", len, s);
         s = se + 1;
     }
 }
 
 PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
 {
+    if (size == 0)
+    {
+        free(p);
+        return NULL;
+    }
     PrefixFilter *filter = new PrefixFilter();
     filter->load_(p, size);
     filter->p_ = p;
@@ -155,6 +162,14 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
         {
             pdqsort(filter->list_http_[i][j].begin(), filter->list_http_[i][j].end(), compare_prefix);
             pdqsort(filter->list_https_[i][j].begin(), filter->list_https_[i][j].end(), compare_prefix);
+            /* for (int k = 0; k < filter->list_http_[i][j].size(); ++k)
+            {
+                printf("[%d,%d]http:%s\n", i, j, filter->list_http_[i][j][k] + 2);
+            }
+            for (int k = 0; k < filter->list_https_[i][j].size(); ++k)
+            {
+                printf("[%d,%d]https:%s\n", i, j, filter->list_https_[i][j][k] + 2);
+            } */
         }
     }
     return filter;

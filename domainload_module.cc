@@ -42,7 +42,8 @@ void DomainLoad_Module::svc()
         SP_DES(msg);
 
         DomainFilter *filter = DomainFilter::load(c_data->buffer_, c_data->size_);
-        data->domain_filter_list_.push_back(filter);
+        if (filter != NULL)
+            data->domain_filter_list_.push_back(filter);
         SP_DES(c_data);
 
         lock_.lock();

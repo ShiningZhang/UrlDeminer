@@ -41,6 +41,7 @@ void ReadFile_Module::svc()
         uint64_t length = data->length_;
         uint32_t size = 0;
         size_t line_size = length < 1024 * 8 ? length : ceil((double)length / 8);
+        SP_DEBUG("ReadFile_Module:length=%d,line_size=%d\n", length, line_size);
         while (1)
         {
             buf = (char *)malloc(line_size);

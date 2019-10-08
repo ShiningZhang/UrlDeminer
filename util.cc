@@ -59,6 +59,38 @@ int cmp64val(int64_t ia, int64_t ib)
     return 0;
 }
 
+static int64_t to64le8(const char *s, int len)
+{
+	int64_t ret = 0;
+	int i = 56;
+	while (1) {
+		ret |= ((int64_t)(*s) << i);
+		-- s;
+		-- len;
+		if (len == 0) {
+			return ret;
+		}
+		i -= 8;
+	}
+	return ret;
+}
+
+static int64_t to64le8h(const char *s, int len)
+{
+	int64_t ret = 0;
+	int i = 56;
+	while (1) {
+		ret |= ((int64_t)(*s) << i);
+		++ s;
+		-- len;
+		if (len == 0) {
+			return ret;
+		}
+		i -= 8;
+	}
+	return ret;
+}
+
 int cmpbuf_dp(const char *pa, int na, const char *pb, int nb)
 {
     while (na >= 8 && nb >= 8)
@@ -73,19 +105,12 @@ int cmpbuf_dp(const char *pa, int na, const char *pb, int nb)
             return ret;
         }
     }
-    while (na >= 0 && nb >= 0)
+    if (na > 0 && nb > 0)
     {
-        int sub = (int)((unsigned char)(*(pa + na))) - (int)((unsigned char)(*(pb + nb)));
-        if (sub < 0)
-        {
-            return -1;
-        }
-        else if (sub > 0)
-        {
-            return 1;
-        }
-        --na;
-        --nb;
+        int nc = min(na, nb);
+        int64_t ia = to64le8(pa+na-1,nc);
+        int64_t ib = to64le8(pb+nb-1,nc);
+        return cmp64val(ia, ib);
     }
     return 0;
 }
@@ -131,8 +156,14 @@ int cmpbuf_pf(const char *pa, int na, const char *pb, int nb)
         pa += 8;
         pb += 8;
     }
-    int nc = min(na, nb);
-    return memcmp(pa, pb, nc);
+    if (na > 0 && nb > 0)
+    {
+        int nc = min(na, nb);
+        int64_t ia = to64le8h(pa,nc);
+        int64_t ib = to64le8h(pb,nc);
+        return cmp64val(ia, ib);
+    }
+    return 0;
 }
 
 bool compare_prefix(const char* e1, const char *e2)

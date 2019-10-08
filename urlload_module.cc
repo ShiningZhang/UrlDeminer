@@ -41,15 +41,18 @@ void UrlLoad_Module::svc()
         data = c_data->request_;
 
         UrlFilter *filter = UrlFilter::load(c_data->buffer_, c_data->size_);
-        lock_.lock();
-        data->url_filter_list_.push_back(filter);
-        lock_.unlock();
-        c_data->url_filter_list_.push_back(filter);
-        filter->set_dp_list(data->domain_filter_list_);
-        filter->filter_domainport();
-        filter->set_pf_list(data->prefix_filter_list_);
-        filter->prepare_prefix();
-        filter->filter_prefix();
+        if (filter != NULL)
+        {
+            lock_.lock();
+            data->url_filter_list_.push_back(filter);
+            lock_.unlock();
+            c_data->url_filter_list_.push_back(filter);
+            filter->set_dp_list(data->domain_filter_list_);
+            filter->filter_domainport();
+            filter->set_pf_list(data->prefix_filter_list_);
+            filter->prepare_prefix();
+            filter->filter_prefix();
+        }
 
         put_next(msg);
 

@@ -40,10 +40,19 @@ void DomainFilter::load_(char *p, uint64_t size)
 
 DomainFilter *DomainFilter::load(char *p, uint64_t size)
 {
+    if (size == 0)
+    {
+        free(p);
+        return NULL;
+    }
     DomainFilter *filter = new DomainFilter();
     filter->load_(p, size);
     filter->p_ = p;
     filter->size_ = size;
     pdqsort(filter->list_.begin(), filter->list_.end(), compare_dp);
+    /* for (int i = 0; i < filter->list_.size(); ++i)
+    {
+        printf("domain:%10s\n", filter->list_[i].start);
+    } */
     return filter;
 }
