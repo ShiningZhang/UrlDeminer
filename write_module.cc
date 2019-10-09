@@ -41,7 +41,7 @@ void Write_Module::svc()
         data = c_data->request_;
         SP_DES(msg);
 
-        for(int i = 0; i < c_data->url_filter_list_.size(); ++i)
+        for (int i = 0; i < c_data->url_filter_list_.size(); ++i)
         {
             UrlFilter *filter = c_data->url_filter_list_[i];
             filter->write_tag(data->fp_out_);
@@ -55,6 +55,7 @@ void Write_Module::svc()
 
         lock_.lock();
         data->recv_split_++;
+        SP_DEBUG("Write_Module:recv_split_=%d,size_split_buf=%d\n", data->recv_split_, data->size_split_buf);
         lock_.unlock();
         if (data->recv_split_ == data->size_split_buf && data->is_read_end_)
         {

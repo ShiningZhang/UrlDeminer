@@ -41,17 +41,25 @@ void UrlLoad_Module::svc()
         data = c_data->request_;
 
         UrlFilter *filter = UrlFilter::load(c_data->buffer_, c_data->size_);
+        SP_DEBUG("UrlLoad_Module:filter=%p\n", filter);
         if (filter != NULL)
         {
             lock_.lock();
             data->url_filter_list_.push_back(filter);
             lock_.unlock();
+            SP_DEBUG("UrlLoad_Module:1\n");
             c_data->url_filter_list_.push_back(filter);
+            SP_DEBUG("UrlLoad_Module:2\n");
             filter->set_dp_list(data->domain_filter_list_);
+            SP_DEBUG("UrlLoad_Module:3\n");
             filter->filter_domainport();
+            SP_DEBUG("UrlLoad_Module:4\n");
             filter->set_pf_list(data->prefix_filter_list_);
+            SP_DEBUG("UrlLoad_Module:5\n");
             filter->prepare_prefix();
+            SP_DEBUG("UrlLoad_Module:6\n");
             filter->filter_prefix();
+            SP_DEBUG("UrlLoad_Module:7\n");
         }
 
         put_next(msg);

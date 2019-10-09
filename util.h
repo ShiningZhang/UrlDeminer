@@ -64,4 +64,6 @@ bool compare_dp(const DomainPortBuf &e1, const DomainPortBuf &e2);
 int cmpbuf_pf(const char *pa, int na, const char *pb, int nb);
 bool compare_prefix(const char *e1, const char *e2);
 
+void arrangesuffix(char *s, int len);
+
 #endif

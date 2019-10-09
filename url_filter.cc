@@ -11,6 +11,8 @@
 
 #include <stdio.h>
 
+#include "Global_Macros.h"
+
 using namespace std;
 
 void UrlFilter::load_(char *p, uint64_t size)
@@ -66,8 +68,10 @@ void UrlFilter::load_(char *p, uint64_t size)
         uint16_t len = se - s - 6; // -9 +2  [-1]type:len[2]:start->end
         *(uint16_t *)(s - 2) = len;
         list_domainport_.push_back(b);
+#ifdef DEBUG
         *(se - 9) = '\0';
-        //printf("load:%d %s\n", len, s);
+        printf("load:%d %s\n", len, s);
+#endif
         s = se + 1;
     }
 }
@@ -103,34 +107,39 @@ bool cmp_dp(const DomainPortBuf &e1, const DomainPortBuf &e2)
     uint16_t na = e1.n;
     uint16_t nb = e2.n;
     int ret = cmpbuf_dp(pa, na, pb, nb);
-    //printf("cmp_dp:ret=%d,e1:%s,%d,e2:%s,%d\n", ret, e1.start, na, e2.start, nb);
+#ifdef DEBUG
+    printf("cmp_dp:ret=%d,e1:%s,%d,port=%d,e2:%s,%d,port=%d\n", ret, e1.start, na, e1.port, e2.start, nb, e2.port);
+#endif
     if (ret != 0)
         return ret == -1 ? true : false;
     if (e1.port < e2.port)
         return true;
     else if (e1.port > e2.port)
         return false;
-    if (na < nb)
-        return true;
-    else if (na > nb)
-        return false;
-    return true;
+    return na < nb;
 }
+
+struct stDPRES
+{
+    uint16_t n;
+    uint16_t port;
+    int ret;
+};
 
 int filter_domainport_(const DomainPortBuf &in,
                        const vector<DomainPortBuf>::iterator start,
                        const vector<DomainPortBuf>::iterator end,
-                       vector<DomainPortBuf>::iterator &res)
+                       stDPRES &res)
 {
+    res.ret = -1;
     if (start == end)
         return -1;
-    res = upper_bound(start, end, in, cmp_dp);
-    if (res == end)
-    {
-        return -1;
-    }
-    //printf("filter_domainport_:in:%s;res:%s\n", in.start, res->start);
-    vector<DomainPortBuf>::iterator iter = res;
+    vector<DomainPortBuf>::iterator iter = upper_bound(start, end, in, cmp_dp);
+#ifdef DEBUG
+    printf("start=%p,end=%p,res=%p\n", start, end, iter);
+#endif
+    --iter;
+
     do
     {
         const char *pa = iter->start;
@@ -140,14 +149,12 @@ int filter_domainport_(const DomainPortBuf &in,
         uint16_t porta = iter->port;
         uint16_t portb = in.port;
         int ret = cmpbuf_dp(pa, na, pb, nb);
-        if (ret == -1)
+#ifdef DEBUG
+        printf("filter_domainport_:ret=%d,in:%s,na=%d,porta=%d;iter:%s,nb=%d,portb=%d\n", ret, in.start, nb, portb, iter->start, na, porta);
+#endif
+        if (ret != 0)
         {
             return -1;
-        }
-        else if (ret == 1)
-        {
-            --iter;
-            continue;
         }
         else
         {
@@ -155,8 +162,10 @@ int filter_domainport_(const DomainPortBuf &in,
             {
                 if (na == nb || ((na < nb) && (pb[nb - na - 1] == '.' || pa[0] == '.')))
                 {
-                    res = iter;
-                    return (int)(res->hit);
+                    res.n = na;
+                    res.port = porta;
+                    res.ret = iter->hit;
+                    return (int)(iter->hit);
                 }
                 else
                 {
@@ -203,6 +212,7 @@ int filter_domainport_(const DomainPortBuf &in,
             */
         }
     } while (iter >= start);
+    return -1;
 }
 
 bool cmp_dpres(const pair<int, vector<DomainPortBuf>::iterator> &e1, const pair<int, vector<DomainPortBuf>::iterator> &e2)
@@ -235,26 +245,33 @@ void UrlFilter::filter_domainport()
     list_.reserve(list_domainfilter_.size());
     vector<vector<DomainPortBuf>::iterator> list_iter_start;
     vector<vector<DomainPortBuf>::iterator> list_iter_end;
-    vector<pair<int, vector<DomainPortBuf>::iterator>> list_iter_res;
-    int ret = -1;
-    vector<DomainPortBuf>::iterator iter;
-    pair<int, vector<DomainPortBuf>::iterator> max;
+    stDPRES res, output;
     for (int j = 0; j < list_domainfilter_.size(); ++j)
     {
         list_iter_start.push_back(list_domainfilter_[j]->list_.begin());
         list_iter_end.push_back(list_domainfilter_[j]->list_.end());
     }
-    list_iter_res.resize(list_domainfilter_.size());
     for (int i = 0; i < list_domainport_.size(); ++i)
     {
         DomainPortBuf &in = list_domainport_[i];
+        res = {0, 0, -1};
         for (int j = 0; j < list_domainfilter_.size(); ++j)
         {
-            ret = filter_domainport_(in, list_iter_start[j], list_iter_end[j], iter);
-            list_iter_res[j].first = ret;
-            list_iter_res[j].second = iter;
+            if (filter_domainport_(in, list_iter_start[j], list_iter_end[j], output) != -1)
+            {
+                if (output.n > res.n)
+                {
+                    res = output;
+                }
+                else if (output.n == res.n)
+                {
+                    if (output.port > res.port)
+                        res = output;
+                    else if (output.port == res.port && output.ret > res.ret)
+                        res = output;
+                }
+            }
         }
-        max = *max_element(list_iter_res.begin(), list_iter_res.end(), cmp_dpres);
         /*
         for (int j = 0; j < list_domainfilter_.size(); ++j)
         {
@@ -296,8 +313,7 @@ void UrlFilter::filter_domainport()
         }
         ret = list_iter_res[max].first;
         */
-        ret = max.first;
-        if (ret == 1) // -
+        if (res.ret == 1) // -
         {
             counters_.hit++;
             uint32_t tag = (uint32_t)strtoul(in.start + (*((uint16_t *)(in.start - 2))), NULL, 16);
@@ -305,12 +321,15 @@ void UrlFilter::filter_domainport()
         }
         else
         {
-            if (ret == -1) //miss
+            if (res.ret == -1) //miss
             {
                 in.start[-3] |= 0x40;
             }
+            arrangesuffix(in.start, *(uint16_t *)(in.start - 2) - 3);
             list_.push_back(in.start - 2);
-            //printf("urlfilter:%s\n", in.start);
+#ifdef DEBUG
+            printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
+#endif
         }
     }
 }
@@ -324,22 +343,36 @@ bool cmp_pf(const char *e1, const char *e2)
     pa += 2;
     pb += 2;
     int ret = cmpbuf_pf(pa, na, pb, nb);
-    //printf("cmp_pf:ret=%d,e1:%s,%d,e2:%s,%d\n", ret, e1+2, na, e2+2, nb);
+#ifdef DEBUG
+    printf("cmp_pf:ret=%d,e1:%s,%d,e2:%s,%d\n", ret, e1 + 2, na, e2 + 2, nb);
+#endif
     if (ret != 0)
         return ret == -1 ? true : false;
     return na <= nb;
 }
 
-int cmp_pf_eq(const char *e1, const char *e2, int &sub)
+int len_eq(const char *e1, const char *e2)
+{
+    int na = (int)*((uint16_t *)e1) - 3;
+    int nb = (int)*((uint16_t *)e2) - 3;
+#ifdef DEBUG
+    printf("len_eq:%d\n", na - nb);
+#endif
+    return (na - nb);
+}
+
+int cmp_pf_eq(const char *e1, const char *e2)
 {
     const char *pa = e1;
     const char *pb = e2;
     int na = (int)*((uint16_t *)pa) - 3;
     int nb = (int)*((uint16_t *)pb) - 3;
-    sub = na - nb;
     pa += 2;
     pb += 2;
     int ret = cmpbuf_pf(pa, na, pb, nb);
+#ifdef DEBUG
+    printf("cmp_pf_eq:ret=%d,e1=%s,na=%d,e2=%s,nb=%d\n", ret, pa, na, pb, nb);
+#endif
     return ret;
 }
 
@@ -368,292 +401,156 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 {
     vector<char *>::iterator start, end;
     vector<char *>::iterator res;
-    vector<stPFRES> local_res;
+    output = {0, -1, 0};
     int sub = 0;
-    //printf("filter_prefix_:https:%d,in:%s\n",https, in+2);
-    if (https)
-    {
-        start = (filter->list_https_[2][1]).begin();
-        end = filter->list_https_[2][1].end();
-        //printf("start=%s\n", *start+2);
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res!=end)
-        {
-            if(cmp_pf_eq(in, *res, sub)==0)
-            {
-                 output.len = 10000;
-            output.type = 2;
-            output.hit = 1;
-            return 1;
-            }
-        }
-        start = filter->list_https_[2][0].begin();
-        end = filter->list_https_[2][0].end();
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res!=end)
-        {
-            if(cmp_pf_eq(in, *res, sub)==0)
-            {
-                 output.len = 10000;
-            output.type = 2;
-            output.hit = 0;
-            return 0;
-            }
-        }
-        start = filter->list_https_[1][1].begin();
-        end = filter->list_https_[1][1].end();
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res != end)
-        {
-            while (res > start)
-            {
-                int ret = cmp_pf_eq(in, *res, sub);
-                if (ret != 0)
-                {
-                    break;
-                }
-                else if (sub > 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 1;
-                    output.hit = 1;
-                    local_res.emplace_back(output);
-                    break;
-                }
-            }
-        }
-        start = filter->list_https_[1][0].begin();
-        end = filter->list_https_[1][0].end();
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res != end)
-        {
-            while (res > start)
-            {
-                int ret = cmp_pf_eq(in, *res, sub);
-                if (ret != 0)
-                {
-                    break;
-                }
-                else if (sub > 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 1;
-                    output.hit = 0;
-                    local_res.emplace_back(output);
-                    break;
-                }
-            }
-        }
-        start = filter->list_https_[0][1].begin();
-        end = filter->list_https_[0][1].end();
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res != end)
-        {
-            while (res > start)
-            {
-                int ret = cmp_pf_eq(in, *res, sub);
-                if (ret != 0)
-                {
-                    break;
-                }
-                else if (sub == 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 0;
-                    output.hit = 1;
-                    return 1;
-                }
-                else if (sub > 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 0;
-                    output.hit = 1;
-                    local_res.emplace_back(output);
-                    break;
-                }
-            }
-        }
-        start = filter->list_https_[0][0].begin();
-        end = filter->list_https_[0][0].end();
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res != end)
-        {
-            while (res > start)
-            {
-                int ret = cmp_pf_eq(in, *res, sub);
-                if (ret != 0)
-                {
-                    break;
-                }
-                else if (sub == 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 0;
-                    output.hit = 1;
-                    return 1;
-                }
-                else if (sub > 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 0;
-                    output.hit = 1;
-                    local_res.emplace_back(output);
-                    break;
-                }
-            }
-        }
-        if (local_res.size() == 0)
-        {
-            output.len = 0;
-            output.type = -1;
-            output.hit = 0;
-            return 0;
-        }
-        output = *max_element(local_res.begin(), local_res.end(), cmp_pfres);
-        return max_element(local_res.begin(), local_res.end(), cmp_pfres)->hit;
-    }
-    else
-    {
-        start = filter->list_http_[2][1].begin();
-        end = filter->list_http_[2][1].end();
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res!=end)
-        {
-            if(cmp_pf_eq(in, *res, sub)==0)
-            {
-                 output.len = 10000;
-            output.type = 2;
-            output.hit = 1;
-            return 1;
-            }
-        }
-        
-        start = filter->list_http_[2][0].begin();
-        end = filter->list_http_[2][0].end();
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res!=end)
-        {
-            if(cmp_pf_eq(in, *res, sub)==0)
-            {
-                 output.len = 10000;
-            output.type = 2;
-            output.hit = 0;
-            return 0;
-            }
-        }
+#ifdef DEBUG
+    printf("filter_prefix_:https:%d,in:%s\n", https, in + 2);
+#endif
 
-        start = filter->list_http_[1][1].begin();
-        end = filter->list_http_[1][1].end();
+#ifdef DEBUG
+    printf("filter_prefix_:https:[%d,%d]\n", 2, 1);
+#endif
+    if (filter->list_https_[2][1][https].size() > 0)
+    {
+        start = (filter->list_https_[2][1][https]).begin();
+        end = filter->list_https_[2][1][https].end();
         res = upper_bound(start, end, in, cmp_pf);
         if (res != end)
         {
-            while (res > start)
+            if (len_eq(in, *res) == 0 && cmp_pf_eq(in, *res) == 0)
             {
-                int ret = cmp_pf_eq(in, *res, sub);
-                if (ret != 0)
-                {
-                    break;
-                }
-                else if (sub > 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 1;
-                    output.hit = 1;
-                    local_res.emplace_back(output);
-                    break;
-                }
+                output.len = 10000;
+                output.type = 2;
+                output.hit = 1;
+                return 1;
             }
         }
-        start = filter->list_http_[1][0].begin();
-        end = filter->list_http_[1][0].end();
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res != end)
-        {
-            while (res > start)
-            {
-                int ret = cmp_pf_eq(in, *res, sub);
-                if (ret != 0)
-                {
-                    break;
-                }
-                else if (sub > 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 1;
-                    output.hit = 0;
-                    local_res.emplace_back(output);
-                    break;
-                }
-            }
-        }
-        start = filter->list_http_[0][1].begin();
-        end = filter->list_http_[0][1].end();
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res != end)
-        {
-            while (res > start)
-            {
-                int ret = cmp_pf_eq(in, *res, sub);
-                if (ret != 0)
-                {
-                    break;
-                }
-                else if (sub == 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 0;
-                    output.hit = 1;
-                    return 1;
-                }
-                else if (sub > 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 0;
-                    output.hit = 1;
-                    local_res.emplace_back(output);
-                    break;
-                }
-            }
-        }
-        start = filter->list_http_[0][0].begin();
-        end = filter->list_http_[0][0].end();
-        res = upper_bound(start, end, in, cmp_pf);
-        if (res != end)
-        {
-            while (res > start)
-            {
-                int ret = cmp_pf_eq(in, *res, sub);
-                if (ret != 0)
-                {
-                    break;
-                }
-                else if (sub == 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 0;
-                    output.hit = 1;
-                    return 1;
-                }
-                else if (sub > 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 0;
-                    output.hit = 1;
-                    local_res.emplace_back(output);
-                    break;
-                }
-            }
-        }
-        if (local_res.size() == 0)
-        {
-            output.len = 0;
-            output.type = -1;
-            output.hit = 0;
-            return 0;
-        }
-        output = *max_element(local_res.begin(), local_res.end(), cmp_pfres);
-        return output.hit;
     }
+#ifdef DEBUG
+    printf("filter_prefix_:https:[%d,%d]\n", 2, 0);
+#endif
+    if (filter->list_https_[2][0][https].size() > 0)
+    {
+        start = filter->list_https_[2][0][https].begin();
+        end = filter->list_https_[2][0][https].end();
+        res = upper_bound(start, end, in, cmp_pf);
+        if (res != end)
+        {
+            if (len_eq(in, *res) == 0 && cmp_pf_eq(in, *res) == 0)
+            {
+                output.len = 10000;
+                output.type = 2;
+                output.hit = 0;
+                return 0;
+            }
+        }
+    }
+#ifdef DEBUG
+    printf("filter_prefix_:https:[%d,%d]\n", 1, 1);
+#endif
+    if (filter->list_https_[1][1][https].size() > 0)
+    {
+        start = filter->list_https_[1][1][https].begin();
+        end = filter->list_https_[1][1][https].end();
+        res = upper_bound(start, end, in, cmp_pf);
+        printf("start=%p,end=%p,res=%p\n", start, end, res);
+        if (res == end)
+            --res;
+        if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+        {
+            output.len = (int)*((uint16_t *)(*res));
+            output.type = 1;
+            output.hit = 1;
+        }
+    }
+#ifdef DEBUG
+    printf("filter_prefix_:https:[%d,%d]\n", 1, 0);
+#endif
+    if (filter->list_https_[1][0][https].size() > 0)
+    {
+        start = filter->list_https_[1][0][https].begin();
+        end = filter->list_https_[1][0][https].end();
+#ifdef DEBUG
+        printf("start=%p,end=%p,res=%p\n", start, end, res);
+#endif
+        res = upper_bound(start, end, in, cmp_pf);
+        if (res == end)
+            --res;
+        if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+        {
+            int len = (int)*((uint16_t *)(*res));
+            if (len > output.len)
+            {
+                output.len = len;
+                output.type = 1;
+                output.hit = 0;
+            }
+        }
+    }
+#ifdef DEBUG
+    printf("filter_prefix_:https:[%d,%d]\n", 0, 1);
+#endif
+    if (filter->list_https_[0][1][https].size() > 0)
+    {
+        start = filter->list_https_[0][1][https].begin();
+        end = filter->list_https_[0][1][https].end();
+        res = upper_bound(start, end, in, cmp_pf);
+        if (res != end)
+        {
+            if (len_eq(in, *res) == 0 && cmp_pf_eq(in, *res) == 0)
+            {
+                output.len = (int)*((uint16_t *)(*res));
+                output.type = 0;
+                output.hit = 1;
+                return 1;
+            }
+        }
+        --res;
+        if (res >= start && len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+        {
+            int len = (int)*((uint16_t *)(*res));
+            if (len > output.len)
+            {
+                output.len = len;
+                output.type = 0;
+                output.hit = 1;
+            }
+        }
+    }
+#ifdef DEBUG
+    printf("filter_prefix_:https:[%d,%d]\n", 0, 0);
+#endif
+    if (filter->list_https_[0][0][https].size() > 0)
+    {
+        start = filter->list_https_[0][0][https].begin();
+        end = filter->list_https_[0][0][https].end();
+        res = upper_bound(start, end, in, cmp_pf);
+#ifdef DEBUG
+        printf("start=%p,end=%p,res=%p\n", start, end, res);
+#endif
+        if (res != end)
+        {
+            if (len_eq(in, *res) == 0 && cmp_pf_eq(in, *res) == 0)
+            {
+                output.len = (int)*((uint16_t *)(*res));
+                output.type = 0;
+                output.hit = 0;
+                return 0;
+            }
+        }
+        --res;
+        if (res >= start && len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+        {
+            int len = (int)*((uint16_t *)(*res));
+            if (len > output.len)
+            {
+                output.len = len;
+                output.type = 0;
+                output.hit = 0;
+            }
+        }
+    }
+    return output.hit;
 }
 
 void UrlFilter::filter_prefix()
@@ -668,9 +565,12 @@ void UrlFilter::filter_prefix()
         {
             bool https = (in[-1] & 0x0f) == 1;
             filter_prefix_(in, list_prefixfilter_[j], https, list_res[j]);
+            // printf("filter_prefix end:https:%d,in:%s\n", https, in + 2);
         }
         output = max_element(list_res.begin(), list_res.end(), cmp_pfres);
-        //printf("filter_prefix:len:%d,type:%d,hit:%d\n", output->len,output->type,output->hit);
+#ifdef DEBUG
+        printf("filter_prefix:https:%d,in:%s,len:%d,type:%d,hit:%d\n", ((in[-1] & 0x0f) == 1), in + 2, output->len, output->type, output->hit);
+#endif
         const char *tagbuf = in + (*((uint16_t *)(in)));
         //printf("tagbuf:%s\n", tagbuf);
         uint32_t tag = (uint32_t)strtoul(tagbuf, NULL, 16);
@@ -682,7 +582,11 @@ void UrlFilter::filter_prefix()
         }
         else
         {
-            if (output->type == -1 && in[-1] > 1)
+
+#ifdef DEBUG
+            printf("output->type=%d,in[-1]=%d\n", output->type, in[-1]);
+#endif
+            if (output->type == -1 && int(in[-1]) > 1)
             {
                 counters_.miss++;
             }

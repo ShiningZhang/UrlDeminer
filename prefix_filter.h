@@ -8,6 +8,7 @@
 class PrefixFilter
 {
 public:
+    PrefixFilter();
     int filter(char *domainPort, uint16_t size) const;
 
 public:
@@ -21,8 +22,8 @@ public:
     std::vector<char*> list_str_;
     // *:0 +:1 =:2
     // +:0 -:1
-    std::vector<char*> list_http_[3][2];
-    std::vector<char*> list_https_[3][2];
+    std::vector<char*> list_https_[3][2][2];
+    // std::vector<char*> list_https_[3][2];
     uint64_t size_[3][2][2];
     char * p_;
     uint64_t buf_size_;

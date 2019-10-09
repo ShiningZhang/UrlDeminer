@@ -50,9 +50,11 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
     filter->p_ = p;
     filter->size_ = size;
     pdqsort(filter->list_.begin(), filter->list_.end(), compare_dp);
-    /* for (int i = 0; i < filter->list_.size(); ++i)
+#ifdef DEBUG
+    for (int i = 0; i < filter->list_.size(); ++i)
     {
         printf("domain:%10s\n", filter->list_[i].start);
-    } */
+    }
+#endif
     return filter;
 }

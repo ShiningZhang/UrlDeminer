@@ -9,6 +9,13 @@
 
 using namespace std;
 
+PrefixFilter::PrefixFilter()
+{
+    p_ = NULL;
+    buf_size_ = 0;
+    memset(size_, 0, 3 * 2 * 2 * sizeof(uint64_t));
+}
+
 void PrefixFilter::load_(char *p, uint64_t size)
 {
 
@@ -85,24 +92,24 @@ void PrefixFilter::load_(char *p, uint64_t size)
         }
         if (port_type == 1)
         {
-            list_http_[type][hit].push_back(s - 2);
+            list_https_[type][hit][0].push_back(s - 2);
             size_[type][hit][0] += len + 3;
         }
         else if (port_type == 2)
         {
-            list_https_[type][hit].push_back(s - 2);
+            list_https_[type][hit][1].push_back(s - 2);
             size_[type][hit][1] += len + 3;
         }
         else if (port_type == 0)
         {
-            list_http_[type][hit].push_back(s - 2);
+            list_https_[type][hit][0].push_back(s - 2);
             size_[type][hit][0] += len + 3;
-            list_https_[type][hit].push_back(s - 2);
+            list_https_[type][hit][1].push_back(s - 2);
             size_[type][hit][1] += len + 3;
         }
         else if (port_type == 4)
         {
-            list_http_[type][hit].push_back(s - 2);
+            list_https_[type][hit][0].push_back(s - 2);
             size_[type][hit][0] += len + 3;
             int str_length = 2 + (offset - s) + 3 + (se - domainend - 4) + 1;
             char *str = (char *)malloc(str_length);
@@ -116,31 +123,36 @@ void PrefixFilter::load_(char *p, uint64_t size)
             memcpy(str + tmp, domainend, se - domainend - 4);
             tmp += se - domainend - 4;
             *(str + tmp) = 0xff & 2;
+            ++tmp;
+            arrangesuffix(str + 2, len + 3);
             list_str_.emplace_back(str);
-            list_https_[type][hit].push_back(str);
-            size_[type][hit][1] += len + 3;
+            list_https_[type][hit][1].push_back(str);
+            size_[type][hit][1] += len + 6;
         }
         else if (port_type == 5)
         {
-            list_http_[type][hit].push_back(s - 2);
+            list_https_[type][hit][0].push_back(s - 2);
             size_[type][hit][0] += len + 3;
             int str_length = 2 + (offset - s) + (se - domainend - 4) + 1;
             char *str = (char *)malloc(str_length);
             int tmp = 0;
-            *((uint16_t *)(str)) = 0xffff & (len + 3);
+            *((uint16_t *)(str)) = 0xffff & (len - 1);
             tmp += 2;
             memcpy(str + tmp, s, offset - s);
             tmp += offset - s;
             memcpy(str + tmp, domainend, se - domainend - 4);
             tmp += se - domainend - 4;
             *(str + tmp) = 0xff & 2;
+            arrangesuffix(str + 2, len - 4);
             list_str_.emplace_back(str);
-            list_https_[type][hit].push_back(str);
-
-            size_[type][hit][1] += len + 3;
+            list_https_[type][hit][1].push_back(str);
+            size_[type][hit][1] += len - 1;
         }
-        // *se = '\0';
-        // printf("PrefixFilter::load_:%d,%s\n", len, s);
+        arrangesuffix(s, len);
+#ifdef DEBUG
+        *se = '\0';
+        printf("PrefixFilter::load_:%d,%s\n", len, s);
+#endif
         s = se + 1;
     }
 }
@@ -160,16 +172,18 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
     {
         for (int j = 0; j < 2; ++j)
         {
-            pdqsort(filter->list_http_[i][j].begin(), filter->list_http_[i][j].end(), compare_prefix);
-            pdqsort(filter->list_https_[i][j].begin(), filter->list_https_[i][j].end(), compare_prefix);
-            /* for (int k = 0; k < filter->list_http_[i][j].size(); ++k)
+            pdqsort(filter->list_https_[i][j][0].begin(), filter->list_https_[i][j][0].end(), compare_prefix);
+            pdqsort(filter->list_https_[i][j][1].begin(), filter->list_https_[i][j][1].end(), compare_prefix);
+#ifdef DEBUG
+            for (int k = 0; k < filter->list_https_[i][j][0].size(); ++k)
             {
-                printf("[%d,%d]http:%s\n", i, j, filter->list_http_[i][j][k] + 2);
+                printf("[%d,%d]http:%s\n", i, j, filter->list_https_[i][j][0][k] + 2);
             }
-            for (int k = 0; k < filter->list_https_[i][j].size(); ++k)
+            for (int k = 0; k < filter->list_https_[i][j][1].size(); ++k)
             {
-                printf("[%d,%d]https:%s\n", i, j, filter->list_https_[i][j][k] + 2);
-            } */
+                printf("[%d,%d]https:%s\n", i, j, filter->list_https_[i][j][1][k] + 2);
+            }
+#endif
         }
     }
     return filter;
