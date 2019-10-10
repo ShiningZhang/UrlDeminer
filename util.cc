@@ -194,18 +194,18 @@ int cmpbuf_pf(const char *pa, int na, const char *pb, int nb)
         pa += 8;
         pb += 8;
     }
-    if (na >= 8)
+    if (na >= 8 && nb > 0)
     {
         int64_t ia = (*(int64_t *)pa) & temp[nb];
         int64_t ib = to64le8h(pb, nb);
-        printf("ia=%08x,na=%d,ib=%08x,nb=%d\n", ia, na, ib, nb);
+        // printf("ia=%08x,na=%d,ib=%08x,nb=%d\n", ia, na, ib, nb);
         return cmp64val(ia, ib);
     }
-    if (nb >= 8)
+    if (nb >= 8 && na > 0)
     {
         int64_t ia = to64le8h(pa, na);
         int64_t ib = (*(int64_t *)pb) & temp[na];
-        printf("ia=%08x,na=%d,ib=%08x,nb=%d\n", ia, na, ib, nb);
+        // printf("ia=%08x,na=%d,ib=%08x,nb=%d\n", ia, na, ib, nb);
         return cmp64val(ia, ib);
     }
     if (na > 0 && nb > 0)

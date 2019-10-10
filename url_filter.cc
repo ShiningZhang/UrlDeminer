@@ -140,7 +140,7 @@ int filter_domainport_(const DomainPortBuf &in,
 #endif
     --iter;
 
-    do
+    while (iter >= start)
     {
         const char *pa = iter->start;
         const char *pb = in.start;
@@ -211,7 +211,7 @@ int filter_domainport_(const DomainPortBuf &in,
             }
             */
         }
-    } while (iter >= start);
+    };
     return -1;
 }
 
@@ -453,7 +453,9 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
         start = filter->list_https_[1][1][https].begin();
         end = filter->list_https_[1][1][https].end();
         res = upper_bound(start, end, in, cmp_pf);
+#ifdef DEBUG
         printf("start=%p,end=%p,res=%p\n", start, end, res);
+#endif
         if (res == end)
             --res;
         if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
