@@ -161,6 +161,7 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
 {
     if (size == 0)
     {
+        p = p - BUFHEADSIZE;
         free(p);
         return NULL;
     }

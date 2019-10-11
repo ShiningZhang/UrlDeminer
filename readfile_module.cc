@@ -44,7 +44,8 @@ void ReadFile_Module::svc()
         SP_DEBUG("ReadFile_Module:length=%d,line_size=%d\n", length, line_size);
         while (1)
         {
-            buf = (char *)malloc(line_size);
+            buf = (char *)malloc(line_size + BUFHEADSIZE);
+            buf = buf + BUFHEADSIZE;
             flockfile(data->fp_in_);
 
             size = readcontent_unlocked(data->fp_in_, buf, line_size, &end);
@@ -57,7 +58,7 @@ void ReadFile_Module::svc()
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
             ++data->size_split_buf;
             put_next(msg);
-            if(end)
+            if (end)
             {
                 break;
             }

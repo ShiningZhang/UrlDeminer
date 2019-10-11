@@ -144,6 +144,10 @@ int cmpbuf_dp(const char *pa, int na, const char *pb, int nb)
 
 bool compare_dp(const DomainPortBuf &e1, const DomainPortBuf &e2)
 {
+    if (e1.port < e2.port)
+        return true;
+    else if (e1.port > e2.port)
+        return false;
     const char *pa = e1.start;
     const char *pb = e2.start;
     uint16_t na = e1.n;
@@ -151,10 +155,6 @@ bool compare_dp(const DomainPortBuf &e1, const DomainPortBuf &e2)
     int ret = cmpbuf_dp(pa, na, pb, nb);
     if (ret != 0)
         return ret == -1 ? true : false;
-    if (e1.port < e2.port)
-        return true;
-    else if (e1.port > e2.port)
-        return false;
     if (na < nb)
         return true;
     else if (na > nb)
@@ -164,6 +164,16 @@ bool compare_dp(const DomainPortBuf &e1, const DomainPortBuf &e2)
     else if (e1.hit > e2.hit)
         return false;
     return pa < pb;
+}
+
+bool compare_dp_char(const char *pa, const char *pb)
+{
+    uint16_t na = *(uint16_t *)(pa - 2);
+    uint16_t nb = *(uint16_t *)(pb - 2);
+    int ret = cmpbuf_dp(pa, na, pb, nb);
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    return na < nb;
 }
 
 static uint64_t temp[9] = {

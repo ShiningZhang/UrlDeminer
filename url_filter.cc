@@ -68,8 +68,8 @@ void UrlFilter::load_(char *p, uint64_t size)
         uint16_t len = se - s - 6; // -9 +2  [-1]type:len[2]:start->end
         *(uint16_t *)(s - 2) = len;
         list_domainport_.push_back(b);
-#ifdef DEBUG
         *(se - 9) = '\0';
+#ifdef DEBUG
         printf("load:%d %s\n", len, s);
 #endif
         s = se + 1;
@@ -80,6 +80,7 @@ UrlFilter *UrlFilter::load(char *p, uint64_t size)
 {
     if (size == 0)
     {
+        p = p - BUFHEADSIZE;
         free(p);
         return NULL;
     }
@@ -102,6 +103,10 @@ void UrlFilter::set_pf_list(vector<PrefixFilter *> &list)
 
 bool cmp_dp(const DomainPortBuf &e1, const DomainPortBuf &e2)
 {
+    if (e1.port < e2.port)
+        return true;
+    else if (e1.port > e2.port)
+        return false;
     const char *pa = e1.start;
     const char *pb = e2.start;
     uint16_t na = e1.n;
@@ -112,10 +117,21 @@ bool cmp_dp(const DomainPortBuf &e1, const DomainPortBuf &e2)
 #endif
     if (ret != 0)
         return ret == -1 ? true : false;
-    if (e1.port < e2.port)
-        return true;
-    else if (e1.port > e2.port)
-        return false;
+    return na < nb;
+}
+
+bool cmp_dp1(const DomainPortBuf &e1, const char *e2)
+{
+    const char *pa = e1.start;
+    const char *pb = e2;
+    uint16_t na = e1.n;
+    uint16_t nb = *(uint16_t *)(pb - 2);
+    int ret = cmpbuf_dp(pa, na, pb, nb);
+#ifdef DEBUG
+    printf("cmp_dp:ret=%d,e1:%s,%d,port=%d,e2:%s,%d,port=%d\n", ret, e1.start, na, e1.port, e2, nb);
+#endif
+    if (ret != 0)
+        return ret == -1 ? true : false;
     return na < nb;
 }
 
@@ -150,7 +166,7 @@ int filter_domainport_(const DomainPortBuf &in,
         uint16_t portb = in.port;
         int ret = cmpbuf_dp(pa, na, pb, nb);
 #ifdef DEBUG
-        printf("filter_domainport_:ret=%d,in:%s,na=%d,porta=%d;iter:%s,nb=%d,portb=%d\n", ret, in.start, nb, portb, iter->start, na, porta);
+        printf("filter_domainport_:ret=%d,in:%s,na=%d,porta=%d;iter:%s,nb=%d,portb=%d, hit=%d\n", ret, in.start, nb, portb, iter->start, na, porta, (int)(iter->hit));
 #endif
         if (ret != 0)
         {
@@ -164,7 +180,8 @@ int filter_domainport_(const DomainPortBuf &in,
                 {
                     res.n = na;
                     res.port = porta;
-                    res.ret = iter->hit;
+                    res.ret = (int)iter->hit;
+                    printf("filter_domainport_:ret=%d\n", res.ret);
                     return (int)(iter->hit);
                 }
                 else
@@ -215,6 +232,110 @@ int filter_domainport_(const DomainPortBuf &in,
     return -1;
 }
 
+int filter_domainport_impl(const DomainPortBuf &in,
+                           char **start,
+                           const int size)
+{
+    if (size == 0)
+        return -1;
+    char **iter = upper_bound(start, start + size, in, cmp_dp1);
+    --iter;
+    char *pa = in.start;
+    uint16_t na = in.n;
+    while (na > 0 && iter >= start)
+    {
+        const char *pb = *iter;
+        uint16_t nb = *(uint16_t *)(pb - 2);
+        int ret = cmpbuf_dp(pa, na, pb, nb);
+        if (ret != 0)
+        {
+            if (*pa == '.')
+            {
+                ++pa;
+                --na;
+            }
+            else
+            {
+                char *s = strchr(pa, '.');
+                if (s != NULL)
+                {
+                    na -= s - pa;
+                    pa = s;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            continue;
+        }
+        if (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.')))
+        {
+            return nb;
+        }
+        else
+        {
+            --iter;
+        }
+    }
+    return -1;
+}
+
+int filter_domainport_1(const DomainPortBuf &in,
+                        const DomainFilter *filter,
+                        stDPRES &res)
+{
+    res = {0, 0, -1};
+    char **start = filter->list_[1][in.port];
+    int size = filter->list_count_[1][in.port];
+    int n = filter_domainport_impl(in, start, size);
+    if (n > 0)
+    {
+        res.n = n;
+        res.ret = 1;
+        res.port = in.port;
+        if (n == in.n)
+            return res.ret;
+    }
+    start = filter->list_[0][in.port];
+    size = filter->list_count_[0][in.port];
+    n = filter_domainport_impl(in, start, size);
+    if (n > 0 && n > res.n)
+    {
+        res.n = n;
+        res.ret = 0;
+        res.port = in.port;
+        if (n == in.n)
+            return res.ret;
+    }
+    if (res.n != 0)
+        return res.ret;
+    start = filter->list_[1][0];
+    size = filter->list_count_[1][0];
+    n = filter_domainport_impl(in, start, size);
+    if (n > 0)
+    {
+        res.n = n;
+        res.ret = 1;
+        res.port = 0;
+        if (n == in.n)
+            return res.ret;
+    }
+    start = filter->list_[0][0];
+    size = filter->list_count_[0][0];
+    n = filter_domainport_impl(in, start, size);
+    if (n > 0 && n > res.n)
+    {
+        res.n = n;
+        res.ret = 0;
+        res.port = 0;
+        if (n == in.n)
+            return res.ret;
+    }
+
+    return res.ret;
+}
+
 bool cmp_dpres(const pair<int, vector<DomainPortBuf>::iterator> &e1, const pair<int, vector<DomainPortBuf>::iterator> &e2)
 {
     if (e2.first == -1)
@@ -242,22 +363,16 @@ bool cmp_dpres(const pair<int, vector<DomainPortBuf>::iterator> &e1, const pair<
 
 void UrlFilter::filter_domainport()
 {
-    list_.reserve(list_domainfilter_.size());
-    vector<vector<DomainPortBuf>::iterator> list_iter_start;
-    vector<vector<DomainPortBuf>::iterator> list_iter_end;
+    list_.reserve(list_domainport_.size());
     stDPRES res, output;
-    for (int j = 0; j < list_domainfilter_.size(); ++j)
-    {
-        list_iter_start.push_back(list_domainfilter_[j]->list_.begin());
-        list_iter_end.push_back(list_domainfilter_[j]->list_.end());
-    }
+
     for (int i = 0; i < list_domainport_.size(); ++i)
     {
         DomainPortBuf &in = list_domainport_[i];
         res = {0, 0, -1};
         for (int j = 0; j < list_domainfilter_.size(); ++j)
         {
-            if (filter_domainport_(in, list_iter_start[j], list_iter_end[j], output) != -1)
+            if (filter_domainport_1(in, list_domainfilter_[j], output) != -1)
             {
                 if (output.n > res.n)
                 {

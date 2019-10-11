@@ -16,6 +16,8 @@ using namespace std;
 #define VERYSMALLSIZE 1000000
 #define SMALLSIZE 1100000000
 
+#define BUFHEADSIZE 10
+
 #define LOG(format_string, ...)                                                                         \
 	{                                                                                                   \
 		struct timeval __val;                                                                           \
@@ -65,5 +67,7 @@ int cmpbuf_pf(const char *pa, int na, const char *pb, int nb);
 bool compare_prefix(const char *e1, const char *e2);
 
 void arrangesuffix(char *s, int len);
+
+bool compare_dp_char(const char *pa, const char *pb);
 
 #endif
