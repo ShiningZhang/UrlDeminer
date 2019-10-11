@@ -173,7 +173,15 @@ bool compare_dp_char(const char *pa, const char *pb)
     int ret = cmpbuf_dp(pa, na, pb, nb);
     if (ret != 0)
         return ret == -1 ? true : false;
-    return na < nb;
+    int sub = na - nb;
+    if (sub < 0)
+        return true;
+    else if (sub > 0)
+        return false;
+    else
+    {
+        return pa < pb;
+    }
 }
 
 static uint64_t temp[9] = {
@@ -244,4 +252,16 @@ bool compare_prefix(const char *e1, const char *e2)
     else if (na > nb)
         return false;
     return e1 < e2;
+}
+
+bool compare_prefix_eq(const char *e1, const char *e2)
+{
+    const char *pa = e1;
+    const char *pb = e2;
+    int na = (int)*((uint16_t *)pa) - 3;
+    int nb = (int)*((uint16_t *)pb) - 3;
+    pa += 2;
+    pb += 2;
+    int ret = cmpbuf_pf(pa, na, pb, nb);
+    return ret;
 }

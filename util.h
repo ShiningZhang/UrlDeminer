@@ -70,4 +70,6 @@ void arrangesuffix(char *s, int len);
 
 bool compare_dp_char(const char *pa, const char *pb);
 
+bool compare_prefix_eq(const char *e1, const char *e2);
+
 #endif

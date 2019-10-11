@@ -15,6 +15,8 @@ public:
     void add(char *domainPortBuffer, char allow);
     void load_(char *p, uint64_t size);
 
+    void prepare_range(std::vector<char *> &list, int *&range);
+
 public:
     static PrefixFilter *load(char *p, uint64_t size);
 
@@ -27,6 +29,7 @@ public:
     uint64_t size_[3][2][2];
     char * p_;
     uint64_t buf_size_;
+    int *list_range_[3][2][2];
     // * +
     std::vector<char *> list_inpass_http_;
     std::vector<char *> list_inpass_https_;

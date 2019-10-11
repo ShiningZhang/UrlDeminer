@@ -44,7 +44,7 @@ void DomainFilter::prepare_buf(char *p, uint64_t size)
         {
             ++offset;
             port = atoi(offset);
-            *(uint16_t *)(offset) = port;
+            // *(uint16_t *)(offset) = port;
         }
         ++this->list_count_[se[-1] == '-'][port];
         s = se + 1;
@@ -102,7 +102,8 @@ void DomainFilter::load_(char *p, uint64_t size)
         }
         if (*offset == ':')
         {
-            port = *(uint16_t *)(offset + 1);
+            port = atoi(offset+1);
+            // port = *(uint16_t *)(offset + 1);
             len = offset - s;
         }
         *(uint16_t *)(s - 2) = len;

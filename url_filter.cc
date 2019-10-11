@@ -571,13 +571,22 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
         printf("start=%p,end=%p,res=%p\n", start, end, res);
 #endif
-        if (res == end)
-            --res;
-        if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+        --res;
+        if (res >= start)
         {
-            output.len = (int)*((uint16_t *)(*res));
-            output.type = 1;
-            output.hit = 1;
+            int count = filter->list_range_[1][1][https][res - start];
+            while (count > 0)
+            {
+                if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+                {
+                    output.len = (int)*((uint16_t *)(*res));
+                    output.type = 1;
+                    output.hit = 1;
+                    break;
+                }
+                --res;
+                --count;
+            }
         }
     }
 #ifdef DEBUG
@@ -591,16 +600,25 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
         printf("start=%p,end=%p,res=%p\n", start, end, res);
 #endif
         res = upper_bound(start, end, in, cmp_pf);
-        if (res == end)
-            --res;
-        if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+        --res;
+        if (res >= start)
         {
-            int len = (int)*((uint16_t *)(*res));
-            if (len > output.len)
+            int count = filter->list_range_[1][0][https][res - start];
+            while (count > 0)
             {
-                output.len = len;
-                output.type = 1;
-                output.hit = 0;
+                if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+                {
+                    int len = (int)*((uint16_t *)(*res));
+                    if (len > output.len)
+                    {
+                        output.len = len;
+                        output.type = 1;
+                        output.hit = 0;
+                    }
+                    break;
+                }
+                --res;
+                --count;
             }
         }
     }
@@ -623,14 +641,24 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
             }
         }
         --res;
-        if (res >= start && len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+        if (res >= start)
         {
-            int len = (int)*((uint16_t *)(*res));
-            if (len > output.len)
+            int count = filter->list_range_[0][1][https][res - start];
+            while (count > 0)
             {
-                output.len = len;
-                output.type = 0;
-                output.hit = 1;
+                if (res >= start && len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+                {
+                    int len = (int)*((uint16_t *)(*res));
+                    if (len > output.len)
+                    {
+                        output.len = len;
+                        output.type = 0;
+                        output.hit = 1;
+                    }
+                    break;
+                }
+                --res;
+                --count;
             }
         }
     }
@@ -656,14 +684,24 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
             }
         }
         --res;
-        if (res >= start && len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+        if (res >= start)
         {
-            int len = (int)*((uint16_t *)(*res));
-            if (len > output.len)
+            int count = filter->list_range_[0][0][https][res - start];
+            while (count > 0)
             {
-                output.len = len;
-                output.type = 0;
-                output.hit = 0;
+                if (res >= start && len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+                {
+                    int len = (int)*((uint16_t *)(*res));
+                    if (len > output.len)
+                    {
+                        output.len = len;
+                        output.type = 0;
+                        output.hit = 0;
+                    }
+                    break;
+                }
+                --res;
+                --count;
             }
         }
     }

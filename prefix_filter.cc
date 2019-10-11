@@ -14,6 +14,7 @@ PrefixFilter::PrefixFilter()
     p_ = NULL;
     buf_size_ = 0;
     memset(size_, 0, 3 * 2 * 2 * sizeof(uint64_t));
+    memset(list_range_, 0, 3 * 2 * 2 * sizeof(int *));
 }
 
 void PrefixFilter::load_(char *p, uint64_t size)
@@ -187,5 +188,37 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
 #endif
         }
     }
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                filter->prepare_range(filter->list_https_[i][j][k], filter->list_range_[i][j][k]);
+            }
+        }
+    }
     return filter;
+}
+
+void PrefixFilter::prepare_range(vector<char *> &list, int *&range)
+{
+    if (list.empty())
+        return;
+    range = (int *)malloc(list.size() * sizeof(int));
+    char *pa = list[0];
+    range[0] = 1;
+    for (int i = 1; i < list.size(); ++i)
+    {
+        char *pb = list[i];
+        if (compare_prefix_eq(pa, pb) != 0)
+        {
+            pa = pb;
+            range[i] = 1;
+        }
+        else
+        {
+            range[i] = range[i - 1] + 1;
+        }
+    }
 }
