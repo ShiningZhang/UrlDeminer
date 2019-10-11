@@ -55,7 +55,8 @@ int main(int argc, char **argv)
 
     FILE *fp;
     fp = fopen(domainFilterPath, "r");
-    uint64_t size = sizeoffile(fp);
+    // uint64_t size = sizeoffile(fp);
+    uint64_t size = file_size(domainFilterPath);
     data->fp_in_ = fp;
     data->length_ = size;
 
@@ -104,8 +105,8 @@ int main(int argc, char **argv)
     {
         s_instance_stream->push_module(modules[i]);
     }
+    size = file_size(urlidPath);
     fp = fopen(urlidPath, "r");
-    size = sizeoffile(fp);
     data->fp_in_ = fp;
     data->length_ = size;
     data->fp_out_ = stdout;

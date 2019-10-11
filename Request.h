@@ -35,7 +35,7 @@ public:
     char *buffer_;
     size_t begin_;
     size_t end_;
-    size_t length_;
+    uint64_t length_;
     uint8_t idx_;
     size_t count_;
     size_t size_split_buf;

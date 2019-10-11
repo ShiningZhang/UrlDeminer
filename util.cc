@@ -1,5 +1,7 @@
 #include "util.h"
 
+#include <sys/stat.h>
+
 FilterCounters::FilterCounters()
 {
     memset(this, 0, sizeof(*this));
@@ -14,6 +16,18 @@ uint64_t sizeoffile(FILE *handle)
     fseek(handle, oldpos, SEEK_SET);
     return filesize;
 }
+
+unsigned long long file_size(const char *filename)
+{
+    unsigned long long size;
+    struct stat st;
+
+    stat(filename, &st);
+    size = st.st_size;
+
+    return size;
+
+} //get_file_size
 
 size_t readcontent_unlocked(FILE *handle, char *p, uint64_t isize, int *end)
 {
@@ -33,6 +47,18 @@ size_t readcontent_unlocked(FILE *handle, char *p, uint64_t isize, int *end)
     }
     fseek(handle, oldpos + size, SEEK_SET);
     return size;
+}
+
+uint64_t readcontent_unlocked1(FILE *handle, char *p, uint64_t isize)
+{
+    uint64_t size = fread_unlocked(p, 1, isize, handle);
+    uint64_t offset = size;
+    while (offset > 0 && p[offset-1] != '\n')
+    {
+        --offset;
+    }
+    fseek (handle, -(size - offset), SEEK_CUR);
+    return offset;
 }
 
 int setfilesplitsize(uint64_t inputfilesize, int maxsort)

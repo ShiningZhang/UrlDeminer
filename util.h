@@ -72,4 +72,8 @@ bool compare_dp_char(const char *pa, const char *pb);
 
 bool compare_prefix_eq(const char *e1, const char *e2);
 
+unsigned long long file_size(const char * filename );
+
+uint64_t readcontent_unlocked1(FILE *handle, char *p, uint64_t isize);
+
 #endif

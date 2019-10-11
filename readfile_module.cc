@@ -40,17 +40,21 @@ void ReadFile_Module::svc()
         int end = 0;
         uint64_t length = data->length_;
         uint32_t size = 0;
+        uint64_t begin = 0;
         size_t line_size = length < 1024 * 8 ? length : ceil((double)length / 8);
         SP_DEBUG("ReadFile_Module:length=%d,line_size=%d\n", length, line_size);
-        while (1)
+        while (begin < length)
         {
+            if (begin + line_size > length)
+                line_size = length - begin;
             buf = (char *)malloc(line_size + BUFHEADSIZE);
             buf = buf + BUFHEADSIZE;
-            flockfile(data->fp_in_);
+            // flockfile(data->fp_in_);
 
-            size = readcontent_unlocked(data->fp_in_, buf, line_size, &end);
+            size = readcontent_unlocked1(data->fp_in_, buf, line_size);
+            begin += size;
 
-            funlockfile(data->fp_in_);
+            // funlockfile(data->fp_in_);
             SP_NEW(c_data, CRequest(data));
             c_data->buffer_ = buf;
             c_data->size_ = size;
@@ -58,10 +62,6 @@ void ReadFile_Module::svc()
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
             ++data->size_split_buf;
             put_next(msg);
-            if (end)
-            {
-                break;
-            }
         }
         data->is_read_end_ = true;
         gettimeofday(&t2, 0);
