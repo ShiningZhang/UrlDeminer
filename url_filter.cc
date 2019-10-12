@@ -65,7 +65,7 @@ void UrlFilter::load_(char *p, uint64_t size)
         }
         b.start = s;
         b.n = domain_len;
-        uint16_t len = se - s - 6; // -9 +2  [-1]type:len[2]:start->end
+        uint16_t len = se - s - 9; // -9 +2  [-1]type:len[2]:start->end
         *(uint16_t *)(s - 2) = len;
         list_domainport_.push_back(b);
         *(se - 9) = '\0';
@@ -372,7 +372,7 @@ void UrlFilter::filter_domainport()
         if (res.ret == 1) // -
         {
             counters_.hit++;
-            uint32_t tag = (uint32_t)strtoul(in.start + (*((uint16_t *)(in.start - 2))) - 2, NULL, 16);
+            uint32_t tag = (uint32_t)strtoul(in.start + (*((uint16_t *)(in.start - 2))) + 1, NULL, 16);
             counters_.hitchecksum ^= tag;
         }
         else
@@ -381,7 +381,7 @@ void UrlFilter::filter_domainport()
             {
                 in.start[-3] |= 0x40;
             }
-            arrangesuffix(in.start, *(uint16_t *)(in.start - 2) - 3);
+            arrangesuffix(in.start, *(uint16_t *)(in.start - 2));
             list_.push_back(in.start - 2);
 #ifdef DEBUG
             printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
@@ -394,8 +394,8 @@ bool cmp_pf(const char *e1, const char *e2)
 {
     const char *pa = e1;
     const char *pb = e2;
-    int na = (int)*((uint16_t *)pa) - 3;
-    int nb = (int)*((uint16_t *)pb) - 3;
+    int na = (int)*((uint16_t *)pa);
+    int nb = (int)*((uint16_t *)pb);
     pa += 2;
     pb += 2;
     int ret = cmpbuf_pf(pa, na, pb, nb);
@@ -409,8 +409,8 @@ bool cmp_pf(const char *e1, const char *e2)
 
 int len_eq(const char *e1, const char *e2)
 {
-    int na = (int)*((uint16_t *)e1) - 3;
-    int nb = (int)*((uint16_t *)e2) - 3;
+    int na = (int)*((uint16_t *)e1);
+    int nb = (int)*((uint16_t *)e2);
 #ifdef DEBUG
     printf("len_eq:%d\n", na - nb);
 #endif
@@ -421,8 +421,8 @@ int cmp_pf_eq(const char *e1, const char *e2)
 {
     const char *pa = e1;
     const char *pb = e2;
-    int na = (int)*((uint16_t *)pa) - 3;
-    int nb = (int)*((uint16_t *)pb) - 3;
+    int na = (int)*((uint16_t *)pa);
+    int nb = (int)*((uint16_t *)pb);
     pa += 2;
     pb += 2;
     int ret = cmpbuf_pf(pa, na, pb, nb);
@@ -667,7 +667,7 @@ void UrlFilter::filter_prefix()
 #ifdef DEBUG
         printf("filter_prefix:https:%d,in:%s,len:%d,type:%d,hit:%d\n", ((in[-1] & 0x0f) == 1), in + 2, output->len, output->type, output->hit);
 #endif
-        const char *tagbuf = in + (*((uint16_t *)(in)));
+        const char *tagbuf = in + (*((uint16_t *)(in))) + 3;
         //printf("tagbuf:%s\n", tagbuf);
         uint32_t tag = (uint32_t)strtoul(tagbuf, NULL, 16);
         if (output->hit == 1)

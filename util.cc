@@ -274,8 +274,8 @@ bool compare_prefix(const char *e1, const char *e2)
 {
     const char *pa = e1;
     const char *pb = e2;
-    int na = (int)*((uint16_t *)pa) - 3;
-    int nb = (int)*((uint16_t *)pb) - 3;
+    int na = (int)*((uint16_t *)pa);
+    int nb = (int)*((uint16_t *)pb);
     pa += 2;
     pb += 2;
     int ret = cmpbuf_pf(pa, na, pb, nb);
@@ -292,8 +292,8 @@ bool compare_prefix_eq(const char *e1, const char *e2)
 {
     const char *pa = e1;
     const char *pb = e2;
-    int na = (int)*((uint16_t *)pa) - 3;
-    int nb = (int)*((uint16_t *)pb) - 3;
+    int na = (int)*((uint16_t *)pa);
+    int nb = (int)*((uint16_t *)pb);
     pa += 2;
     pb += 2;
     int ret = cmpbuf_pf(pa, na, pb, nb);

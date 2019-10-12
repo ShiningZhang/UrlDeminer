@@ -80,16 +80,16 @@ void PrefixFilter::load_(char *p, uint64_t size)
             }
         }
         uint16_t len = se - s - 4;
-        *(uint16_t *)(s - 2) = len + 3;
+        *(uint16_t *)(s - 2) = len;
         uint8_t type = se[-3] == '=' ? 2 : se[-3] == '+' ? 1 : 0;
         bool hit = se[-1] == '-' ? true : false;
         if (port_type > 2)
         {
-            s[len] = 1;
+            s[-3] = 1;
         }
         else
         {
-            s[len] = 0xff & port_type;
+            s[-3] = 0xff & port_type;
         }
         if (port_type == 1)
         {
