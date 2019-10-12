@@ -28,6 +28,7 @@ public:
 	int list_count_[2][65536];
 	char *p_;
 	uint32_t size_;
+	int *list_range_[2][65536];
 };
 
 #endif

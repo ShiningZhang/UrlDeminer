@@ -10,9 +10,11 @@ using namespace std;
 
 DomainFilter::DomainFilter()
 {
+    memset(list_, 0, 2 * 65536 * sizeof(char **));
     memset(list_count_, 0, 2 * 65536 * sizeof(int));
     p_ = NULL;
     size_ = 0;
+    memset(list_range_, 0, 2 * 65536 * sizeof(int *));
 }
 
 DomainFilter::~DomainFilter()
@@ -102,7 +104,7 @@ void DomainFilter::load_(char *p, uint64_t size)
         }
         if (*offset == ':')
         {
-            port = atoi(offset+1);
+            port = atoi(offset + 1);
             // port = *(uint16_t *)(offset + 1);
             len = offset - s;
         }
@@ -111,6 +113,28 @@ void DomainFilter::load_(char *p, uint64_t size)
         this->list_[hit][port][this->list_count_[hit][port]] = s;
         ++this->list_count_[hit][port];
         s = se + 1;
+    }
+}
+
+void prepare_range(char **list, int size, int *&range)
+{
+    if (size == 0)
+        return;
+    range = (int *)malloc(size * sizeof(int));
+    char *pa = list[0];
+    range[0] = 1;
+    for (int i = 1; i < size; ++i)
+    {
+        char *pb = list[i];
+        if (compare_dp_char_eq(pa, pb) != 0)
+        {
+            pa = pb;
+            range[i] = 1;
+        }
+        else
+        {
+            range[i] = range[i - 1] + 1;
+        }
     }
 }
 
@@ -143,6 +167,7 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
             if (filter->list_count_[i][j] > 0)
             {
                 pdqsort(filter->list_[i][j], filter->list_[i][j] + filter->list_count_[i][j], compare_dp_char);
+                prepare_range(filter->list_[i][j], filter->list_count_[i][j], filter->list_range_[i][j]);
 #ifdef DEBUG
                 for (int k = 0; k < filter->list_count_[i][j]; ++k)
                 {

@@ -210,6 +210,14 @@ bool compare_dp_char(const char *pa, const char *pb)
     }
 }
 
+bool compare_dp_char_eq(const char *pa, const char *pb)
+{
+    uint16_t na = *(uint16_t *)(pa - 2);
+    uint16_t nb = *(uint16_t *)(pb - 2);
+    int ret = cmpbuf_dp(pa, na, pb, nb);
+    return ret;
+}
+
 static uint64_t temp[9] = {
     0x0000000000000000,
     0xff00000000000000,

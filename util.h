@@ -76,4 +76,6 @@ unsigned long long file_size(const char * filename );
 
 uint64_t readcontent_unlocked1(FILE *handle, char *p, uint64_t isize);
 
+bool compare_dp_char_eq(const char *pa, const char *pb);
+
 #endif

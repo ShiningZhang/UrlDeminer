@@ -234,7 +234,8 @@ int filter_domainport_(const DomainPortBuf &in,
 
 int filter_domainport_impl(const DomainPortBuf &in,
                            char **start,
-                           const int size)
+                           const int size,
+                           const int *range)
 {
     if (size == 0)
         return -1;
@@ -242,40 +243,21 @@ int filter_domainport_impl(const DomainPortBuf &in,
     --iter;
     char *pa = in.start;
     uint16_t na = in.n;
-    while (na > 0 && iter >= start)
+    int count = range[iter - start];
+    while (count > 0)
     {
         const char *pb = *iter;
         uint16_t nb = *(uint16_t *)(pb - 2);
         int ret = cmpbuf_dp(pa, na, pb, nb);
-        if (ret != 0)
-        {
-            if (*pa == '.')
-            {
-                ++pa;
-                --na;
-            }
-            else
-            {
-                char *s = strchr(pa, '.');
-                if (s != NULL)
-                {
-                    na -= s - pa;
-                    pa = s;
-                }
-                else
-                {
-                    break;
-                }
-            }
-            continue;
-        }
-        if (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.')))
+
+        if (ret == 0 && (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.'))))
         {
             return nb;
         }
         else
         {
             --iter;
+            --count;
         }
     }
     return -1;
@@ -288,7 +270,7 @@ int filter_domainport_1(const DomainPortBuf &in,
     res = {0, 0, -1};
     char **start = filter->list_[1][in.port];
     int size = filter->list_count_[1][in.port];
-    int n = filter_domainport_impl(in, start, size);
+    int n = filter_domainport_impl(in, start, size, filter->list_range_[1][in.port]);
     if (n > 0)
     {
         res.n = n;
@@ -299,7 +281,7 @@ int filter_domainport_1(const DomainPortBuf &in,
     }
     start = filter->list_[0][in.port];
     size = filter->list_count_[0][in.port];
-    n = filter_domainport_impl(in, start, size);
+    n = filter_domainport_impl(in, start, size, filter->list_range_[0][in.port]);
     if (n > 0 && n > res.n)
     {
         res.n = n;
@@ -312,7 +294,7 @@ int filter_domainport_1(const DomainPortBuf &in,
         return res.ret;
     start = filter->list_[1][0];
     size = filter->list_count_[1][0];
-    n = filter_domainport_impl(in, start, size);
+    n = filter_domainport_impl(in, start, size, filter->list_range_[1][0]);
     if (n > 0)
     {
         res.n = n;
@@ -323,7 +305,7 @@ int filter_domainport_1(const DomainPortBuf &in,
     }
     start = filter->list_[0][0];
     size = filter->list_count_[0][0];
-    n = filter_domainport_impl(in, start, size);
+    n = filter_domainport_impl(in, start, size, filter->list_range_[0][0]);
     if (n > 0 && n > res.n)
     {
         res.n = n;
