@@ -366,16 +366,6 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
         {
             pdqsort(filter->list_https_[i][j][0], filter->list_https_[i][j][0] + filter->list_count_[i][j][0], compare_prefix);
             pdqsort(filter->list_https_[i][j][1], filter->list_https_[i][j][1] + filter->list_count_[i][j][1], compare_prefix);
-#ifdef DEBUG
-            for (int k = 0; k < filter->list_https_[i][j][0].size(); ++k)
-            {
-                printf("[%d,%d]http:%s\n", i, j, filter->list_https_[i][j][0][k] + 2);
-            }
-            for (int k = 0; k < filter->list_https_[i][j][1].size(); ++k)
-            {
-                printf("[%d,%d]https:%s\n", i, j, filter->list_https_[i][j][1][k] + 2);
-            }
-#endif
         }
     }
     for (int i = 0; i < 2; ++i)
@@ -413,7 +403,7 @@ void PrefixFilter::prepare_range(char **list, int size, int *&range)
     }
 }
 
-/* PrefixFilter *PrefixFilter::merge(vector<PrefixFilter *> prefix_filter_list)
+PrefixFilter *PrefixFilter::merge(vector<PrefixFilter *> prefix_filter_list)
 {
     PrefixFilter *filter = new PrefixFilter();
     for (int i = 0; i < 3; ++i)
@@ -425,14 +415,29 @@ void PrefixFilter::prepare_range(char **list, int size, int *&range)
                 int size = 0;
                 for (int m = 0; m < prefix_filter_list.size(); ++m)
                 {
-                    size +=prefix_filter_list[m]->list_https_[i][j][k].size();
+                    size += prefix_filter_list[m]->list_count_[i][j][k];
                 }
                 if (size > 0)
                 {
-                    filter->list_https_[i][j][k].reserve(size);
-                    filter->list_https_[i][j][k].assign()
+                    filter->list_count_[i][j][k] = size;
+                    filter->list_https_[i][j][k] = (char **)malloc(filter->list_count_[i][j][k] * sizeof(char *));
+                    size = 0;
+                    for (int m = 0; m < prefix_filter_list.size(); ++m)
+                    {
+                        memcpy(filter->list_https_[i][j][k] + size, prefix_filter_list[m]->list_https_[i][j][k], prefix_filter_list[m]->list_count_[i][j][k] * sizeof(char *));
+                        size += prefix_filter_list[m]->list_count_[i][j][k];
+                    }
+                    pdqsort(filter->list_https_[i][j][k], filter->list_https_[i][j][k] + filter->list_count_[i][j][k], compare_prefix);
+                    filter->prepare_range(filter->list_https_[i][j][k], filter->list_count_[i][j][k], filter->list_range_[i][j][k]);
+#ifdef DEBUG
+                    for (int n = 0; n < filter->list_count_[i][j][k]; ++n)
+                    {
+                        printf("http[%d,%d,%d]:%s\n", i, j, k, *(filter->list_https_[i][j][k] + n) + 2);
+                    }
+#endif
                 }
             }
         }
     }
-} */
+    return filter;
+}

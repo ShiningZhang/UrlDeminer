@@ -20,6 +20,7 @@ public:
 
 public:
     static PrefixFilter *load(char *p, uint64_t size);
+    static PrefixFilter *merge(std::vector<PrefixFilter *> prefix_filter_list);
 
 public:
     std::vector<char *> list_str_;

@@ -654,26 +654,28 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 
 void UrlFilter::filter_prefix()
 {
-    vector<stPFRES>::iterator output;
-    vector<stPFRES> list_res;
-    list_res.resize(list_prefixfilter_.size());
+    stPFRES output, res;
     for (int i = 0; i < list_.size(); ++i)
     {
+        res = {0, -1, 0};
         const char *in = list_[i];
-        for (int j = 0; j < list_prefixfilter_.size(); ++j)
+        bool https = (in[-1] & 0x0f) == 1;
+        for (int j = list_prefixfilter_.size() - 1; j < list_prefixfilter_.size(); ++j)
         {
-            bool https = (in[-1] & 0x0f) == 1;
-            filter_prefix_(in, list_prefixfilter_[j], https, list_res[j]);
+            filter_prefix_(in, list_prefixfilter_[j], https, output);
             // printf("filter_prefix end:https:%d,in:%s\n", https, in + 2);
+            if (cmp_pfres(res, output))
+            {
+                res = output;
+            }
         }
-        output = max_element(list_res.begin(), list_res.end(), cmp_pfres);
 #ifdef DEBUG
-        printf("filter_prefix:https:%d,in:%s,len:%d,type:%d,hit:%d\n", ((in[-1] & 0x0f) == 1), in + 2, output->len, output->type, output->hit);
+        printf("filter_prefix:https:%d,in:%s,len:%d,type:%d,hit:%d\n", ((in[-1] & 0x0f) == 1), in + 2, res.len, res.type, res.hit);
 #endif
         const char *tagbuf = in + (*((uint16_t *)(in))) + 3;
         //printf("tagbuf:%s\n", tagbuf);
         uint32_t tag = (uint32_t)strtoul(tagbuf, NULL, 16);
-        if (output->hit == 1)
+        if (res.hit == 1)
         {
             counters_.hit++;
 
@@ -683,9 +685,9 @@ void UrlFilter::filter_prefix()
         {
 
 #ifdef DEBUG
-            printf("output->type=%d,in[-1]=%d\n", output->type, in[-1]);
+            printf("output->type=%d,in[-1]=%d\n", res.type, in[-1]);
 #endif
-            if (output->type == -1 && int(in[-1]) > 1)
+            if (res.type == -1 && int(in[-1]) > 1)
             {
                 counters_.miss++;
             }
