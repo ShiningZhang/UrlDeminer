@@ -94,7 +94,7 @@ void arrangesuffix(char *s, int len)
     }
 }
 
-int cmp64val(int64_t ia, int64_t ib)
+/* inline int cmp64val(int64_t ia, int64_t ib)
 {
     int64_t sub = ia - ib;
     if (sub < 0)
@@ -106,9 +106,9 @@ int cmp64val(int64_t ia, int64_t ib)
         return 1;
     }
     return 0;
-}
+} */
 
-static int64_t to64le8(const char *s, int len)
+/* static inline int64_t to64le8(const char *s, int len)
 {
     int64_t ret = 0;
     int i = 56;
@@ -124,9 +124,9 @@ static int64_t to64le8(const char *s, int len)
         i -= 8;
     }
     return ret;
-}
+} */
 
-static int64_t to64le8h(const char *s, int len)
+/* static inline int64_t to64le8h(const char *s, int len)
 {
     int64_t ret = 0;
     int i = 56;
@@ -142,9 +142,9 @@ static int64_t to64le8h(const char *s, int len)
         i -= 8;
     }
     return ret;
-}
+} */
 
-int cmpbuf_dp(const char *pa, int na, const char *pb, int nb)
+/* inline int cmpbuf_dp(const char *pa, int na, const char *pb, int nb)
 {
     while (na >= 8 && nb >= 8)
     {
@@ -166,7 +166,7 @@ int cmpbuf_dp(const char *pa, int na, const char *pb, int nb)
         return cmp64val(ia, ib);
     }
     return 0;
-}
+} */
 
 bool compare_dp(const DomainPortBuf &e1, const DomainPortBuf &e2)
 {
@@ -218,7 +218,7 @@ bool compare_dp_char_eq(const char *pa, const char *pb)
     return ret;
 }
 
-static uint64_t temp[9] = {
+uint64_t temp[9] = {
     0x0000000000000000,
     0xff00000000000000,
     0xffff000000000000,
@@ -229,7 +229,7 @@ static uint64_t temp[9] = {
     0xffffffffffffff00,
     0xffffffffffffffff};
 
-int cmpbuf_pf(const char *pa, int na, const char *pb, int nb)
+/* int inline cmpbuf_pf(const char *pa, int na, const char *pb, int nb)
 {
     int ret = 0;
     while (na >= 8 && nb >= 8)
@@ -268,7 +268,7 @@ int cmpbuf_pf(const char *pa, int na, const char *pb, int nb)
         return cmp64val(ia, ib);
     }
     return 0;
-}
+} */
 
 bool compare_prefix(const char *e1, const char *e2)
 {
