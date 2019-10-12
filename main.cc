@@ -111,6 +111,7 @@ int main(int argc, char **argv)
     data->fp_in_ = fp;
     data->length_ = size;
     data->fp_out_ = stdout;
+    data->reset_para();
     s_instance_stream->put(msg);
     s_instance_stream->get(msg);
     dumpCounters(stdout, &data->counter_);

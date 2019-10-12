@@ -64,6 +64,7 @@ void ReadFile_Module::svc()
             put_next(msg);
         }
         data->is_read_end_ = true;
+        SP_DEBUG("ReadFile_Module:size_split_buf=%d,end\n", data->size_split_buf);
         gettimeofday(&t2, 0);
         SP_DEBUG("ReadFile_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
         //SP_LOGI("ReadFile_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);

@@ -369,51 +369,10 @@ void UrlFilter::filter_domainport()
                 }
             }
         }
-        /*
-        for (int j = 0; j < list_domainfilter_.size(); ++j)
-        {
-            if (list_iter_res[j].first == -1)
-            {
-                continue;
-            }
-            else if(list_iter_res[max].first == -1)
-            {
-                max = j;
-            }
-            else
-            {
-                if (list_iter_res[max].second->port > list_iter_res[j].second->port)
-                {
-                    continue;
-                }
-                else if (list_iter_res[max].second->port < list_iter_res[j].second->port)
-                {
-                    max = j;
-                    continue;
-                }
-                else
-                {
-                    if (list_iter_res[max].second->n < list_iter_res[j].second->n)
-                    {
-                        max = j;
-                        continue;
-                    }
-                    else if(list_iter_res[max].second->n == list_iter_res[j].second->n)
-                    {
-                        if (list_iter_res[max].first > list_iter_res[j].first)
-                        {
-                            max = j;
-                        }
-                    }
-                }
-            }
-        }
-        ret = list_iter_res[max].first;
-        */
         if (res.ret == 1) // -
         {
             counters_.hit++;
-            uint32_t tag = (uint32_t)strtoul(in.start + (*((uint16_t *)(in.start - 2))), NULL, 16);
+            uint32_t tag = (uint32_t)strtoul(in.start + (*((uint16_t *)(in.start - 2))) - 2, NULL, 16);
             counters_.hitchecksum ^= tag;
         }
         else

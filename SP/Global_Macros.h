@@ -26,7 +26,8 @@
 #    define SP_TRACE(...)
 #  endif
 #  if (SP_DEBUG_SWITCH == 1)
-#    define SP_DEBUG(...) printf(__VA_ARGS__)
+#    define SP_DEBUG(...) fprintf(stderr, __VA_ARGS__)
+// #    define SP_DEBUG(...) printf(__VA_ARGS__)
 #  else
 #    define SP_DEBUG(...)
 #  endif
