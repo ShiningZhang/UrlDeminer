@@ -86,7 +86,8 @@ int main(int argc, char **argv)
     }
 
     fp = fopen(urlPrefixFilterPath, "r");
-    size = sizeoffile(fp);
+    // size = sizeoffile(fp);
+    size = file_size(urlPrefixFilterPath);
     data->fp_in_ = fp;
     data->length_ = size;
     s_instance_stream->put(msg);
