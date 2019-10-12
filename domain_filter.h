@@ -21,6 +21,7 @@ public:
 
 public:
 	static DomainFilter *load(char *p, uint64_t size);
+	static DomainFilter *merge(vector<DomainFilter *> domain_filter_list);
 
 public:
 	// std::vector<DomainPortBuf> list_;

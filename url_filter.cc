@@ -352,7 +352,7 @@ void UrlFilter::filter_domainport()
     {
         DomainPortBuf &in = list_domainport_[i];
         res = {0, 0, -1};
-        for (int j = 0; j < list_domainfilter_.size(); ++j)
+        for (int j = list_domainfilter_.size() - 1; j < list_domainfilter_.size(); ++j)
         {
             if (filter_domainport_1(in, list_domainfilter_[j], output) != -1)
             {

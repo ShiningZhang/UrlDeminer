@@ -186,3 +186,36 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
 #endif */
     return filter;
 }
+
+DomainFilter *DomainFilter::merge(vector<DomainFilter *> domain_filter_list)
+{
+    DomainFilter *filter = new DomainFilter();
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < 65536; ++j)
+        {
+            int size = 0;
+            for (int k = 0; k < domain_filter_list.size(); ++k)
+            {
+                size += domain_filter_list[k]->list_count_[i][j];
+            }
+            if (size > 0)
+            {
+                filter->list_[i][j] = (char **)malloc(size * sizeof(char *));
+                filter->list_count_[i][j] = size;
+                size = 0;
+                for (int k = 0; k < domain_filter_list.size(); ++k)
+                {
+                    if (domain_filter_list[k]->list_count_[i][j] != 0)
+                    {
+                        memcpy(filter->list_[i][j] + size, domain_filter_list[k]->list_[i][j], domain_filter_list[k]->list_count_[i][j]*sizeof(char*));
+                        size += domain_filter_list[k]->list_count_[i][j];
+                    }
+                }
+                pdqsort(filter->list_[i][j], filter->list_[i][j] + filter->list_count_[i][j], compare_dp_char);
+                prepare_range(filter->list_[i][j], filter->list_count_[i][j], filter->list_range_[i][j]);
+            }
+        }
+    }
+    return filter;
+}
