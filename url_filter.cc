@@ -455,8 +455,11 @@ bool cmp_pfres(const stPFRES &e1, const stPFRES &e2)
 
 int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &output)
 {
-    vector<char *>::iterator start, end;
-    vector<char *>::iterator res;
+    // vector<char *>::iterator start, end;
+    // vector<char *>::iterator res;
+    char **start;
+    char **end;
+    char **res;
     output = {0, -1, 0};
     int sub = 0;
 #ifdef DEBUG
@@ -466,10 +469,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 2, 1);
 #endif
-    if (filter->list_https_[2][1][https].size() > 0)
+    if (filter->list_count_[2][1][https] > 0)
     {
-        start = (filter->list_https_[2][1][https]).begin();
-        end = filter->list_https_[2][1][https].end();
+        start = filter->list_https_[2][1][https];
+        end = filter->list_https_[2][1][https] + filter->list_count_[2][1][https];
         res = upper_bound(start, end, in, cmp_pf);
         if (res != end)
         {
@@ -485,10 +488,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 2, 0);
 #endif
-    if (filter->list_https_[2][0][https].size() > 0)
+    if (filter->list_count_[2][0][https] > 0)
     {
-        start = filter->list_https_[2][0][https].begin();
-        end = filter->list_https_[2][0][https].end();
+        start = filter->list_https_[2][0][https];
+        end = filter->list_https_[2][0][https] + filter->list_count_[2][0][https];
         res = upper_bound(start, end, in, cmp_pf);
         if (res != end)
         {
@@ -504,10 +507,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 1, 1);
 #endif
-    if (filter->list_https_[1][1][https].size() > 0)
+    if (filter->list_count_[1][1][https] > 0)
     {
-        start = filter->list_https_[1][1][https].begin();
-        end = filter->list_https_[1][1][https].end();
+        start = filter->list_https_[1][1][https];
+        end = filter->list_https_[1][1][https] + filter->list_count_[1][1][https];
         res = upper_bound(start, end, in, cmp_pf);
 #ifdef DEBUG
         printf("start=%p,end=%p,res=%p\n", start, end, res);
@@ -533,10 +536,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 1, 0);
 #endif
-    if (filter->list_https_[1][0][https].size() > 0)
+    if (filter->list_count_[1][0][https] > 0)
     {
-        start = filter->list_https_[1][0][https].begin();
-        end = filter->list_https_[1][0][https].end();
+        start = filter->list_https_[1][0][https];
+        end = filter->list_https_[1][0][https] + filter->list_count_[1][0][https];
 #ifdef DEBUG
         printf("start=%p,end=%p,res=%p\n", start, end, res);
 #endif
@@ -566,10 +569,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 0, 1);
 #endif
-    if (filter->list_https_[0][1][https].size() > 0)
+    if (filter->list_count_[0][1][https] > 0)
     {
-        start = filter->list_https_[0][1][https].begin();
-        end = filter->list_https_[0][1][https].end();
+        start = filter->list_https_[0][1][https];
+        end = filter->list_https_[0][1][https] + filter->list_count_[0][1][https];
         res = upper_bound(start, end, in, cmp_pf);
         if (res != end)
         {
@@ -606,10 +609,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 0, 0);
 #endif
-    if (filter->list_https_[0][0][https].size() > 0)
+    if (filter->list_count_[0][0][https] > 0)
     {
-        start = filter->list_https_[0][0][https].begin();
-        end = filter->list_https_[0][0][https].end();
+        start = filter->list_https_[0][0][https];
+        end = filter->list_https_[0][0][https] + filter->list_count_[0][0][https];
         res = upper_bound(start, end, in, cmp_pf);
 #ifdef DEBUG
         printf("start=%p,end=%p,res=%p\n", start, end, res);
