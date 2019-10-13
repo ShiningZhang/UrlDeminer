@@ -8,6 +8,9 @@
 #include <stdint.h>
 #include <vector>
 #include <sys/time.h>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
 
@@ -18,45 +21,52 @@ using namespace std;
 
 #define BUFHEADSIZE 10
 
+#define INITURLCOUNT 5000000
+
 #define LOG(format_string, ...)                                                                         \
-	{                                                                                                   \
-		struct timeval __val;                                                                           \
-		gettimeofday(&__val, NULL);                                                                     \
-		fprintf(stderr, "%ld.%03ld " format_string, __val.tv_sec, __val.tv_usec / 1000, ##__VA_ARGS__); \
-	}
+    {                                                                                                   \
+        struct timeval __val;                                                                           \
+        gettimeofday(&__val, NULL);                                                                     \
+        fprintf(stderr, "%ld.%03ld " format_string, __val.tv_sec, __val.tv_usec / 1000, ##__VA_ARGS__); \
+    }
 
 class DomainFilter;
 class PrefixFilter;
+class UrlFilter;
 
 struct GlobalST
 {
-	FILE *inputfilehandle;
-	uint64_t inputfilesize;
-	uint32_t filesplitsize;
-	vector<DomainFilter *> domain_filter_list_;
-	int inputend;
+    FILE *inputfilehandle;
+    uint64_t inputfilesize;
+    uint32_t filesplitsize;
+    vector<DomainFilter *> domain_filter_list_;
+    int inputend;
 };
 
 struct FilterCounters
 {
-	int pass;
-	int hit;
-	int miss;
-	int invalidUrl;
-	uint32_t passchecksum;
-	uint32_t hitchecksum;
-	FilterCounters();
+    int pass;
+    int hit;
+    int miss;
+    int invalidUrl;
+    uint32_t passchecksum;
+    uint32_t hitchecksum;
+    FilterCounters();
 };
 
 struct DomainPortBuf
 {
-	char *start;
-	uint16_t port;
-	uint16_t n : 15;
-	uint16_t hit : 1;
+    char *start;
+    uint16_t port;
+    uint16_t n : 15;
+    uint16_t hit : 1;
 };
 
 extern uint64_t temp[9];
+
+extern queue<UrlFilter *> gQueue;
+extern mutex gMutex;
+extern condition_variable gCV;
 
 size_t readcontent_unlocked(FILE *handle, char *p, uint64_t isize, int *end);
 uint64_t sizeoffile(FILE *handle);
@@ -74,7 +84,7 @@ bool compare_dp_char(const char *pa, const char *pb);
 
 bool compare_prefix_eq(const char *e1, const char *e2);
 
-unsigned long long file_size(const char * filename );
+unsigned long long file_size(const char *filename);
 
 uint64_t readcontent_unlocked1(FILE *handle, char *p, uint64_t isize);
 

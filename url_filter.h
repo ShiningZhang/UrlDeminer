@@ -31,17 +31,25 @@ public:
     void set_dp_list(vector<DomainFilter *> &list);
     void set_pf_list(vector<PrefixFilter *> &list);
 
+    int prepare_buf(char *p, uint64_t size);
+
 public:
     char *p_;
     uint64_t size_;
-    std::vector<char *> list_;
-    std::vector<DomainPortBuf> list_domainport_;
+    // std::vector<char *> list_;
+    // std::vector<DomainPortBuf> list_domainport_;
     FilterCounters counters_;
     std::vector<DomainFilter *> list_domainfilter_;
     std::vector<PrefixFilter *> list_prefixfilter_;
     char *out_;
     uint64_t out_size_;
     int out_offset_;
+
+    char **list_;
+    int list_count_;
+    DomainPortBuf *list_domainport_;
+    int list_domainport_count_;
+
 };
 
 #endif

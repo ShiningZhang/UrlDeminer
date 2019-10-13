@@ -2,6 +2,10 @@
 
 #include <sys/stat.h>
 
+queue<UrlFilter *> gQueue;
+mutex gMutex;
+condition_variable gCV;
+
 FilterCounters::FilterCounters()
 {
     memset(this, 0, sizeof(*this));
@@ -53,11 +57,11 @@ uint64_t readcontent_unlocked1(FILE *handle, char *p, uint64_t isize)
 {
     uint64_t size = fread_unlocked(p, 1, isize, handle);
     uint64_t offset = size;
-    while (offset > 0 && p[offset-1] != '\n')
+    while (offset > 0 && p[offset - 1] != '\n')
     {
         --offset;
     }
-    fseek (handle, -(size - offset), SEEK_CUR);
+    fseek(handle, -(size - offset), SEEK_CUR);
     return offset;
 }
 

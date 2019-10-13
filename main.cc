@@ -13,6 +13,7 @@
 #include <thread>
 
 #include "domain_filter.h"
+#include "prefix_filter.h"
 #include "util.h"
 
 #include "SP_Stream.h"
@@ -127,7 +128,6 @@ int main(int argc, char **argv)
     else
     {
         fp = fopen(domainFilterPath, "r");
-        // uint64_t size = sizeoffile(fp);
         data->fp_in_ = fp;
         data->length_ = size;
 
@@ -143,6 +143,7 @@ int main(int argc, char **argv)
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
         fclose(fp);
+
     }
 
     return 0;
