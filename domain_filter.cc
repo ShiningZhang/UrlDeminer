@@ -24,6 +24,22 @@ DomainFilter::~DomainFilter()
         p_ = p_ - BUFHEADSIZE;
         free(p_);
     }
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < 65536; ++j)
+        {
+            if (list_range_[i][j] != NULL)
+            {
+                free(list_range_[i][j]);
+                list_range_[i][j] = NULL;
+            }
+            if (list_[i][j] != NULL)
+            {
+                free(list_[i][j]);
+                list_[i][j] = NULL;
+            }
+        }
+    }
 }
 
 void DomainFilter::prepare_buf(char *p, uint64_t size)
@@ -208,7 +224,7 @@ DomainFilter *DomainFilter::merge(vector<DomainFilter *> domain_filter_list)
                 {
                     if (domain_filter_list[k]->list_count_[i][j] != 0)
                     {
-                        memcpy(filter->list_[i][j] + size, domain_filter_list[k]->list_[i][j], domain_filter_list[k]->list_count_[i][j]*sizeof(char*));
+                        memcpy(filter->list_[i][j] + size, domain_filter_list[k]->list_[i][j], domain_filter_list[k]->list_count_[i][j] * sizeof(char *));
                         size += domain_filter_list[k]->list_count_[i][j];
                     }
                 }

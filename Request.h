@@ -24,7 +24,8 @@ public:
           is_read_end_(false),
           recv_split_(0){};
     virtual ~Request(){};
-    void reset_para(){
+    void reset_para()
+    {
         recv_split_ = 0;
         size_split_buf = 0;
         is_read_end_ = false;

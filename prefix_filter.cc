@@ -18,6 +18,35 @@ PrefixFilter::PrefixFilter()
     memset(list_count_, 0, 3 * 2 * 2 * sizeof(int));
 }
 
+PrefixFilter::~PrefixFilter()
+{
+    if (p_ != NULL)
+    {
+        p_ = p_ - BUFHEADSIZE;
+        free(p_);
+        p_ = NULL;
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                if (list_count_[i][j][k] > 0)
+                {
+                    free(list_https_[i][j][k]);
+                    list_https_[i][j][k] = NULL;
+                }
+                if (list_range_[i][j][k] != NULL)
+                {
+                    free(list_range_[i][j][k]);
+                    list_range_[i][j][k] = NULL;
+                }
+            }
+        }
+    }
+}
+
 void PrefixFilter::prepare_buf(char *p, uint64_t size)
 {
     char *e = p + size;

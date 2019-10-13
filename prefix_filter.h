@@ -9,6 +9,7 @@ class PrefixFilter
 {
 public:
     PrefixFilter();
+    ~PrefixFilter();
     int filter(char *domainPort, uint16_t size) const;
 
 public:
