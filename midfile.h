@@ -16,7 +16,7 @@ public:
 
     std::vector<FileElement *> file_list_;
     int buf_size_;
-    char *buf;
+    char *buf_;
     int wt_size_;
 };
 #endif

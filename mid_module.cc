@@ -59,7 +59,7 @@ void Mid_Module::svc()
         }
         else
         {
-            mid_file->write_mid(filter->list_, filter->list_count_, mid_file->wt_size_, mid_file->write_mid, filter->size_, c_data->idx_);
+            mid_file->write_mid(filter->list_, filter->list_count_, mid_file->wt_size_, mid_file->buf_, filter->size_, c_data->idx_);
             {
                 unique_lock<mutex> lock(gMutex);
                 gQueue.push(filter);

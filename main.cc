@@ -15,6 +15,7 @@
 #include "domain_filter.h"
 #include "prefix_filter.h"
 #include "url_filter.h"
+#include "midfile.h"
 #include "util.h"
 
 #include "SP_Stream.h"
@@ -193,6 +194,8 @@ int main(int argc, char **argv)
         data->length_ = size;
         data->fp_out_ = stdout;
         data->reset_para();
+        data->mid_file_ = new MidFile();
+        data->mid_file_->init();
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
         {

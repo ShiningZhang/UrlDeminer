@@ -14,7 +14,8 @@ MidFile::~MidFile()
 int MidFile::init()
 {
     buf_size_ = FILESPLITSIZE;
-    buf = (char *)malloc(FILESPLITSIZE * sizeof(char));
+    buf_ = (char *)malloc(FILESPLITSIZE * sizeof(char));
+    return buf_size_;
 }
 
 static bool cmp_file_element(const FileElement *e1, const FileElement *e2)
@@ -40,7 +41,7 @@ int MidFile::write_mid(char **p, int size, int &buf_size, char *&buf, int in_siz
         memcpy(buf + offset, pa - 1, na);
         offset += na;
     }
-    wt_size_ = offset;
+    buf_size = offset;
     char tmp_char[32];
     sprintf(tmp_char, "%d", idx);
     FileElement *file = new FileElement;
