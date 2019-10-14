@@ -42,6 +42,7 @@ void UrlPF_Module::svc()
         {
             UrlFilter *filter = c_data->url_filter_;
             filter->set_pf_list(data->prefix_filter_list_);
+            filter->prepare_prefix();
             filter->filter_prefix();
         }
 
