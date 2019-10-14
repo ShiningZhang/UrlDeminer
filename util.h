@@ -15,13 +15,14 @@
 using namespace std;
 
 #define FILESPLITSIZE 230000000
+#define SMALLFILESIZE 20 * 1024 * 1024
 #define MAXSORT 8
 #define VERYSMALLSIZE 1000000
 #define SMALLSIZE 1100000000
 
 #define BUFHEADSIZE 10
 
-#define INITURLCOUNT 5000000
+#define INITURLCOUNT 6000000
 
 #define LOG(format_string, ...)                                                                         \
     {                                                                                                   \
@@ -62,9 +63,17 @@ struct DomainPortBuf
     uint16_t hit : 1;
 };
 
+struct FileElement
+{
+    FILE *fp_;
+    size_t size_;
+    int idx;
+};
+
 extern uint64_t temp[9];
 
 extern queue<UrlFilter *> gQueue;
+extern queue<UrlFilter *> gQueueCache;
 extern mutex gMutex;
 extern condition_variable gCV;
 

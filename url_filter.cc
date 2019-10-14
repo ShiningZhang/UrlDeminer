@@ -30,7 +30,7 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
     return count;
 }
 
-void UrlFilter::load_(char *p, uint64_t size)
+int UrlFilter::load_(char *p, uint64_t size)
 {
 
     char *e = p + size;
@@ -84,12 +84,13 @@ void UrlFilter::load_(char *p, uint64_t size)
         uint16_t len = se - s - 9; // -9 +2  [-1]type:len[2]:start->end
         *(uint16_t *)(s - 2) = len;
         list_domainport_[count++] = (b);
-        *(se - 9) = '\0';
 #ifdef DEBUG
+        // *(se - 9) = '\0';
         printf("load:%d %s\n", len, s);
 #endif
         s = se + 1;
     }
+    return count;
 }
 
 UrlFilter *UrlFilter::load(char *p, uint64_t size)
@@ -108,6 +109,61 @@ UrlFilter *UrlFilter::load(char *p, uint64_t size)
     filter->p_ = p;
     filter->size_ = size;
     return filter;
+}
+
+int UrlFilter::load1()
+{
+    int count = prepare_buf(p_, size_);
+    if (count > max_list_domainport_count_)
+    {
+        if (list_domainport_ != NULL)
+        {
+            free(list_domainport_);
+        }
+        list_domainport_ = (DomainPortBuf *)malloc(count * sizeof(DomainPortBuf));
+        max_list_domainport_count_ = count;
+        if (list_ != NULL)
+        {
+            free(list_);
+        }
+        list_ = (char **)malloc(count * sizeof(char *));
+        max_list_count_ = count;
+    }
+    list_domainport_count_ = load_(p_, size_);
+    return count;
+}
+
+int UrlFilter::load2_(char *p, uint64_t size, char **list)
+{
+    char *e = p + size;
+    char *s = p;
+    int count = 0;
+    while (s < e)
+    {
+        char *se = strchr(s, '\n');
+        list[count++] = s + 3;
+        s = se + 1;
+    }
+    return count;
+}
+
+int UrlFilter::load2(char *p, int size)
+{
+    int count = prepare_buf(p, size);
+    if (count + list_count_ > max_list_count_)
+    {
+        char **list = list_;
+        list_ = (char **)malloc((count + list_count_) * sizeof(char *));
+        if (list_count_ > 0)
+        {
+            memcpy(list_, list, list_count_ * sizeof(char *));
+        }
+        if (list != NULL)
+            free(list);
+    }
+    count = load2_(p, size, (list_ + list_count_));
+    list_count_ += count;
+    return count;
 }
 
 void UrlFilter::set_dp_list(vector<DomainFilter *> &list)

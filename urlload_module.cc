@@ -48,7 +48,7 @@ void UrlLoad_Module::svc()
             data->url_filter_list_.push_back(filter);
             lock_.unlock();
             SP_DEBUG("UrlLoad_Module:1\n");
-            c_data->url_filter_list_.push_back(filter);
+            c_data->url_filter_ = (filter);
             SP_DEBUG("UrlLoad_Module:2\n");
             filter->set_dp_list(data->domain_filter_list_);
             SP_DEBUG("UrlLoad_Module:3\n");

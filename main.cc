@@ -14,6 +14,7 @@
 
 #include "domain_filter.h"
 #include "prefix_filter.h"
+#include "url_filter.h"
 #include "util.h"
 
 #include "SP_Stream.h"
@@ -26,6 +27,13 @@
 #include "prefixload_module.h"
 #include "urlload_module.h"
 #include "write_module.h"
+
+#include "readurl1_module.h"
+#include "urldp_module.h"
+#include "mid_module.h"
+
+#include "readurl2_module.h"
+#include "urlpf_module.h"
 
 using namespace std;
 
@@ -127,6 +135,7 @@ int main(int argc, char **argv)
     }
     else
     {
+        //domain file read
         fp = fopen(domainFilterPath, "r");
         data->fp_in_ = fp;
         data->length_ = size;
@@ -143,7 +152,96 @@ int main(int argc, char **argv)
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
         fclose(fp);
+        for (int i = 1; i >= 0; --i)
+        {
+            s_instance_stream->pop();
+        }
 
+        //url file read and domain filter
+
+        SP_NEW_RETURN(modules[0], ReadUrl1_Module(1), -1);
+        SP_NEW_RETURN(modules[1], UrlDP_Module(8), -1);
+        SP_NEW_RETURN(modules[2], Mid_Module(1), -1);
+
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->push_module(modules[i]);
+        }
+        size = file_size(urlidPath);
+        //prepare urlfilter
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                UrlFilter *filter = new UrlFilter();
+                if (size > SMALLSIZE)
+                    filter->size_ = FILESPLITSIZE;
+                else
+                {
+                    filter->size_ = SMALLFILESIZE;
+                }
+                filter->p_ = (char *)malloc(filter->size_ + BUFHEADSIZE);
+                filter->p_ = filter->p_ + BUFHEADSIZE;
+                filter->max_list_domainport_count_ = INITURLCOUNT;
+                filter->list_domainport_ = (DomainPortBuf *)malloc(filter->max_list_domainport_count_ * sizeof(DomainPortBuf));
+                filter->max_list_count_ = INITURLCOUNT;
+                filter->list_ = (char **)malloc(filter->max_list_count_ * sizeof(char *));
+                gQueue.push(filter);
+            }
+        }
+        fp = fopen(urlidPath, "r");
+        data->fp_in_ = fp;
+        data->length_ = size;
+        data->fp_out_ = stdout;
+        data->reset_para();
+        s_instance_stream->put(msg);
+        s_instance_stream->get(msg);
+        {
+            for (int i = 0; i < data->domain_filter_list_.size(); ++i)
+                delete data->domain_filter_list_[i];
+            data->domain_filter_list_.clear();
+        }
+        fclose(fp);
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->pop();
+        }
+
+        //prefix filter load
+        SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
+        SP_NEW_RETURN(modules[1], PrefixLoad_Module(8), -1);
+
+        for (int i = 1; i >= 0; --i)
+        {
+            s_instance_stream->push_module(modules[i]);
+        }
+
+        fp = fopen(urlPrefixFilterPath, "r");
+        // size = sizeoffile(fp);
+        size = file_size(urlPrefixFilterPath);
+        data->fp_in_ = fp;
+        data->length_ = size;
+        s_instance_stream->put(msg);
+        s_instance_stream->get(msg);
+        fclose(fp);
+        for (int i = 1; i >= 0; --i)
+        {
+            s_instance_stream->pop();
+        }
+
+        //tmp url read and prefix filter
+        SP_NEW_RETURN(modules[0], ReadUrl2_Module(1), -1);
+        SP_NEW_RETURN(modules[1], UrlPF_Module(8), -1);
+        SP_NEW_RETURN(modules[2], Write_Module(1), -1);
+
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->push_module(modules[i]);
+        }
+        data->fp_out_ = stdout;
+        data->reset_para();
+        s_instance_stream->put(msg);
+        s_instance_stream->get(msg);
+        dumpCounters(stdout, &data->counter_);
     }
 
     return 0;

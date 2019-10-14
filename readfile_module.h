@@ -1,3 +1,5 @@
+#ifndef READFILE_MODULE_H_
+#define READFILE_MODULE_H_
 #pragma once
 
 #include "SP_Module.h"
@@ -20,3 +22,4 @@ private:
     int threads_num_;
     std::mutex lock_;
 };
+#endif

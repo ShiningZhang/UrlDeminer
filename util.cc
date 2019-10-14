@@ -2,6 +2,7 @@
 
 #include <sys/stat.h>
 
+queue<UrlFilter *> gQueueCache;
 queue<UrlFilter *> gQueue;
 mutex gMutex;
 condition_variable gCV;

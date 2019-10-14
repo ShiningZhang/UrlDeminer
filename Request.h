@@ -15,6 +15,7 @@ class CRequest;
 class DomainFilter;
 class PrefixFilter;
 class UrlFilter;
+class MidFile;
 
 class Request : public SP_Data_Block
 {
@@ -39,7 +40,7 @@ public:
     uint64_t length_;
     uint8_t idx_;
     size_t count_;
-    size_t size_split_buf;
+    int size_split_buf;
     vector<CRequest *> recv_str_list_;
     FILE *fp_out_;
     FILE *fp_in_;
@@ -47,8 +48,9 @@ public:
     vector<DomainFilter *> domain_filter_list_;
     vector<PrefixFilter *> prefix_filter_list_;
     vector<UrlFilter *> url_filter_list_;
-    size_t recv_split_;
+    int recv_split_;
     FilterCounters counter_;
+    MidFile *mid_file_;
 };
 
 class CRequest : public SP_Data_Block
@@ -63,9 +65,9 @@ public:
     size_t begin_;
     size_t end_;
     size_t size_;
-    std::vector<uint8_t> idx_;
+    int idx_;
     Request *request_;
-    vector<UrlFilter *> url_filter_list_;
+    UrlFilter * url_filter_;
 };
 
 #endif
