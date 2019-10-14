@@ -21,15 +21,15 @@ public:
 
 public:
 	static DomainFilter *load(char *p, uint64_t size);
-	static DomainFilter *merge(vector<DomainFilter *> domain_filter_list);
+	int merge(vector<DomainFilter *> domain_filter_list, int type);
 
 public:
 	// std::vector<DomainPortBuf> list_;
-	char **list_[2][65536];
-	int list_count_[2][65536];
+	char **list_[2][65536][DOMAIN_CHAR_COUNT];
+	int list_count_[2][65536][DOMAIN_CHAR_COUNT];
 	char *p_;
 	uint32_t size_;
-	int *list_range_[2][65536];
+	int *list_range_[2][65536][DOMAIN_CHAR_COUNT];
 };
 
 #endif

@@ -51,6 +51,7 @@ public:
     int recv_split_;
     FilterCounters counter_;
     MidFile *mid_file_;
+    DomainFilter *domain_filter_;
 };
 
 class CRequest : public SP_Data_Block
@@ -68,6 +69,7 @@ public:
     int idx_;
     Request *request_;
     UrlFilter * url_filter_;
+    DomainFilter *domain_filter_;
 };
 
 #endif

@@ -7,6 +7,8 @@ queue<UrlFilter *> gQueue;
 mutex gMutex;
 condition_variable gCV;
 
+int domain_temp[128];
+
 FilterCounters::FilterCounters()
 {
     memset(this, 0, sizeof(*this));

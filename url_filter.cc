@@ -20,13 +20,31 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
     char *e = p + size;
     char *s = p;
     int count = 0;
+    int domain_count[DOMAIN_CHAR_COUNT] = {0};
+    // memset(domain_count, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     while (s < e)
     {
         char *se = strchr(s, '\n');
+        s += 8;
+        char *domain_end = strchr(s, '/');
+        char *port = domain_end - 1;
+        int t = domain_temp[*port];
+        while (port > s && port > (domain_end - 6))
+        {
+            if (*port != ':')
+                --port;
+            else
+                break;
+        }
+        if (*port == ':')
+            t = domain_temp[*(port - 1)];
+        ++domain_count[t];
         ++count;
         s = se + 1;
     }
-    this->list_domainport_count_ = count;
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+        this->list_domainport_count_[i] = domain_count[i];
+    this->list_count_ = count;
     return count;
 }
 
@@ -36,7 +54,8 @@ int UrlFilter::load_(char *p, uint64_t size)
     char *e = p + size;
     char *s = p;
     DomainPortBuf b;
-    int count = 0;
+    int count[DOMAIN_CHAR_COUNT];
+    memset(count, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     while (s < e)
     {
         char *se = strchr(s, '\n');
@@ -53,7 +72,8 @@ int UrlFilter::load_(char *p, uint64_t size)
             b.port = 80;
         }
         char *domain_end = strchr(s, '/');
-        char *port = domain_end;
+        char *port = domain_end - 1;
+        int t = domain_temp[*port];
         uint16_t domain_len = domain_end - s;
         while (port > s && port > (domain_end - 6))
         {
@@ -64,6 +84,7 @@ int UrlFilter::load_(char *p, uint64_t size)
         }
         if (*port == ':')
         {
+            t = domain_temp[*(port - 1)];
             b.port = (uint16_t)strtoul(port + 1, NULL, 10);
             domain_len = port - s;
             if (s[-3] == 1 && b.port == 443)
@@ -80,17 +101,17 @@ int UrlFilter::load_(char *p, uint64_t size)
             }
         }
         b.start = s;
-        b.n = domain_len;
+        b.n = domain_len - 1;
         uint16_t len = se - s - 9; // -9 +2  [-1]type:len[2]:start->end
         *(uint16_t *)(s - 2) = len;
-        list_domainport_[count++] = (b);
+        list_domainport_[t][count[t]++] = (b);
 #ifdef DEBUG
-        // *(se - 9) = '\0';
-        printf("load:%d %s\n", len, s);
+        *(se - 9) = '\0';
+        printf("load:[%d,%d]%d %s\n", t, port, len, s);
 #endif
         s = se + 1;
     }
-    return count;
+    return 0;
 }
 
 UrlFilter *UrlFilter::load(char *p, uint64_t size)
@@ -103,8 +124,12 @@ UrlFilter *UrlFilter::load(char *p, uint64_t size)
     }
     UrlFilter *filter = new UrlFilter();
     filter->prepare_buf(p, size);
-    filter->list_domainport_ = (DomainPortBuf *)malloc(filter->list_domainport_count_ * sizeof(DomainPortBuf));
-    filter->list_ = (char **)malloc(filter->list_domainport_count_ * sizeof(char *));
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        if (filter->list_domainport_count_[i] > 0)
+            filter->list_domainport_[i] = (DomainPortBuf *)malloc(filter->list_domainport_count_[i] * sizeof(DomainPortBuf));
+    }
+    filter->list_ = (char **)malloc(filter->list_count_ * sizeof(char *));
     filter->load_(p, size);
     filter->p_ = p;
     filter->size_ = size;
@@ -114,7 +139,7 @@ UrlFilter *UrlFilter::load(char *p, uint64_t size)
 int UrlFilter::load1()
 {
     int count = prepare_buf(p_, size_);
-    if (count > max_list_domainport_count_)
+    /*     if (count > max_list_domainport_count_)
     {
         if (list_domainport_ != NULL)
         {
@@ -129,7 +154,7 @@ int UrlFilter::load1()
         list_ = (char **)malloc(count * sizeof(char *));
         max_list_count_ = count;
     }
-    list_domainport_count_ = load_(p_, size_);
+    list_domainport_count_ = load_(p_, size_); */
     return count;
 }
 
@@ -352,12 +377,13 @@ int filter_domainport_impl(const DomainPortBuf &in,
 
 int filter_domainport_1(const DomainPortBuf &in,
                         const DomainFilter *filter,
+                        int t,
                         stDPRES &res)
 {
     res = {0, 0, -1};
-    char **start = filter->list_[1][in.port];
-    int size = filter->list_count_[1][in.port];
-    int n = filter_domainport_impl(in, start, size, filter->list_range_[1][in.port]);
+    char **start = filter->list_[1][in.port][t];
+    int size = filter->list_count_[1][in.port][t];
+    int n = filter_domainport_impl(in, start, size, filter->list_range_[1][in.port][t]);
     if (n > 0)
     {
         res.n = n;
@@ -366,9 +392,9 @@ int filter_domainport_1(const DomainPortBuf &in,
         if (n == in.n)
             return res.ret;
     }
-    start = filter->list_[0][in.port];
-    size = filter->list_count_[0][in.port];
-    n = filter_domainport_impl(in, start, size, filter->list_range_[0][in.port]);
+    start = filter->list_[0][in.port][t];
+    size = filter->list_count_[0][in.port][t];
+    n = filter_domainport_impl(in, start, size, filter->list_range_[0][in.port][t]);
     if (n > 0 && n > res.n)
     {
         res.n = n;
@@ -379,9 +405,9 @@ int filter_domainport_1(const DomainPortBuf &in,
     }
     if (res.n != 0)
         return res.ret;
-    start = filter->list_[1][0];
-    size = filter->list_count_[1][0];
-    n = filter_domainport_impl(in, start, size, filter->list_range_[1][0]);
+    start = filter->list_[1][0][t];
+    size = filter->list_count_[1][0][t];
+    n = filter_domainport_impl(in, start, size, filter->list_range_[1][0][t]);
     if (n > 0)
     {
         res.n = n;
@@ -390,9 +416,9 @@ int filter_domainport_1(const DomainPortBuf &in,
         if (n == in.n)
             return res.ret;
     }
-    start = filter->list_[0][0];
-    size = filter->list_count_[0][0];
-    n = filter_domainport_impl(in, start, size, filter->list_range_[0][0]);
+    start = filter->list_[0][0][t];
+    size = filter->list_count_[0][0][t];
+    n = filter_domainport_impl(in, start, size, filter->list_range_[0][0][t]);
     if (n > 0 && n > res.n)
     {
         res.n = n;
@@ -434,44 +460,48 @@ void UrlFilter::filter_domainport()
 {
     stDPRES res, output;
     int count = 0;
-    for (int i = 0; i < list_domainport_count_; ++i)
+    for (int t = 0; t < DOMAIN_CHAR_COUNT; ++t)
     {
-        DomainPortBuf &in = list_domainport_[i];
-        res = {0, 0, -1};
-        for (int j = list_domainfilter_.size() - 1; j < list_domainfilter_.size(); ++j)
+        for (int i = 0; i < list_domainport_count_[t]; ++i)
         {
-            if (filter_domainport_1(in, list_domainfilter_[j], output) != -1)
+            DomainPortBuf &in = list_domainport_[t][i];
+            res = {0, 0, -1};
+            // for (int j = list_domainfilter_.size() - 1; j < list_domainfilter_.size(); ++j)
+            int j = list_domainfilter_.size() - 1;
             {
-                if (output.n > res.n)
+                if (filter_domainport_1(in, list_domainfilter_[j], t, output) != -1)
                 {
-                    res = output;
-                }
-                else if (output.n == res.n)
-                {
-                    if (output.port > res.port)
+                    if (output.n > res.n)
+                    {
                         res = output;
-                    else if (output.port == res.port && output.ret > res.ret)
-                        res = output;
+                    }
+                    else if (output.n == res.n)
+                    {
+                        if (output.port > res.port)
+                            res = output;
+                        else if (output.port == res.port && output.ret > res.ret)
+                            res = output;
+                    }
                 }
             }
-        }
-        if (res.ret == 1) // -
-        {
-            counters_.hit++;
-            uint32_t tag = (uint32_t)strtoul(in.start + (*((uint16_t *)(in.start - 2))) + 1, NULL, 16);
-            counters_.hitchecksum ^= tag;
-        }
-        else
-        {
-            if (res.ret == -1) //miss
+            if (res.ret == 1) // -
             {
-                in.start[-3] |= 0x40;
+                counters_.hit++;
+                uint32_t tag = (uint32_t)strtoul(in.start + (*((uint16_t *)(in.start - 2))) + 1, NULL, 16);
+                counters_.hitchecksum ^= tag;
             }
-            arrangesuffix(in.start, *(uint16_t *)(in.start - 2));
-            list_[count++] = (in.start - 2);
+            else
+            {
+                if (res.ret == -1) //miss
+                {
+                    in.start[-3] |= 0x40;
+                }
+                arrangesuffix(in.start, *(uint16_t *)(in.start - 2));
+                list_[count++] = (in.start - 2);
 #ifdef DEBUG
-            printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
+                printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
 #endif
+            }
         }
     }
     list_count_ = count;
@@ -804,7 +834,7 @@ int UrlFilter::write_tag(FILE *fp)
 
 void UrlFilter::clear_para()
 {
-    list_domainport_count_ = 0;
+    // list_domainport_count_ = 0;
     list_count_ = 0;
     size_ = 0;
 }

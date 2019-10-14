@@ -15,23 +15,30 @@
 using namespace std;
 
 // #define FILESPLITSIZE 23000000
-#define FILESPLITSIZE 230000000
-#define SMALLFILESIZE 20 * 1024 * 1024
+// #define SMALLSIZE 110000
+#define FILESPLITSIZE 256 * 1024 * 1024
+#define SMALLSIZE 1100000000
+
+#define SMALLFILESIZE 100 * 1024 * 1024
 #define MAXSORT 8
 #define VERYSMALLSIZE 1000000
-// #define SMALLSIZE 110000
-#define SMALLSIZE 1100000000
 
 #define BUFHEADSIZE 10
 
 #define INITURLCOUNT 6000000
 
+#define DOMAIN_CHAR_COUNT 39 //26 + 10 + 3
+
+#ifdef DEBUG
 #define LOG(format_string, ...)                                                                         \
     {                                                                                                   \
         struct timeval __val;                                                                           \
         gettimeofday(&__val, NULL);                                                                     \
         fprintf(stderr, "%ld.%03ld " format_string, __val.tv_sec, __val.tv_usec / 1000, ##__VA_ARGS__); \
     }
+#else
+#define LOG(format_string, ...)
+#endif
 
 class DomainFilter;
 class PrefixFilter;
@@ -73,6 +80,7 @@ struct FileElement
 };
 
 extern uint64_t temp[9];
+extern int domain_temp[128];
 
 extern queue<UrlFilter *> gQueue;
 extern queue<UrlFilter *> gQueueCache;

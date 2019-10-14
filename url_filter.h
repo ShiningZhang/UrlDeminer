@@ -55,9 +55,9 @@ public:
     char **list_;
     int list_count_;
     int max_list_count_;
-    DomainPortBuf *list_domainport_;
-    int list_domainport_count_;
-    int max_list_domainport_count_;
+    DomainPortBuf *list_domainport_[DOMAIN_CHAR_COUNT];
+    int list_domainport_count_[DOMAIN_CHAR_COUNT];
+    int max_list_domainport_count_[DOMAIN_CHAR_COUNT];
 };
 
 #endif

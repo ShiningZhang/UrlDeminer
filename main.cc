@@ -36,10 +36,35 @@
 #include "readurl2_module.h"
 #include "urlpf_module.h"
 
+#include "domainmerge_module.h"
+
 using namespace std;
 
 static SP_Stream *s_instance_stream = NULL;
 static SP_Module *modules[10];
+
+static void init_temp()
+{
+    for (int i = 0; i < 128; ++i)
+    {
+        if (i >= 'a' && i <= 'z')
+        {
+            domain_temp[i] = i - 'a';
+        }
+        else if (i >= '0' && i <= '9')
+        {
+            domain_temp[i] = i - '0' + 26;
+        }
+        else if (i == '_')
+        {
+            domain_temp[i] = 26 + 10;
+        }
+        else if (i == '-')
+        {
+            domain_temp[i] = 26 + 10 + 1;
+        }
+    }
+}
 
 static void dumpCounters(FILE *out, const FilterCounters *cc)
 {
@@ -53,6 +78,8 @@ static void dumpCounters(FILE *out, const FilterCounters *cc)
 
 int main(int argc, char **argv)
 {
+    init_temp();
+
     FilterCounters counters;
     const char *domainFilterPath = argv[1];
     const char *urlPrefixFilterPath = argv[2];
@@ -64,7 +91,8 @@ int main(int argc, char **argv)
 
     uint64_t size = file_size(domainFilterPath);
     FILE *fp;
-    if (size < SMALLSIZE)
+    // if (size < SMALLSIZE)
+    if (true)
     {
         fp = fopen(domainFilterPath, "r");
         // uint64_t size = sizeoffile(fp);
@@ -74,8 +102,9 @@ int main(int argc, char **argv)
         SP_NEW_RETURN(s_instance_stream, SP_Stream, -1);
         SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
         SP_NEW_RETURN(modules[1], DomainLoad_Module(8), -1);
+        SP_NEW_RETURN(modules[2], DomainMerge_Module(8), -1);
 
-        for (int i = 1; i >= 0; --i)
+        for (int i = 2; i >= 0; --i)
         {
             s_instance_stream->push_module(modules[i]);
         }
@@ -83,7 +112,7 @@ int main(int argc, char **argv)
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
         fclose(fp);
-        for (int i = 1; i >= 0; --i)
+        for (int i = 2; i >= 0; --i)
         {
             s_instance_stream->pop();
         }
@@ -177,8 +206,8 @@ int main(int argc, char **argv)
                 filter->buf_size_ = FILESPLITSIZE;
                 filter->p_ = (char *)malloc(filter->buf_size_ + BUFHEADSIZE);
                 filter->p_ = filter->p_ + BUFHEADSIZE;
-                filter->max_list_domainport_count_ = INITURLCOUNT;
-                filter->list_domainport_ = (DomainPortBuf *)malloc(filter->max_list_domainport_count_ * sizeof(DomainPortBuf));
+                // filter->max_list_domainport_count_ = INITURLCOUNT;
+                // filter->list_domainport_ = (DomainPortBuf *)malloc(filter->max_list_domainport_count_ * sizeof(DomainPortBuf));
                 filter->max_list_count_ = INITURLCOUNT;
                 filter->list_ = (char **)malloc(filter->max_list_count_ * sizeof(char *));
                 gQueue.push(filter);
