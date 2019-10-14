@@ -69,6 +69,13 @@ void ReadUrl1_Module::svc()
                 filter = gQueue.front();
                 gQueue.pop();
             }
+            if (filter->buf_size_ < line_size)
+            {
+                free(filter->p_);
+                filter->p_ = (char *)malloc(line_size * sizeof(char) + BUFHEADSIZE);
+                filter->p_ += BUFHEADSIZE;
+                filter->buf_size_ = line_size;
+            }
             buf = filter->p_;
 
             size = readcontent_unlocked1(data->fp_in_, buf, line_size);

@@ -82,7 +82,7 @@ void ReadUrl2_Module::svc()
                 filter = gQueue.front();
                 gQueue.pop();
             }
-        }
+        } 
         /* for (int i = 0; i < mid_file->file_list_.size(); ++i)
         {
             FileElement *e = mid_file->file_list_[i];

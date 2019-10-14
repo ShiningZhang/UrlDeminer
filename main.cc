@@ -174,13 +174,8 @@ int main(int argc, char **argv)
             for (int i = 0; i < 8; ++i)
             {
                 UrlFilter *filter = new UrlFilter();
-                if (size > SMALLSIZE)
-                    filter->size_ = FILESPLITSIZE;
-                else
-                {
-                    filter->size_ = SMALLFILESIZE;
-                }
-                filter->p_ = (char *)malloc(filter->size_ + BUFHEADSIZE);
+                filter->buf_size_ = FILESPLITSIZE;
+                filter->p_ = (char *)malloc(filter->buf_size_ + BUFHEADSIZE);
                 filter->p_ = filter->p_ + BUFHEADSIZE;
                 filter->max_list_domainport_count_ = INITURLCOUNT;
                 filter->list_domainport_ = (DomainPortBuf *)malloc(filter->max_list_domainport_count_ * sizeof(DomainPortBuf));

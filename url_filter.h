@@ -42,6 +42,7 @@ public:
 public:
     char *p_;
     uint64_t size_;
+    uint64_t buf_size_;
     // std::vector<char *> list_;
     // std::vector<DomainPortBuf> list_domainport_;
     FilterCounters counters_;
