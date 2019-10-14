@@ -33,6 +33,7 @@ void UrlPF_Module::svc()
     char *buf;
     Request *data = NULL;
     CRequest *c_data = NULL;
+    int count = 0;
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;
@@ -44,6 +45,7 @@ void UrlPF_Module::svc()
             filter->set_pf_list(data->prefix_filter_list_);
             filter->prepare_prefix();
             filter->filter_prefix();
+            SP_DEBUG("size=%d,count=%d\n", filter->size_, filter->list_count_);
         }
 
         put_next(msg);

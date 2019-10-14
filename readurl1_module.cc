@@ -44,7 +44,17 @@ void ReadUrl1_Module::svc()
         uint32_t size = 0;
         uint64_t begin = 0;
         UrlFilter *filter = NULL;
-        size_t line_size = length < FILESPLITSIZE ? ceil((double)length / 8) : FILESPLITSIZE;
+        size_t line_size = 0;
+        size_t split = length / 8 + 1024;
+        if (split > FILESPLITSIZE)
+        {
+            line_size = FILESPLITSIZE;
+        }
+        else
+        {
+            line_size = split;
+        }
+        // size_t line_size = length < FILESPLITSIZE ? ceil((double)length / 8) : FILESPLITSIZE;
         SP_DEBUG("ReadUrl1_Module:length=%lld,line_size=%lld\n", length, line_size);
         while (begin < length)
         {

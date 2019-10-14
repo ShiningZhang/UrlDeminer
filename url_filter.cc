@@ -133,23 +133,36 @@ int UrlFilter::load1()
     return count;
 }
 
-int UrlFilter::load2_(char *p, uint64_t size, char **list)
+static int prepare_buf2(char *p, uint64_t size)
 {
     char *e = p + size;
     char *s = p;
     int count = 0;
     while (s < e)
     {
-        char *se = strchr(s, '\n');
-        list[count++] = s + 3;
+        char *se = strchr(s + 3, '\n');
+        ++count;
         s = se + 1;
+    }
+    return count;
+}
+
+int UrlFilter::load2_(char *p, uint64_t size, int count)
+{
+    char *e = p + size;
+    char *s = p + 3;
+    while (s < e)
+    {
+        char *se = strchr(s, '\n');
+        list_[count++] = s - 2;
+        s = se + 4;
     }
     return count;
 }
 
 int UrlFilter::load2(char *p, int size)
 {
-    int count = prepare_buf(p, size);
+    int count = prepare_buf2(p, size);
     if (count + list_count_ > max_list_count_)
     {
         char **list = list_;
@@ -161,8 +174,7 @@ int UrlFilter::load2(char *p, int size)
         if (list != NULL)
             free(list);
     }
-    count = load2_(p, size, (list_ + list_count_));
-    list_count_ += count;
+    list_count_ = load2_(p, size, list_count_);
     return count;
 }
 
@@ -788,4 +800,20 @@ int UrlFilter::write_tag(FILE *fp)
     out_size_ = 0;
     out_offset_ = 0;
     return ret;
+}
+
+void UrlFilter::clear_para()
+{
+    list_domainport_count_ = 0;
+    list_count_ = 0;
+    size_ = 0;
+}
+
+void UrlFilter::clear_counter()
+{
+    counters_.hit = 0;
+    counters_.pass = 0;
+    counters_.miss = 0;
+    counters_.hitchecksum = 0;
+    counters_.passchecksum = 0;
 }

@@ -47,20 +47,29 @@ void Mid_Module::svc()
         mid_file = data->mid_file_;
         filter = c_data->url_filter_;
 
+        data->counter_.pass += filter->counters_.pass;
+        data->counter_.hit += filter->counters_.hit;
+        data->counter_.miss += filter->counters_.miss;
+        data->counter_.passchecksum ^= filter->counters_.passchecksum;
+        data->counter_.hitchecksum ^= filter->counters_.hitchecksum;
+        filter->clear_counter();
+
         if (data->is_read_end_)
         {
             gQueueCache.push(filter);
             if (data->recv_split_ == data->size_split_buf)
             {
                 mid_file->sort_file_list();
+                data->reset_para();
                 SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));
                 put_next(msg);
             }
         }
         else
         {
-            mid_file->write_mid(filter->list_, filter->list_count_, mid_file->wt_size_, mid_file->buf_, filter->size_, c_data->idx_);
+            mid_file->write_mid(filter->list_, filter->list_count_, c_data->idx_);
             {
+                filter->clear_para();
                 unique_lock<mutex> lock(gMutex);
                 gQueue.push(filter);
                 gCV.notify_one();

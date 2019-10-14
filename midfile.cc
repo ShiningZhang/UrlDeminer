@@ -28,7 +28,7 @@ void MidFile::sort_file_list()
     pdqsort(file_list_.begin(), file_list_.end(), cmp_file_element);
 }
 
-int MidFile::write_mid(char **p, int size, int &buf_size, char *&buf, int in_size, int idx)
+int MidFile::write_mid(char **p, int size, int idx)
 {
     char *pa = NULL;
     int na = 0;
@@ -38,17 +38,17 @@ int MidFile::write_mid(char **p, int size, int &buf_size, char *&buf, int in_siz
         pa = p[i];
         na = (int)*((uint16_t *)pa);
         na += 13; //3+len+1+8+1
-        memcpy(buf + offset, pa - 1, na);
+        memcpy(buf_ + offset, pa - 1, na);
         offset += na;
     }
-    buf_size = offset;
+    wt_size_ = offset;
     char tmp_char[32];
-    sprintf(tmp_char, "%d", idx);
+    sprintf(tmp_char, "tmp/%d", idx);
     FileElement *file = new FileElement;
     file->fp_ = fopen(tmp_char, "wb+");
     file->size_ = offset;
     file->idx = idx;
-    fwrite(buf, offset, 1, file->fp_);
+    fwrite(buf_, offset, 1, file->fp_);
     rewind(file->fp_);
     file_list_.push_back(file);
     return offset;

@@ -21,7 +21,7 @@ public:
     int load_(char *p, uint64_t size);
     int load1();
     int load2(char *p, int size);
-    int load2_(char *p, uint64_t size, char **list);
+    int load2_(char *p, uint64_t size, int count);
 
 public:
     static UrlFilter *load(char *p, uint64_t size);
@@ -35,6 +35,9 @@ public:
     void set_pf_list(vector<PrefixFilter *> &list);
 
     int prepare_buf(char *p, uint64_t size);
+
+    void clear_para();
+    void clear_counter();
 
 public:
     char *p_;

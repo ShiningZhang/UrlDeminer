@@ -64,14 +64,36 @@ void ReadUrl2_Module::svc()
         for (int i = 0; i < mid_file->file_list_.size(); ++i)
         {
             FileElement *e = mid_file->file_list_[i];
+            int size = readcontent_unlocked1(e->fp_, filter->p_, e->size_);
+            filter->size_ = size;
+            SP_DEBUG("size=%d,e->size=%d\n", size, e->size_);
+            filter->load2(filter->p_, filter->size_);
+            SP_NEW(c_data, CRequest(data));
+            c_data->url_filter_ = filter;
+            ++data->size_split_buf;
+            SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
+            put_next(msg);
+            {
+                unique_lock<mutex> lock(gMutex);
+                while (gQueue.empty())
+                {
+                    gCV.wait(lock);
+                }
+                filter = gQueue.front();
+                gQueue.pop();
+            }
+        }
+        /* for (int i = 0; i < mid_file->file_list_.size(); ++i)
+        {
+            FileElement *e = mid_file->file_list_[i];
             if (e->size_ + filter->size_ < FILESPLITSIZE)
             {
                 int size = readcontent_unlocked1(e->fp_, filter->p_ + filter->size_, e->size_);
-                filter->load2(filter->p_ + filter->size_, size);
                 filter->size_ += size;
             }
             else
             {
+                filter->load2(filter->p_, filter->size_);
                 SP_NEW(c_data, CRequest(data));
                 c_data->url_filter_ = filter;
                 ++data->size_split_buf;
@@ -90,12 +112,13 @@ void ReadUrl2_Module::svc()
         }
         if (filter->size_ > 0)
         {
+            filter->load2(filter->p_, filter->size_);
             SP_NEW(c_data, CRequest(data));
             c_data->url_filter_ = filter;
             ++data->size_split_buf;
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
             put_next(msg);
-        }
+        } */
 
         data->is_read_end_ = true;
         SP_DEBUG("ReadUrl2_Module:size_split_buf=%d,end\n", data->size_split_buf);

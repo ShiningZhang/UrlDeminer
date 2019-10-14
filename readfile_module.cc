@@ -41,7 +41,7 @@ void ReadFile_Module::svc()
         uint64_t length = data->length_;
         uint32_t size = 0;
         uint64_t begin = 0;
-        size_t line_size = length < 1024 * 8 ? length : ceil((double)length / 8);
+        size_t line_size = length < 1024 * 8 ? length : ceil((double)length / 8) + 512;
         SP_DEBUG("ReadFile_Module:length=%d,line_size=%d\n", length, line_size);
         while (begin < length)
         {
