@@ -13,9 +13,9 @@ PrefixFilter::PrefixFilter()
 {
     p_ = NULL;
     buf_size_ = 0;
-    memset(size_, 0, 3 * 2 * 2 * sizeof(uint64_t));
-    memset(list_range_, 0, 3 * 2 * 2 * sizeof(int *));
-    memset(list_count_, 0, 3 * 2 * 2 * sizeof(int));
+    memset(size_, 0, 3 * 2 * 2 * sizeof(uint64_t) * DOMAIN_CHAR_COUNT);
+    memset(list_range_, 0, 3 * 2 * 2 * sizeof(int *) * DOMAIN_CHAR_COUNT);
+    memset(list_count_, 0, 3 * 2 * 2 * sizeof(int) * DOMAIN_CHAR_COUNT);
 }
 
 PrefixFilter::~PrefixFilter()
@@ -32,19 +32,41 @@ PrefixFilter::~PrefixFilter()
         {
             for (int k = 0; k < 2; ++k)
             {
-                if (list_count_[i][j][k] > 0)
+                for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
                 {
-                    free(list_https_[i][j][k]);
-                    list_https_[i][j][k] = NULL;
-                }
-                if (list_range_[i][j][k] != NULL)
-                {
-                    free(list_range_[i][j][k]);
-                    list_range_[i][j][k] = NULL;
+                    if (list_count_[i][j][k][m] > 0)
+                    {
+                        free(list_https_[i][j][k][m]);
+                        list_https_[i][j][k][m] = NULL;
+                    }
+                    if (list_range_[i][j][k][m] != NULL)
+                    {
+                        free(list_range_[i][j][k][m]);
+                        list_range_[i][j][k][m] = NULL;
+                    }
                 }
             }
         }
     }
+}
+
+inline int find_port(char *s)
+{
+    char *domainend = strchr(s, '/');
+    char *offset = domainend - 1;
+    char *start = s > domainend - 6 ? s : domainend - 6;
+    while (offset > start)
+    {
+        if (*offset != ':')
+            --offset;
+        else
+            break;
+    }
+    if (*offset == ':')
+    {
+        return atoi(offset + 1);
+    }
+    return 0;
 }
 
 void PrefixFilter::prepare_buf(char *p, uint64_t size)
@@ -58,16 +80,19 @@ void PrefixFilter::prepare_buf(char *p, uint64_t size)
         bool hit = se[-1] == '-' ? true : false;
         if (s[0] == '/')
         {
-            ++this->list_count_[type][hit][0];
-            ++this->list_count_[type][hit][1];
+            int t = domain_temp[*(s + 2)];
+            ++this->list_count_[type][hit][0][t];
+            ++this->list_count_[type][hit][1][t];
         }
         else if (s[7] == '/')
         {
-            ++this->list_count_[type][hit][1];
+            int t = domain_temp[*(s + 8)];
+            ++this->list_count_[type][hit][1][t];
         }
         else
         {
-            ++this->list_count_[type][hit][0];
+            int t = domain_temp[*(s + 7)];
+            ++this->list_count_[type][hit][0][t];
         }
         s = se + 1;
     }
@@ -217,8 +242,7 @@ void PrefixFilter::load_(char *p, uint64_t size)
 {
     char *e = p + size;
     char *s = p;
-    int count[3][2][2];
-    memset(count, 0, 3 * 2 * 2 * sizeof(int));
+    int count[3][2][2][DOMAIN_CHAR_COUNT] = {0};
     while (s < e)
     {
         char *se = strchr(s, '\n');
@@ -238,6 +262,7 @@ void PrefixFilter::load_(char *p, uint64_t size)
             s += 7;
             port_type = 1; // 80
         }
+        int t = domain_temp[*s];
         char *domainend = strchr(s, '/');
         char *offset = domainend;
         while (offset > s && offset > (domainend - 6))
@@ -247,7 +272,6 @@ void PrefixFilter::load_(char *p, uint64_t size)
             else
                 break;
         }
-
         if (*offset == ':')
         {
             char *offset_1 = offset + 1;
@@ -277,7 +301,7 @@ void PrefixFilter::load_(char *p, uint64_t size)
             }
         }
         uint16_t len = se - s - 4;
-        *(uint16_t *)(s - 2) = len;
+        *(uint16_t *)(s - 2) = len - 1;
         uint8_t type = se[-3] == '=' ? 2 : se[-3] == '+' ? 1 : 0;
         bool hit = se[-1] == '-' ? true : false;
         if (port_type > 2)
@@ -290,30 +314,30 @@ void PrefixFilter::load_(char *p, uint64_t size)
         }
         if (port_type == 1)
         {
-            list_https_[type][hit][0][count[type][hit][0]] = (s - 2);
-            size_[type][hit][0] += len + 3;
-            ++count[type][hit][0];
+            list_https_[type][hit][0][t][count[type][hit][0][t]] = (s - 2);
+            size_[type][hit][0][t] += len + 3;
+            ++count[type][hit][0][t];
         }
         else if (port_type == 2)
         {
-            list_https_[type][hit][1][count[type][hit][1]] = (s - 2);
-            size_[type][hit][1] += len + 3;
-            ++count[type][hit][1];
+            list_https_[type][hit][1][t][count[type][hit][1][t]] = (s - 2);
+            size_[type][hit][1][t] += len + 3;
+            ++count[type][hit][1][t];
         }
         else if (port_type == 0)
         {
-            list_https_[type][hit][0][count[type][hit][0]] = (s - 2);
-            size_[type][hit][0] += len + 3;
-            ++count[type][hit][0];
-            list_https_[type][hit][1][count[type][hit][1]] = (s - 2);
-            size_[type][hit][1] += len + 3;
-            ++count[type][hit][1];
+            list_https_[type][hit][0][t][count[type][hit][0][t]] = (s - 2);
+            size_[type][hit][0][t] += len + 3;
+            ++count[type][hit][0][t];
+            list_https_[type][hit][1][t][count[type][hit][1][t]] = (s - 2);
+            size_[type][hit][1][t] += len + 3;
+            ++count[type][hit][1][t];
         }
         else if (port_type == 4)
         {
-            list_https_[type][hit][0][count[type][hit][0]] = (s - 2);
-            size_[type][hit][0] += len + 3;
-            ++count[type][hit][0];
+            list_https_[type][hit][0][t][count[type][hit][0][t]] = (s - 2);
+            size_[type][hit][0][t] += len + 3;
+            ++count[type][hit][0][t];
             int str_length = 2 + (offset - s) + 3 + (se - domainend - 4) + 1;
             char *str = (char *)malloc(str_length);
             int tmp = 0;
@@ -329,15 +353,15 @@ void PrefixFilter::load_(char *p, uint64_t size)
             ++tmp;
             arrangesuffix(str + 2, len + 3);
             list_str_.emplace_back(str);
-            list_https_[type][hit][1][count[type][hit][1]] = str;
-            size_[type][hit][1] += len + 6;
-            ++count[type][hit][1];
+            list_https_[type][hit][1][t][count[type][hit][1][t]] = str;
+            size_[type][hit][1][t] += len + 6;
+            ++count[type][hit][1][t];
         }
         else if (port_type == 5)
         {
-            list_https_[type][hit][0][count[type][hit][0]] = (s - 2);
-            ++count[type][hit][0];
-            size_[type][hit][0] += len + 3;
+            list_https_[type][hit][0][t][count[type][hit][0][t]] = (s - 2);
+            ++count[type][hit][0][t];
+            size_[type][hit][0][t] += len + 3;
             int str_length = 2 + (offset - s) + (se - domainend - 4) + 1;
             char *str = (char *)malloc(str_length);
             int tmp = 0;
@@ -350,11 +374,11 @@ void PrefixFilter::load_(char *p, uint64_t size)
             *(str + tmp) = 0xff & 2;
             arrangesuffix(str + 2, len - 4);
             list_str_.emplace_back(str);
-            list_https_[type][hit][1][count[type][hit][1]] = str;
-            ++count[type][hit][1];
-            size_[type][hit][1] += len - 1;
+            list_https_[type][hit][1][t][count[type][hit][1][t]] = str;
+            ++count[type][hit][1][t];
+            size_[type][hit][1][t] += len - 1;
         }
-        arrangesuffix(s, len);
+        arrangesuffix(s + 1, len - 1);
 #ifdef DEBUG
         *se = '\0';
         printf("PrefixFilter::load_:%d,%s\n", len, s);
@@ -379,9 +403,12 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
         {
             for (int k = 0; k < 2; ++k)
             {
-                if (filter->list_count_[i][j][k] > 0)
+                for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
                 {
-                    filter->list_https_[i][j][k] = (char **)malloc(filter->list_count_[i][j][k] * sizeof(char *));
+                    if (filter->list_count_[i][j][k][m] > 0)
+                    {
+                        filter->list_https_[i][j][k][m] = (char **)malloc(filter->list_count_[i][j][k][m] * sizeof(char *));
+                    }
                 }
             }
         }
@@ -389,7 +416,7 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
     filter->load_(p, size);
     filter->p_ = p;
     filter->buf_size_ = size;
-    for (int i = 0; i < 3; ++i)
+    /* for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 2; ++j)
         {
@@ -406,7 +433,7 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
                 filter->prepare_range(filter->list_https_[i][j][k], filter->list_count_[i][j][k], filter->list_range_[i][j][k]);
             }
         }
-    }
+    } */
     return filter;
 }
 
@@ -432,7 +459,7 @@ void PrefixFilter::prepare_range(char **list, int size, int *&range)
     }
 }
 
-PrefixFilter *PrefixFilter::merge(vector<PrefixFilter *> prefix_filter_list)
+/* PrefixFilter *PrefixFilter::merge(vector<PrefixFilter *> prefix_filter_list)
 {
     PrefixFilter *filter = new PrefixFilter();
     for (int i = 0; i < 3; ++i)
@@ -469,4 +496,70 @@ PrefixFilter *PrefixFilter::merge(vector<PrefixFilter *> prefix_filter_list)
         }
     }
     return filter;
+} */
+
+int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx)
+{
+    int size = 0;
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                size = 0;
+                for (int m = 0; m < list.size(); ++m)
+                {
+                    size += list[m]->list_count_[i][j][k][idx];
+                }
+                if (size > 0)
+                {
+                    list_count_[i][j][k][idx] = size;
+                    list_https_[i][j][k][idx] = (char **)malloc(size * sizeof(char *));
+                    size = 0;
+                    for (int m = 0; m < list.size(); ++m)
+                    {
+                        if (list[m]->list_count_[i][j][k][idx] > 0)
+                        {
+                            memcpy(list_https_[i][j][k][idx] + size, list[m]->list_https_[i][j][k][idx], list[m]->list_count_[i][j][k][idx] * sizeof(char *));
+                            size += list[m]->list_count_[i][j][k][idx];
+                        }
+                    }
+                    pdqsort(list_https_[i][j][k][idx], list_https_[i][j][k][idx] + list_count_[i][j][k][idx], compare_prefix);
+                    prepare_range(list_https_[i][j][k][idx], list_count_[i][j][k][idx], list_range_[i][j][k][idx]);
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+void PrefixFilterMerge::cpy_filter_list(vector<PrefixFilter *> &list)
+{
+    for (int i = 0; i < list.size(); ++i)
+    {
+        p_list_.push_back(list[i]->p_);
+        buf_size_list_.push_back(list[i]->buf_size_);
+        list[i]->p_ = NULL;
+        list[i]->buf_size_ = 0;
+        delete list[i];
+    }
+    list.clear();
+}
+
+PrefixFilterMerge::PrefixFilterMerge()
+{
+}
+
+PrefixFilterMerge::~PrefixFilterMerge()
+{
+    for (size_t i = 0; i < p_list_.size(); ++i)
+    {
+        if (p_list_[i] != NULL)
+        {
+            free(p_list_[i]);
+        }
+    }
+    p_list_.clear();
+    buf_size_list_.clear();
 }

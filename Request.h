@@ -52,6 +52,7 @@ public:
     FilterCounters counter_;
     MidFile *mid_file_;
     DomainFilter *domain_filter_;
+    PrefixFilter *prefix_filter_;
 };
 
 class CRequest : public SP_Data_Block
@@ -68,8 +69,9 @@ public:
     size_t size_;
     int idx_;
     Request *request_;
-    UrlFilter * url_filter_;
+    UrlFilter *url_filter_;
     DomainFilter *domain_filter_;
+    int idx_list_[3];
 };
 
 #endif

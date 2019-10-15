@@ -47,15 +47,16 @@ public:
     // std::vector<DomainPortBuf> list_domainport_;
     FilterCounters counters_;
     std::vector<DomainFilter *> list_domainfilter_;
-    DomainFilter * domainfilter_;
+    DomainFilter *domainfilter_;
     std::vector<PrefixFilter *> list_prefixfilter_;
+    PrefixFilter *prefixfilter_;
     char *out_;
     uint64_t out_size_;
     int out_offset_;
 
-    char **list_;
-    int list_count_;
-    int max_list_count_;
+    char **list_[DOMAIN_CHAR_COUNT];
+    int list_count_[DOMAIN_CHAR_COUNT];
+    int max_list_count_[DOMAIN_CHAR_COUNT];
     DomainPortBuf *list_domainport_[DOMAIN_CHAR_COUNT];
     int list_domainport_count_[DOMAIN_CHAR_COUNT];
     int max_list_domainport_count_[DOMAIN_CHAR_COUNT];

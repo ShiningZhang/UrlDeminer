@@ -37,6 +37,7 @@
 #include "urlpf_module.h"
 
 #include "domainmerge_module.h"
+#include "prefixmerge_module.h"
 
 using namespace std;
 
@@ -45,7 +46,7 @@ static SP_Module *modules[10];
 
 static void init_temp()
 {
-    for (int i = 0; i < 128; ++i)
+    for (int i = 0; i < 256; ++i)
     {
         if (i >= 'a' && i <= 'z')
         {
@@ -62,6 +63,10 @@ static void init_temp()
         else if (i == '-')
         {
             domain_temp[i] = 26 + 10 + 1;
+        }
+        else
+        {
+            domain_temp[i] = 38;
         }
     }
 }
@@ -119,8 +124,9 @@ int main(int argc, char **argv)
 
         SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
         SP_NEW_RETURN(modules[1], PrefixLoad_Module(8), -1);
+        SP_NEW_RETURN(modules[2], PrefixMerge_Module(8), -1);
 
-        for (int i = 1; i >= 0; --i)
+        for (int i = 2; i >= 0; --i)
         {
             s_instance_stream->push_module(modules[i]);
         }
@@ -133,7 +139,8 @@ int main(int argc, char **argv)
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
         fclose(fp);
-        for (int i = 1; i >= 0; --i)
+        fp = NULL;
+        for (int i = 2; i >= 0; --i)
         {
             s_instance_stream->pop();
         }

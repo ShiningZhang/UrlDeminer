@@ -80,7 +80,7 @@ struct FileElement
 };
 
 extern uint64_t temp[9];
-extern int domain_temp[128];
+extern int domain_temp[256];
 
 extern queue<UrlFilter *> gQueue;
 extern queue<UrlFilter *> gQueueCache;
@@ -106,6 +106,8 @@ bool compare_prefix_eq(const char *e1, const char *e2);
 unsigned long long file_size(const char *filename);
 
 uint64_t readcontent_unlocked1(FILE *handle, char *p, uint64_t isize);
+
+uint64_t readcontent(FILE *handle, char *&p, uint64_t isize);
 
 bool compare_dp_char_eq(const char *pa, const char *pb);
 

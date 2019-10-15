@@ -5,11 +5,13 @@
 #include <stdint.h>
 #include <string>
 
+#include "util.h"
+
 class PrefixFilter
 {
 public:
     PrefixFilter();
-    ~PrefixFilter();
+    virtual ~PrefixFilter();
     int filter(char *domainPort, uint16_t size) const;
 
 public:
@@ -21,19 +23,31 @@ public:
 
 public:
     static PrefixFilter *load(char *p, uint64_t size);
-    static PrefixFilter *merge(std::vector<PrefixFilter *> prefix_filter_list);
+    // static PrefixFilter *merge(std::vector<PrefixFilter *> prefix_filter_list);
 
 public:
     std::vector<char *> list_str_;
     // *:0 +:1 =:2
     // +:0 -:1
-    char **list_https_[3][2][2];
+    // http:0 https:1
+    char **list_https_[3][2][2][DOMAIN_CHAR_COUNT];
     // std::vector<char*> list_https_[3][2];
-    uint64_t size_[3][2][2];
+    uint64_t size_[3][2][2][DOMAIN_CHAR_COUNT];
     char *p_;
     uint64_t buf_size_;
-    int *list_range_[3][2][2];
-    int list_count_[3][2][2];
+    int *list_range_[3][2][2][DOMAIN_CHAR_COUNT];
+    int list_count_[3][2][2][DOMAIN_CHAR_COUNT];
+};
+
+class PrefixFilterMerge : public PrefixFilter
+{
+public:
+    PrefixFilterMerge();
+    virtual ~PrefixFilterMerge();
+    int merge(std::vector<PrefixFilter *> list, int idx);
+    void cpy_filter_list(std::vector<PrefixFilter *> &list);
+    std::vector<char *> p_list_;
+    std::vector<int> buf_size_list_;
 };
 
 #endif

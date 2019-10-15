@@ -7,7 +7,7 @@ queue<UrlFilter *> gQueue;
 mutex gMutex;
 condition_variable gCV;
 
-int domain_temp[128];
+int domain_temp[256];
 
 FilterCounters::FilterCounters()
 {
@@ -60,6 +60,19 @@ uint64_t readcontent_unlocked1(FILE *handle, char *p, uint64_t isize)
 {
     uint64_t size = fread_unlocked(p, 1, isize, handle);
     uint64_t offset = size;
+    while (offset > 0 && p[offset - 1] != '\n')
+    {
+        --offset;
+    }
+    fseek(handle, -(size - offset), SEEK_CUR);
+    return offset;
+}
+
+uint64_t readcontent(FILE *handle, char *&p, uint64_t isize)
+{
+    uint64_t size = fread(p, 1, isize, handle);
+    uint64_t offset = size;
+    fprintf(stderr,"offset=%d,size=%d,%s\n", offset, size, p);
     while (offset > 0 && p[offset - 1] != '\n')
     {
         --offset;
@@ -283,8 +296,8 @@ bool compare_prefix(const char *e1, const char *e2)
     const char *pb = e2;
     int na = (int)*((uint16_t *)pa);
     int nb = (int)*((uint16_t *)pb);
-    pa += 2;
-    pb += 2;
+    pa += 3;
+    pb += 3;
     int ret = cmpbuf_pf(pa, na, pb, nb);
     if (ret != 0)
         return ret == -1 ? true : false;
@@ -301,8 +314,8 @@ bool compare_prefix_eq(const char *e1, const char *e2)
     const char *pb = e2;
     int na = (int)*((uint16_t *)pa);
     int nb = (int)*((uint16_t *)pb);
-    pa += 2;
-    pb += 2;
+    pa += 3;
+    pb += 3;
     int ret = cmpbuf_pf(pa, na, pb, nb);
     return ret;
 }

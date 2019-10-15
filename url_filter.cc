@@ -21,15 +21,16 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
     char *s = p;
     int count = 0;
     int domain_count[DOMAIN_CHAR_COUNT] = {0};
-    // memset(domain_count, 0, DOMAIN_CHAR_COUNT * sizeof(int));
+    int prefix_count[DOMAIN_CHAR_COUNT] = {0};
     while (s < e)
     {
         char *se = strchr(s, '\n');
         s += 8;
         char *domain_end = strchr(s, '/');
         char *port = domain_end - 1;
+        domain_end = s > (domain_end - 6) ? s : (domain_end - 6);
         int t = domain_temp[*port];
-        while (port > s && port > (domain_end - 6))
+        while (port > domain_end)
         {
             if (*port != ':')
                 --port;
@@ -40,11 +41,18 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
             t = domain_temp[*(port - 1)];
         ++domain_count[t];
         ++count;
+        if (s[-1] == '/')
+            t = domain_temp[*s];
+        else
+            t = domain_temp[s[-1]];
+        ++prefix_count[t];
         s = se + 1;
     }
     for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
         this->list_domainport_count_[i] = domain_count[i];
-    this->list_count_ = count;
+        this->list_count_[i] = prefix_count[i];
+    }
     return count;
 }
 
@@ -54,8 +62,8 @@ int UrlFilter::load_(char *p, uint64_t size)
     char *e = p + size;
     char *s = p;
     DomainPortBuf b;
-    int count[DOMAIN_CHAR_COUNT];
-    memset(count, 0, DOMAIN_CHAR_COUNT * sizeof(int));
+    int count[DOMAIN_CHAR_COUNT] = {0};
+    // memset(count, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     while (s < e)
     {
         char *se = strchr(s, '\n');
@@ -103,7 +111,7 @@ int UrlFilter::load_(char *p, uint64_t size)
         b.start = s;
         b.n = domain_len - 1;
         uint16_t len = se - s - 9; // -9 +2  [-1]type:len[2]:start->end
-        *(uint16_t *)(s - 2) = len;
+        *(uint16_t *)(s - 2) = len - 1;
         list_domainport_[t][count[t]++] = (b);
 #ifdef DEBUG
         *(se - 9) = '\0';
@@ -129,7 +137,11 @@ UrlFilter *UrlFilter::load(char *p, uint64_t size)
         if (filter->list_domainport_count_[i] > 0)
             filter->list_domainport_[i] = (DomainPortBuf *)malloc(filter->list_domainport_count_[i] * sizeof(DomainPortBuf));
     }
-    filter->list_ = (char **)malloc(filter->list_count_ * sizeof(char *));
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        if (filter->list_count_[i] > 0)
+            filter->list_[i] = (char **)malloc(filter->list_count_[i] * sizeof(char *));
+    }
     filter->load_(p, size);
     filter->p_ = p;
     filter->size_ = size;
@@ -179,7 +191,7 @@ int UrlFilter::load2_(char *p, uint64_t size, int count)
     while (s < e)
     {
         char *se = strchr(s, '\n');
-        list_[count++] = s - 2;
+        // list_[count++] = s - 2;
         s = se + 4;
     }
     return count;
@@ -188,7 +200,7 @@ int UrlFilter::load2_(char *p, uint64_t size, int count)
 int UrlFilter::load2(char *p, int size)
 {
     int count = prepare_buf2(p, size);
-    if (count + list_count_ > max_list_count_)
+    /* if (count + list_count_ > max_list_count_)
     {
         char **list = list_;
         list_ = (char **)malloc((count + list_count_) * sizeof(char *));
@@ -199,7 +211,7 @@ int UrlFilter::load2(char *p, int size)
         if (list != NULL)
             free(list);
     }
-    list_count_ = load2_(p, size, list_count_);
+    list_count_ = load2_(p, size, list_count_); */
     return count;
 }
 
@@ -463,7 +475,7 @@ bool cmp_dpres(const pair<int, vector<DomainPortBuf>::iterator> &e1, const pair<
 void UrlFilter::filter_domainport()
 {
     stDPRES res, output;
-    int count = 0;
+    int count[DOMAIN_CHAR_COUNT] = {0};
     DomainFilter *filter = this->domainfilter_;
     for (int t = 0; t < DOMAIN_CHAR_COUNT; ++t)
     {
@@ -500,15 +512,17 @@ void UrlFilter::filter_domainport()
                 {
                     in.start[-3] |= 0x40;
                 }
-                arrangesuffix(in.start, *(uint16_t *)(in.start - 2));
-                list_[count++] = (in.start - 2);
+                arrangesuffix(in.start + 1, *(uint16_t *)(in.start - 2));
+                int t = domain_temp[*in.start];
+                list_[t][count[t]++] = (in.start - 2);
 #ifdef DEBUG
                 printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
 #endif
             }
         }
     }
-    list_count_ = count;
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+        list_count_[i] = count[i];
 }
 
 bool cmp_pf(const char *e1, const char *e2)
@@ -517,8 +531,8 @@ bool cmp_pf(const char *e1, const char *e2)
     const char *pb = e2;
     int na = (int)*((uint16_t *)pa);
     int nb = (int)*((uint16_t *)pb);
-    pa += 2;
-    pb += 2;
+    pa += 2 + 1;
+    pb += 2 + 1;
     int ret = cmpbuf_pf(pa, na, pb, nb);
 #ifdef DEBUG
     printf("cmp_pf:ret=%d,e1:%s,%d,e2:%s,%d\n", ret, e1 + 2, na, e2 + 2, nb);
@@ -544,8 +558,8 @@ int cmp_pf_eq(const char *e1, const char *e2)
     const char *pb = e2;
     int na = (int)*((uint16_t *)pa);
     int nb = (int)*((uint16_t *)pb);
-    pa += 2;
-    pb += 2;
+    pa += 2 + 1;
+    pb += 2 + 1;
     int ret = cmpbuf_pf(pa, na, pb, nb);
 #ifdef DEBUG
     printf("cmp_pf_eq:ret=%d,e1=%s,na=%d,e2=%s,nb=%d\n", ret, pa, na, pb, nb);
@@ -574,7 +588,7 @@ bool cmp_pfres(const stPFRES &e1, const stPFRES &e2)
     return false;
 }
 
-int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &output)
+int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, stPFRES &output)
 {
     // vector<char *>::iterator start, end;
     // vector<char *>::iterator res;
@@ -590,10 +604,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 2, 1);
 #endif
-    if (filter->list_count_[2][1][https] > 0)
+    if (filter->list_count_[2][1][https][idx1] > 0)
     {
-        start = filter->list_https_[2][1][https];
-        end = filter->list_https_[2][1][https] + filter->list_count_[2][1][https];
+        start = filter->list_https_[2][1][https][idx1];
+        end = filter->list_https_[2][1][https][idx1] + filter->list_count_[2][1][https][idx1];
         res = upper_bound(start, end, in, cmp_pf);
         if (res != end)
         {
@@ -609,10 +623,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 2, 0);
 #endif
-    if (filter->list_count_[2][0][https] > 0)
+    if (filter->list_count_[2][0][https][idx1] > 0)
     {
-        start = filter->list_https_[2][0][https];
-        end = filter->list_https_[2][0][https] + filter->list_count_[2][0][https];
+        start = filter->list_https_[2][0][https][idx1];
+        end = filter->list_https_[2][0][https][idx1] + filter->list_count_[2][0][https][idx1];
         res = upper_bound(start, end, in, cmp_pf);
         if (res != end)
         {
@@ -628,10 +642,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 1, 1);
 #endif
-    if (filter->list_count_[1][1][https] > 0)
+    if (filter->list_count_[1][1][https][idx1] > 0)
     {
-        start = filter->list_https_[1][1][https];
-        end = filter->list_https_[1][1][https] + filter->list_count_[1][1][https];
+        start = filter->list_https_[1][1][https][idx1];
+        end = filter->list_https_[1][1][https][idx1] + filter->list_count_[1][1][https][idx1];
         res = upper_bound(start, end, in, cmp_pf);
 #ifdef DEBUG
         printf("start=%p,end=%p,res=%p\n", start, end, res);
@@ -639,7 +653,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
         --res;
         if (res >= start)
         {
-            int count = filter->list_range_[1][1][https][res - start];
+            int count = filter->list_range_[1][1][https][idx1][res - start];
             while (count > 0)
             {
                 if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
@@ -657,10 +671,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 1, 0);
 #endif
-    if (filter->list_count_[1][0][https] > 0)
+    if (filter->list_count_[1][0][https][idx1] > 0)
     {
-        start = filter->list_https_[1][0][https];
-        end = filter->list_https_[1][0][https] + filter->list_count_[1][0][https];
+        start = filter->list_https_[1][0][https][idx1];
+        end = filter->list_https_[1][0][https][idx1] + filter->list_count_[1][0][https][idx1];
 #ifdef DEBUG
         printf("start=%p,end=%p,res=%p\n", start, end, res);
 #endif
@@ -668,7 +682,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
         --res;
         if (res >= start)
         {
-            int count = filter->list_range_[1][0][https][res - start];
+            int count = filter->list_range_[1][0][https][idx1][res - start];
             while (count > 0)
             {
                 if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
@@ -690,10 +704,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 0, 1);
 #endif
-    if (filter->list_count_[0][1][https] > 0)
+    if (filter->list_count_[0][1][https][idx1] > 0)
     {
-        start = filter->list_https_[0][1][https];
-        end = filter->list_https_[0][1][https] + filter->list_count_[0][1][https];
+        start = filter->list_https_[0][1][https][idx1];
+        end = filter->list_https_[0][1][https][idx1] + filter->list_count_[0][1][https][idx1];
         res = upper_bound(start, end, in, cmp_pf);
         if (res != end)
         {
@@ -708,7 +722,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
         --res;
         if (res >= start)
         {
-            int count = filter->list_range_[0][1][https][res - start];
+            int count = filter->list_range_[0][1][https][idx1][res - start];
             while (count > 0)
             {
                 if (res >= start && len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
@@ -730,10 +744,10 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 0, 0);
 #endif
-    if (filter->list_count_[0][0][https] > 0)
+    if (filter->list_count_[0][0][https][idx1] > 0)
     {
-        start = filter->list_https_[0][0][https];
-        end = filter->list_https_[0][0][https] + filter->list_count_[0][0][https];
+        start = filter->list_https_[0][0][https][idx1];
+        end = filter->list_https_[0][0][https][idx1] + filter->list_count_[0][0][https][idx1];
         res = upper_bound(start, end, in, cmp_pf);
 #ifdef DEBUG
         printf("start=%p,end=%p,res=%p\n", start, end, res);
@@ -751,7 +765,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
         --res;
         if (res >= start)
         {
-            int count = filter->list_range_[0][0][https][res - start];
+            int count = filter->list_range_[0][0][https][idx1][res - start];
             while (count > 0)
             {
                 if (res >= start && len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
@@ -776,60 +790,65 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, stPFRES &ou
 void UrlFilter::filter_prefix()
 {
     stPFRES output, res;
-    for (int i = 0; i < list_count_; ++i)
+    PrefixFilter *filter = this->prefixfilter_;
+    for (int k = 0; k < DOMAIN_CHAR_COUNT; ++k)
     {
-        res = {0, -1, 0};
-        const char *in = list_[i];
-        bool https = (in[-1] & 0x0f) == 1;
-        for (int j = list_prefixfilter_.size() - 1; j < list_prefixfilter_.size(); ++j)
+        for (int i = 0; i < list_count_[k]; ++i)
         {
-            filter_prefix_(in, list_prefixfilter_[j], https, output);
-            // printf("filter_prefix end:https:%d,in:%s\n", https, in + 2);
-            if (cmp_pfres(res, output))
+            res = {0, -1, 0};
+            const char *in = list_[k][i];
+            bool https = (in[-1] & 0x0f) == 1;
+            // for (int j = list_prefixfilter_.size() - 1; j < list_prefixfilter_.size(); ++j)
             {
-                res = output;
+                filter_prefix_(in, filter, https, k, output);
+                // printf("filter_prefix end:https:%d,in:%s\n", https, in + 2);
+                if (cmp_pfres(res, output))
+                {
+                    res = output;
+                }
             }
-        }
 #ifdef DEBUG
-        printf("filter_prefix:https:%d,in:%s,len:%d,type:%d,hit:%d\n", ((in[-1] & 0x0f) == 1), in + 2, res.len, res.type, res.hit);
+            printf("filter_prefix:https:%d,in:%s,len:%d,type:%d,hit:%d\n", ((in[-1] & 0x0f) == 1), in + 2, res.len, res.type, res.hit);
 #endif
-        const char *tagbuf = in + (*((uint16_t *)(in))) + 3;
-        //printf("tagbuf:%s\n", tagbuf);
-        uint32_t tag = (uint32_t)strtoul(tagbuf, NULL, 16);
-        if (res.hit == 1)
-        {
-            counters_.hit++;
-
-            counters_.hitchecksum ^= tag;
-        }
-        else
-        {
-
-#ifdef DEBUG
-            printf("output->type=%d,in[-1]=%d\n", res.type, in[-1]);
-#endif
-            if (res.type == -1 && int(in[-1]) > 1)
+            const char *tagbuf = in + (*((uint16_t *)(in))) + 3 + 1;
+            //printf("tagbuf:%s\n", tagbuf);
+            uint32_t tag = (uint32_t)strtoul(tagbuf, NULL, 16);
+            if (res.hit == 1)
             {
-                counters_.miss++;
+                counters_.hit++;
+
+                counters_.hitchecksum ^= tag;
             }
-            counters_.pass++;
-            counters_.passchecksum ^= tag;
-            memcpy(out_ + out_offset_, tagbuf, 9);
-            out_offset_ += 9;
+            else
+            {
+
+#ifdef DEBUG
+                printf("output->type=%d,in[-1]=%d\n", res.type, in[-1]);
+#endif
+                if (res.type == -1 && int(in[-1]) > 1)
+                {
+                    counters_.miss++;
+                }
+                counters_.pass++;
+                counters_.passchecksum ^= tag;
+                memcpy(out_ + out_offset_, tagbuf, 9);
+                out_offset_ += 9;
+            }
         }
     }
 }
 
 void UrlFilter::prepare_prefix()
 {
-    out_size_ = list_count_ * 9;
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+        out_size_ += list_count_[i] * 9;
     out_ = (char *)malloc(out_size_);
     out_offset_ = 0;
 }
 
 int UrlFilter::write_tag(FILE *fp)
 {
-    int ret = fwrite_unlocked(out_, out_offset_, 1, fp);
+    int ret = fwrite(out_, out_offset_, 1, fp);
     free(out_);
     out_size_ = 0;
     out_offset_ = 0;
@@ -839,7 +858,7 @@ int UrlFilter::write_tag(FILE *fp)
 void UrlFilter::clear_para()
 {
     // list_domainport_count_ = 0;
-    list_count_ = 0;
+    // list_count_ = 0;
     size_ = 0;
 }
 
