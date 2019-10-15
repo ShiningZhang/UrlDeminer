@@ -56,9 +56,9 @@ void DomainLoad_Module::svc()
         if (data->recv_split_ == data->size_split_buf && data->is_read_end_)
         {
             data->reset_para();
-            data->size_split_buf = DOMAIN_CHAR_COUNT;
-            filter = new DomainFilter();
-            for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+            data->size_split_buf = DOMAIN_CHAR_COUNT + 1;
+            filter = new DomainFilterMerge();
+            for (int i = 0; i < DOMAIN_CHAR_COUNT + 1; ++i)
             {
                 SP_NEW(c_data, CRequest(data));
                 c_data->domain_filter_ = filter;

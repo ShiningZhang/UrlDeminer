@@ -72,7 +72,6 @@ uint64_t readcontent(FILE *handle, char *&p, uint64_t isize)
 {
     uint64_t size = fread(p, 1, isize, handle);
     uint64_t offset = size;
-    fprintf(stderr,"offset=%d,size=%d,%s\n", offset, size, p);
     while (offset > 0 && p[offset - 1] != '\n')
     {
         --offset;

@@ -42,7 +42,7 @@ void DomainMerge_Module::svc()
         SP_DES(msg);
 
         DomainFilter *filter = c_data->domain_filter_;
-        filter->merge(data->domain_filter_list_, c_data->idx_);
+        ((DomainFilterMerge *)filter)->merge(data->domain_filter_list_, c_data->idx_);
 
         SP_DES(c_data);
 

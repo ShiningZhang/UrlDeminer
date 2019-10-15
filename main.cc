@@ -96,11 +96,13 @@ int main(int argc, char **argv)
 
     uint64_t size = file_size(domainFilterPath);
     FILE *fp;
+
     // if (size < SMALLSIZE)
     if (true)
     {
         fp = fopen(domainFilterPath, "r");
         // uint64_t size = sizeoffile(fp);
+        SP_DEBUG("fp=%p,size=%lld\n", fp, size);
         data->fp_in_ = fp;
         data->length_ = size;
 
@@ -117,10 +119,55 @@ int main(int argc, char **argv)
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
         fclose(fp);
+        fp = NULL;
+        data->fp_in_ = NULL;
         for (int i = 2; i >= 0; --i)
         {
             s_instance_stream->pop();
         }
+        /* 
+        {
+            SP_DEBUG("test begin\n");
+            uint64_t test_size = file_size(urlidPath);
+            // FILE *test_fp = fopen(urlidPath, "r");
+            int test_fp = open(urlidPath, O_RDONLY | O_LARGEFILE);
+
+            SP_DEBUG("urlidPath=%s\n", urlidPath);
+            int l = 1024;
+            char tmp[l];
+            // fgets(tmp, l, test_fp);
+            // SP_DEBUG("%s\n", tmp);
+            // rewind(test_fp);
+            uint32_t size1 = 0;
+            uint64_t begin = 0;
+            size_t line_size = test_size < 1024 * 8 ? test_size : ceil((double)test_size / 8) + 64;
+            SP_DEBUG("ReadFile_Module:length=%d,line_size=%d\n", test_size, line_size);
+            int count = 0;
+            while (begin < test_size)
+            {
+                if (begin + line_size > test_size)
+                    line_size = size - begin;
+                char *buf = (char *)malloc(size_t(line_size + BUFHEADSIZE));
+                if (buf == NULL)
+                {
+                    fputs("Memory error", stderr);
+                    exit(2);
+                }
+                buf = buf + BUFHEADSIZE;
+                // flockfile(data->fp_in_);
+                SP_DEBUG("fp=%p,buf=%p,line_size=%zu\n", test_fp, buf, line_size);
+                // size1 = fread(buf, sizeof(char), line_size, fp);
+                // size1 = readcontent(test_fp, buf, line_size);
+                size1 = read(test_fp, buf, line_size);
+                SP_DEBUG("size=%d,buf=%s\n", size1, buf);
+                begin += size1;
+                count++;
+                SP_DEBUG("count=%lld\n", count);
+            }
+            // rewind(test_fp);
+            close(test_fp);
+            SP_DEBUG("test end\n");
+        } */
 
         SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
         SP_NEW_RETURN(modules[1], PrefixLoad_Module(8), -1);
@@ -134,6 +181,7 @@ int main(int argc, char **argv)
         fp = fopen(urlPrefixFilterPath, "r");
         // size = sizeoffile(fp);
         size = file_size(urlPrefixFilterPath);
+        SP_DEBUG("fp=%p,size=%lld\n", fp, size);
         data->fp_in_ = fp;
         data->length_ = size;
         s_instance_stream->put(msg);
@@ -145,6 +193,8 @@ int main(int argc, char **argv)
             s_instance_stream->pop();
         }
 
+        SP_DEBUG("url begin\n");
+
         SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
         SP_NEW_RETURN(modules[1], UrlLoad_Module(8), -1);
         SP_NEW_RETURN(modules[2], Write_Module(1), -1);
@@ -155,6 +205,13 @@ int main(int argc, char **argv)
         }
         size = file_size(urlidPath);
         fp = fopen(urlidPath, "r");
+
+        if (fp == NULL)
+        {
+            fputs("File out error", stderr);
+            exit(1);
+        }
+        SP_DEBUG("fp=%p,size=%lld\n", fp, size);
         data->fp_in_ = fp;
         data->length_ = size;
         data->fp_out_ = stdout;
@@ -170,6 +227,7 @@ int main(int argc, char **argv)
             delete data->prefix_filter_list_[i];
         data->prefix_filter_list_.clear();
     }
+#ifdef LARGE
     else
     {
         //domain file read
@@ -277,6 +335,6 @@ int main(int argc, char **argv)
         s_instance_stream->get(msg);
         dumpCounters(stdout, &data->counter_);
     }
-
+#endif
     return 0;
 }
