@@ -460,6 +460,7 @@ void UrlFilter::filter_domainport()
 {
     stDPRES res, output;
     int count = 0;
+    DomainFilter *filter = this->domainfilter_;
     for (int t = 0; t < DOMAIN_CHAR_COUNT; ++t)
     {
         for (int i = 0; i < list_domainport_count_[t]; ++i)
@@ -467,9 +468,8 @@ void UrlFilter::filter_domainport()
             DomainPortBuf &in = list_domainport_[t][i];
             res = {0, 0, -1};
             // for (int j = list_domainfilter_.size() - 1; j < list_domainfilter_.size(); ++j)
-            int j = list_domainfilter_.size() - 1;
             {
-                if (filter_domainport_1(in, list_domainfilter_[j], t, output) != -1)
+                if (filter_domainport_1(in, filter, t, output) != -1)
                 {
                     if (output.n > res.n)
                     {

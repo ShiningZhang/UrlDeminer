@@ -23,6 +23,7 @@ DomainFilter::~DomainFilter()
     {
         p_ = p_ - BUFHEADSIZE;
         free(p_);
+        p_ = NULL;
     }
     for (int i = 0; i < 2; ++i)
     {
@@ -117,8 +118,7 @@ void DomainFilter::load_(char *p, uint64_t size)
         count[i] = (int **)malloc(65536 * sizeof(int *));
         for (int j = 0; j < 65536; j++)
         {
-            count[i][j] = (int *)malloc(DOMAIN_CHAR_COUNT * sizeof(int));
-            memset(count[i][j], 0, DOMAIN_CHAR_COUNT);
+            count[i][j] = (int *)calloc(DOMAIN_CHAR_COUNT, sizeof(int));
         }
     }
     while (s < e)

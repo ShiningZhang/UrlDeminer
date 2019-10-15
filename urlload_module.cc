@@ -51,6 +51,7 @@ void UrlLoad_Module::svc()
             c_data->url_filter_ = (filter);
             SP_DEBUG("UrlLoad_Module:2\n");
             filter->set_dp_list(data->domain_filter_list_);
+            filter->domainfilter_ = data->domain_filter_;
             SP_DEBUG("UrlLoad_Module:3\n");
             filter->filter_domainport();
             SP_DEBUG("UrlLoad_Module:4\n");

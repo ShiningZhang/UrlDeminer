@@ -47,6 +47,7 @@ public:
     // std::vector<DomainPortBuf> list_domainport_;
     FilterCounters counters_;
     std::vector<DomainFilter *> list_domainfilter_;
+    DomainFilter * domainfilter_;
     std::vector<PrefixFilter *> list_prefixfilter_;
     char *out_;
     uint64_t out_size_;

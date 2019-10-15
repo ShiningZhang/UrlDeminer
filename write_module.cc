@@ -43,18 +43,21 @@ void Write_Module::svc()
 
         {
             UrlFilter *filter = c_data->url_filter_;
-            filter->write_tag(data->fp_out_);
-            data->counter_.pass += filter->counters_.pass;
-            data->counter_.hit += filter->counters_.hit;
-            data->counter_.miss += filter->counters_.miss;
-            data->counter_.passchecksum ^= filter->counters_.passchecksum;
-            data->counter_.hitchecksum ^= filter->counters_.hitchecksum;
-            filter->clear_counter();
-            filter->clear_para();
+            if (filter != NULL)
             {
-                unique_lock<mutex> lock(gMutex);
-                gQueue.push(filter);
-                gCV.notify_one();
+                filter->write_tag(data->fp_out_);
+                data->counter_.pass += filter->counters_.pass;
+                data->counter_.hit += filter->counters_.hit;
+                data->counter_.miss += filter->counters_.miss;
+                data->counter_.passchecksum ^= filter->counters_.passchecksum;
+                data->counter_.hitchecksum ^= filter->counters_.hitchecksum;
+                filter->clear_counter();
+                filter->clear_para();
+                {
+                    unique_lock<mutex> lock(gMutex);
+                    gQueue.push(filter);
+                    gCV.notify_one();
+                }
             }
         }
         SP_DES(c_data);
