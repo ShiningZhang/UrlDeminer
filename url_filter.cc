@@ -352,6 +352,10 @@ int filter_domainport_impl(const DomainPortBuf &in,
     if (size == 0)
         return -1;
     char **iter = upper_bound(start, start + size, in, cmp_dp1);
+    if (iter == start)
+    {
+        return -1;
+    }
     --iter;
     char *pa = in.start;
     uint16_t na = in.n;
