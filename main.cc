@@ -277,6 +277,27 @@ int main(int argc, char **argv)
         fclose(fp);
         delete (DomainFilterMerge *)(data->domain_filter_);
         data->domain_filter_ = NULL;
+        int count = (int)gQueue.size();
+        UrlFilter *f = NULL;
+        while (count > 0)
+        {
+            f = gQueue.front();
+            gQueue.pop();
+            f->clear_domain_list();
+            gQueue.push(f);
+            count--;
+            SP_DEBUG("gQueue->clear_domain_list\n");
+        }
+        count = (int)gQueueCache.size();
+        while (count > 0)
+        {
+            f = gQueueCache.front();
+            gQueueCache.pop();
+            f->clear_domain_list();
+            gQueueCache.push(f);
+            count--;
+            SP_DEBUG("gQueueCache->clear_domain_list\n");
+        }
 
         for (int i = 2; i >= 0; --i)
         {

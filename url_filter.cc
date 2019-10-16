@@ -27,7 +27,6 @@ UrlFilter::UrlFilter() : p_(NULL), size_(0), buf_size_(0), out_(NULL), out_size_
 
 UrlFilter::~UrlFilter()
 {
-    fprintf(stderr, "~UrlFilte\n");
     for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
     {
         if (list_[i] != NULL)

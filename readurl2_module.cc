@@ -44,6 +44,7 @@ void ReadUrl2_Module::svc()
             gQueueCache.pop();
             SP_NEW(c_data, CRequest(data));
             c_data->url_filter_ = filter;
+            filter = NULL;
             ++split;
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
             put_next(msg);
@@ -61,6 +62,8 @@ void ReadUrl2_Module::svc()
         for (uint i = 0; i < mid_file->file_list_.size(); ++i)
         {
             FileElement *e = mid_file->file_list_[i];
+            if (e->total_size_ == 0)
+                continue;
             uint offset = 0;
             for (uint j = 0; j < DOMAIN_CHAR_COUNT; ++j)
             {
@@ -71,6 +74,7 @@ void ReadUrl2_Module::svc()
             filter->size_ = offset;
             SP_NEW(c_data, CRequest(data));
             c_data->url_filter_ = filter;
+            filter = NULL;
             ++split;
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
             put_next(msg);
@@ -82,6 +86,14 @@ void ReadUrl2_Module::svc()
                 }
                 filter = gQueue.front();
                 gQueue.pop();
+            }
+        }
+        if (filter != NULL)
+        {
+            {
+                unique_lock<mutex> lock(gMutex);
+                gQueue.push(filter);
+                gCV.notify_one();
             }
         }
 
