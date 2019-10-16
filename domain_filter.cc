@@ -341,6 +341,28 @@ int DomainFilterMerge::merge_port(vector<DomainFilter *> domain_filter_list)
                     }
                 }
             }
+            for (int port = 0; port < 65536; ++port)
+            {
+                if (port_size_[i][port] > 0)
+                {
+                    port_range_[i][port] = (int *)malloc(port_size_[i][port] * sizeof(int));
+                    DomainPortBuf *pa = port_start_[i][port];
+                    port_range_[i][port][0] = 1;
+                    for (int m = 1; m < port_size_[i][port]; ++m)
+                    {
+                        DomainPortBuf *pb = port_start_[i][port] + m;
+                        if (compare_dp_eq(pa, pb) != 0)
+                        {
+                            pa = pb;
+                            port_range_[i][port][m] = 1;
+                        }
+                        else
+                        {
+                            port_range_[i][port][m] = port_range_[i][port][m - 1] + 1;
+                        }
+                    }
+                }
+            }
         }
 #ifdef DEBUG
         for (int tmp = 0; tmp < list_port_count_[i]; ++tmp)
@@ -356,6 +378,7 @@ DomainFilterMerge::DomainFilterMerge()
 {
     memset(port_start_, 0, 2 * 65536 * sizeof(DomainPortBuf *));
     memset(port_size_, 0, 2 * 65536 * sizeof(int));
+    memset(port_range_, 0, 2 * 65536 * sizeof(int *));
 }
 
 DomainFilterMerge::~DomainFilterMerge()
@@ -369,6 +392,16 @@ DomainFilterMerge::~DomainFilterMerge()
     }
     p_list_.clear();
     buf_size_list_.clear();
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < 65536; ++j)
+        {
+            if (port_range_[i][j] != NULL)
+            {
+                free(port_range_[i][j]);
+            }
+        }
+    }
 }
 
 void DomainFilterMerge::cpy_filter_list(vector<DomainFilter *> &list)

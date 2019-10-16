@@ -45,6 +45,7 @@ public:
 	void cpy_filter_list(vector<DomainFilter *> &list);
 	DomainPortBuf *port_start_[2][65536];
 	int port_size_[2][65536];
+	int *port_range_[2][65536];
 	std::vector<char *> p_list_;
 	std::vector<int> buf_size_list_;
 };

@@ -100,6 +100,7 @@ int setfilesplitsize(uint64_t inputfilesize, int maxsort);
 // inline int cmp64val(int64_t ia, int64_t ib);
 // inline int cmpbuf_dp(const char *pa, int na, const char *pb, int nb);
 bool compare_dp(const DomainPortBuf &e1, const DomainPortBuf &e2);
+int compare_dp_eq(const DomainPortBuf *e1, const DomainPortBuf *e2);
 // inline int cmpbuf_pf(const char *pa, int na, const char *pb, int nb);
 bool compare_prefix(const char *e1, const char *e2);
 

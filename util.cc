@@ -211,6 +211,16 @@ bool compare_dp(const DomainPortBuf &e1, const DomainPortBuf &e2)
     return pa < pb;
 }
 
+int compare_dp_eq(const DomainPortBuf *e1, const DomainPortBuf *e2)
+{
+    const char *pa = e1->start;
+    const char *pb = e2->start;
+    uint16_t na = e1->n;
+    uint16_t nb = e2->n;
+    int ret = cmpbuf_dp(pa, na, pb, nb);
+    return ret;
+}
+
 bool compare_dp_char(const char *pa, const char *pb)
 {
     uint16_t na = *(uint16_t *)(pa - 2);

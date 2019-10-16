@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     {
         fp = fopen(domainFilterPath, "r");
         // uint64_t size = sizeoffile(fp);
-        SP_DEBUG("fp=%p,size=%lld\n", fp, size);
+        SP_DEBUG("fp=%s,size=%lld\n", domainFilterPath, size);
         data->fp_in_ = fp;
         data->length_ = size;
 
@@ -130,6 +130,8 @@ int main(int argc, char **argv)
             s_instance_stream->pop();
         }
 
+        SP_DEBUG("prefix begin\n");
+        SP_DEBUG("fp=%s,size=%lld\n", urlPrefixFilterPath, size);
         SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
         SP_NEW_RETURN(modules[1], PrefixLoad_Module(8), -1);
         SP_NEW_RETURN(modules[2], PrefixMerge_Module(8), -1);
@@ -156,7 +158,7 @@ int main(int argc, char **argv)
         }
 
         SP_DEBUG("url begin\n");
-
+        SP_DEBUG("fp=%s,size=%lld\n", urlidPath, size);
         SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
         SP_NEW_RETURN(modules[1], UrlLoad_Module(8), -1);
         SP_NEW_RETURN(modules[2], Write_Module(1), -1);
