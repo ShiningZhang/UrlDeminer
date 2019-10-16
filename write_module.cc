@@ -25,12 +25,6 @@ int Write_Module::open()
 
 void Write_Module::svc()
 {
-    static int sthread_num = 0;
-    int thread_num;
-    lock_.lock();
-    thread_num = sthread_num++;
-    lock_.unlock();
-    char *buf;
     Request *data = NULL;
     CRequest *c_data = NULL;
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)

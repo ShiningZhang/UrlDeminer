@@ -25,15 +25,8 @@ int UrlPF_Module::open()
 
 void UrlPF_Module::svc()
 {
-    static int sthread_num = 0;
-    int thread_num;
-    lock_.lock();
-    thread_num = sthread_num++;
-    lock_.unlock();
-    char *buf;
     Request *data = NULL;
     CRequest *c_data = NULL;
-    int count = 0;
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;

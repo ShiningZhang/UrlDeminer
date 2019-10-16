@@ -25,11 +25,6 @@ int ReadUrl1_Module::open()
 
 void ReadUrl1_Module::svc()
 {
-    static int sthread_num = 0;
-    int thread_num;
-    lock_.lock();
-    thread_num = sthread_num++;
-    lock_.unlock();
     char *buf;
     Request *data = NULL;
     CRequest *c_data = NULL;
@@ -39,7 +34,6 @@ void ReadUrl1_Module::svc()
         gettimeofday(&start, 0);
         data = reinterpret_cast<Request *>(msg->data());
         SP_DES(msg);
-        int end = 0;
         uint64_t length = data->length_;
         uint32_t size = 0;
         uint64_t begin = 0;

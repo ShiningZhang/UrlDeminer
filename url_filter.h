@@ -11,9 +11,18 @@
 class DomainFilter;
 class PrefixFilter;
 
+struct stDPRES
+{
+    uint16_t n;
+    uint16_t port;
+    int ret;
+};
+
 class UrlFilter
 {
 public:
+    UrlFilter();
+    virtual ~UrlFilter();
     int filter(char *domainPort, uint16_t size) const;
 
 public:

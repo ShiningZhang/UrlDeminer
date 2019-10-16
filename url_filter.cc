@@ -15,6 +15,33 @@
 
 using namespace std;
 
+UrlFilter::UrlFilter() : p_(NULL), size_(0), buf_size_(0), out_(NULL), out_size_(0), out_offset_(0)
+{
+    memset(list_, 0, DOMAIN_CHAR_COUNT * sizeof(char **));
+    memset(list_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
+    memset(max_list_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
+    memset(list_domainport_, 0, DOMAIN_CHAR_COUNT * sizeof(DomainPortBuf *));
+    memset(list_domainport_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
+    memset(max_list_domainport_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
+}
+
+UrlFilter::~UrlFilter()
+{
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        if (list_[i] != NULL)
+        {
+            free(list_[i]);
+            list_[i] = NULL;
+        }
+        if (list_domainport_[i] != NULL)
+        {
+            free(list_domainport_[i]);
+            list_domainport_[i] = NULL;
+        }
+    }
+}
+
 int UrlFilter::prepare_buf(char *p, uint64_t size)
 {
     char *e = p + size;
@@ -29,7 +56,7 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
         char *domain_end = strchr(s, '/');
         char *port = domain_end - 1;
         domain_end = s > (domain_end - 6) ? s : (domain_end - 6);
-        int t = domain_temp[*port];
+        int t = domain_temp[(unsigned char)(*port)];
         while (port > domain_end)
         {
             if (*port != ':')
@@ -38,13 +65,13 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
                 break;
         }
         if (*port == ':')
-            t = domain_temp[*(port - 1)];
+            t = domain_temp[(unsigned char)*(port - 1)];
         ++domain_count[t];
         ++count;
         if (s[-1] == '/')
-            t = domain_temp[*s];
+            t = domain_temp[(unsigned char)*s];
         else
-            t = domain_temp[s[-1]];
+            t = domain_temp[(unsigned char)s[-1]];
         ++prefix_count[t];
         s = se + 1;
     }
@@ -81,7 +108,7 @@ int UrlFilter::load_(char *p, uint64_t size)
         }
         char *domain_end = strchr(s, '/');
         char *port = domain_end - 1;
-        int t = domain_temp[*port];
+        int t = domain_temp[(unsigned char)*port];
         uint16_t domain_len = domain_end - s;
         while (port > s && port > (domain_end - 6))
         {
@@ -92,7 +119,7 @@ int UrlFilter::load_(char *p, uint64_t size)
         }
         if (*port == ':')
         {
-            t = domain_temp[*(port - 1)];
+            t = domain_temp[(unsigned char)*(port - 1)];
             b.port = (uint16_t)strtoul(port + 1, NULL, 10);
             domain_len = port - s;
             if (s[-3] == 1 && b.port == 443)
@@ -126,8 +153,11 @@ UrlFilter *UrlFilter::load(char *p, uint64_t size)
 {
     if (size == 0)
     {
-        p = p - BUFHEADSIZE;
-        free(p);
+        if (p != NULL)
+        {
+            p = p - BUFHEADSIZE;
+            free(p);
+        }
         return NULL;
     }
     UrlFilter *filter = new UrlFilter();
@@ -273,13 +303,6 @@ bool cmp_dp1(const DomainPortBuf &e1, const char *e2)
         return ret == -1 ? true : false;
     return na < nb;
 }
-
-struct stDPRES
-{
-    uint16_t n;
-    uint16_t port;
-    int ret;
-};
 
 int filter_domainport_(const DomainPortBuf &in,
                        const vector<DomainPortBuf>::iterator start,
@@ -561,8 +584,8 @@ void UrlFilter::filter_domainport()
                     in.start[-3] |= 0x40;
                 }
                 arrangesuffix(in.start + 1, *(uint16_t *)(in.start - 2));
-                int t = domain_temp[*in.start];
-                list_[t][count[t]++] = (in.start - 2);
+                int t1 = domain_temp[(unsigned char)*in.start];
+                list_[t1][count[t1]++] = (in.start - 2);
 #ifdef DEBUG
                 printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
 #endif
@@ -644,7 +667,6 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
     char **end;
     char **res;
     output = {0, -1, 0};
-    int sub = 0;
 #ifdef DEBUG
     printf("filter_prefix_:https:%d,in:%s\n", https, in + 2);
 #endif

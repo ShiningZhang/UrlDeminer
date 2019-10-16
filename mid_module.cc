@@ -26,12 +26,6 @@ int Mid_Module::open()
 
 void Mid_Module::svc()
 {
-    static int sthread_num = 0;
-    int thread_num;
-    lock_.lock();
-    thread_num = sthread_num++;
-    lock_.unlock();
-    char *buf;
     Request *data = NULL;
     CRequest *c_data = NULL;
     MidFile *mid_file = NULL;
@@ -67,7 +61,9 @@ void Mid_Module::svc()
         }
         else
         {
+#ifdef LARGE
             mid_file->write_mid(filter->list_, filter->list_count_, c_data->idx_);
+#endif
             {
                 filter->clear_para();
                 unique_lock<mutex> lock(gMutex);

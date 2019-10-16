@@ -25,12 +25,6 @@ int PrefixLoad_Module::open()
 
 void PrefixLoad_Module::svc()
 {
-    static int sthread_num = 0;
-    int thread_num;
-    lock_.lock();
-    thread_num = sthread_num++;
-    lock_.unlock();
-    char *buf;
     Request *data = NULL;
     CRequest *c_data = NULL;
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
@@ -54,11 +48,11 @@ void PrefixLoad_Module::svc()
             filter = new PrefixFilterMerge();
             data->prefix_filter_ = filter;
             data->reset_para();
+            data->size_split_buf = DOMAIN_CHAR_COUNT;
             for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
             {
                 SP_NEW(c_data, CRequest(data));
                 c_data->idx_ = i;
-                ++data->size_split_buf;
                 SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
                 put_next(msg);
             }

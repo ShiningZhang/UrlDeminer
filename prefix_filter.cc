@@ -80,18 +80,18 @@ void PrefixFilter::prepare_buf(char *p, uint64_t size)
         bool hit = se[-1] == '-' ? true : false;
         if (s[0] == '/')
         {
-            int t = domain_temp[*(s + 2)];
+            int t = domain_temp[((unsigned char)*(s + 2))];
             ++this->list_count_[type][hit][0][t];
             ++this->list_count_[type][hit][1][t];
         }
         else if (s[7] == '/')
         {
-            int t = domain_temp[*(s + 8)];
+            int t = domain_temp[((unsigned char)*(s + 8))];
             ++this->list_count_[type][hit][1][t];
         }
         else
         {
-            int t = domain_temp[*(s + 7)];
+            int t = domain_temp[((unsigned char)*(s + 7))];
             ++this->list_count_[type][hit][0][t];
         }
         s = se + 1;
@@ -262,7 +262,7 @@ void PrefixFilter::load_(char *p, uint64_t size)
             s += 7;
             port_type = 1; // 80
         }
-        int t = domain_temp[*s];
+        int t = domain_temp[((unsigned char)(*s))];
         char *domainend = strchr(s, '/');
         char *offset = domainend;
         while (offset > s && offset > (domainend - 6))
@@ -391,8 +391,11 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
 {
     if (size == 0)
     {
-        p = p - BUFHEADSIZE;
-        free(p);
+        if (p != NULL)
+        {
+            p = p - BUFHEADSIZE;
+            free(p);
+        }
         return NULL;
     }
     PrefixFilter *filter = new PrefixFilter();
@@ -508,7 +511,7 @@ int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx)
             for (int k = 0; k < 2; ++k)
             {
                 size = 0;
-                for (int m = 0; m < list.size(); ++m)
+                for (uint m = 0; m < list.size(); ++m)
                 {
                     size += list[m]->list_count_[i][j][k][idx];
                 }
@@ -517,7 +520,7 @@ int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx)
                     list_count_[i][j][k][idx] = size;
                     list_https_[i][j][k][idx] = (char **)malloc(size * sizeof(char *));
                     size = 0;
-                    for (int m = 0; m < list.size(); ++m)
+                    for (uint m = 0; m < list.size(); ++m)
                     {
                         if (list[m]->list_count_[i][j][k][idx] > 0)
                         {
@@ -536,9 +539,9 @@ int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx)
 
 void PrefixFilterMerge::cpy_filter_list(vector<PrefixFilter *> &list)
 {
-    for (int i = 0; i < list.size(); ++i)
+    for (uint i = 0; i < list.size(); ++i)
     {
-        p_list_.push_back(list[i]->p_);
+        p_list_.push_back(list[i]->p_ - BUFHEADSIZE);
         buf_size_list_.push_back(list[i]->buf_size_);
         list[i]->p_ = NULL;
         list[i]->buf_size_ = 0;

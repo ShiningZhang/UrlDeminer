@@ -26,12 +26,6 @@ int ReadUrl2_Module::open()
 
 void ReadUrl2_Module::svc()
 {
-    static int sthread_num = 0;
-    int thread_num;
-    lock_.lock();
-    thread_num = sthread_num++;
-    lock_.unlock();
-    char *buf;
     Request *data = NULL;
     CRequest *c_data = NULL;
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
@@ -61,7 +55,7 @@ void ReadUrl2_Module::svc()
             gQueue.pop();
         }
         MidFile *mid_file = data->mid_file_;
-        for (int i = 0; i < mid_file->file_list_.size(); ++i)
+        for (uint i = 0; i < mid_file->file_list_.size(); ++i)
         {
             FileElement *e = mid_file->file_list_[i];
             int size = readcontent_unlocked1(e->fp_, filter->p_, e->size_);

@@ -195,8 +195,11 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
 {
     if (size == 0)
     {
-        p = p - BUFHEADSIZE;
-        free(p);
+        if (p != NULL)
+        {
+            p = p - BUFHEADSIZE;
+            free(p);
+        }
         return NULL;
     }
     DomainFilter *filter = new DomainFilter();
@@ -357,7 +360,7 @@ DomainFilterMerge::DomainFilterMerge()
 
 DomainFilterMerge::~DomainFilterMerge()
 {
-    for (int i = 0; i < 2; ++i)
+    /* for (int i = 0; i < 2; ++i)
     {
         for (int j = 0; j < 65536; ++j)
         {
@@ -367,5 +370,5 @@ DomainFilterMerge::~DomainFilterMerge()
                 port_start_[i][j] = NULL;
             }
         }
-    }
+    } */
 }

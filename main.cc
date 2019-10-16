@@ -188,6 +188,7 @@ int main(int argc, char **argv)
         s_instance_stream->get(msg);
         fclose(fp);
         fp = NULL;
+        data->fp_in_ = NULL;
         for (int i = 2; i >= 0; --i)
         {
             s_instance_stream->pop();
@@ -203,8 +204,8 @@ int main(int argc, char **argv)
         {
             s_instance_stream->push_module(modules[i]);
         }
-        size = file_size(urlidPath);
         fp = fopen(urlidPath, "r");
+        size = file_size(urlidPath);
 
         if (fp == NULL)
         {
@@ -219,13 +220,16 @@ int main(int argc, char **argv)
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
         dumpCounters(stdout, &data->counter_);
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->pop();
+        }
         fclose(fp);
-        for (int i = 0; i < data->domain_filter_list_.size(); ++i)
-            delete data->domain_filter_list_[i];
-        data->domain_filter_list_.clear();
-        for (int i = 0; i < data->prefix_filter_list_.size(); ++i)
-            delete data->prefix_filter_list_[i];
-        data->prefix_filter_list_.clear();
+        delete data;
+        SP_DES(msg);
+        s_instance_stream->close();
+        delete s_instance_stream;
+        s_instance_stream = NULL;
     }
 #ifdef LARGE
     else
