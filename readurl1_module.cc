@@ -38,18 +38,10 @@ void ReadUrl1_Module::svc()
         uint32_t size = 0;
         uint64_t begin = 0;
         UrlFilter *filter = NULL;
-        size_t line_size = 0;
-        size_t split = length / 8 + 1024;
-        if (split > FILESPLITSIZE)
-        {
-            line_size = FILESPLITSIZE;
-        }
-        else
-        {
-            line_size = split;
-        }
-        // size_t line_size = length < FILESPLITSIZE ? ceil((double)length / 8) : FILESPLITSIZE;
-        SP_DEBUG("ReadUrl1_Module:length=%lld,line_size=%lld\n", length, line_size);
+        uint64_t line_size = data->split_size_;
+        data->size_split_buf = (int)ceil((double)length / line_size);
+        int split = 0;
+        SP_DEBUG("ReadUrl1_Module:length=%lld,line_size=%lld,size_split_buf=%d \n", length, line_size, data->size_split_buf);
         while (begin < length)
         {
             if (begin + line_size > length)
@@ -62,13 +54,6 @@ void ReadUrl1_Module::svc()
                 }
                 filter = gQueue.front();
                 gQueue.pop();
-            }
-            if (filter->buf_size_ < line_size)
-            {
-                free(filter->p_);
-                filter->p_ = (char *)malloc(line_size * sizeof(char) + BUFHEADSIZE);
-                filter->p_ += BUFHEADSIZE;
-                filter->buf_size_ = line_size;
             }
             buf = filter->p_;
 
@@ -83,10 +68,18 @@ void ReadUrl1_Module::svc()
             c_data->idx_ = data->size_split_buf;
 
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
-            ++data->size_split_buf;
+            ++split;
+            if (data->size_split_buf - split <= (int)gQueue.size())
+                data->is_read_end_ = true;
             put_next(msg);
         }
         data->is_read_end_ = true;
+        for (int i = split; i < data->size_split_buf; ++i)
+        {
+            SP_NEW(c_data, CRequest(data));
+            SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
+            put_next(msg);
+        }
         SP_DEBUG("ReadUrl1_Module:size_split_buf=%d,end\n", data->size_split_buf);
         gettimeofday(&t2, 0);
         SP_DEBUG("ReadUrl1_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);

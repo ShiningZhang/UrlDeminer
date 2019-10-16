@@ -25,19 +25,20 @@ int UrlDP_Module::open()
 
 void UrlDP_Module::svc()
 {
-    Request *data = NULL;
     CRequest *c_data = NULL;
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;
         gettimeofday(&start, 0);
         c_data = reinterpret_cast<CRequest *>(msg->data());
-        data = c_data->request_;
         {
             UrlFilter *filter = c_data->url_filter_;
-            filter->load1();
-            filter->set_dp_list(data->domain_filter_list_);
-            filter->filter_domainport();
+            if (filter != NULL)
+            {
+                filter->load1();
+                filter->domainfilter_ = c_data->request_->domain_filter_;
+                filter->filter_domainport();
+            }
         }
 
         put_next(msg);

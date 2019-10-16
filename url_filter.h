@@ -29,8 +29,9 @@ public:
     void add(char *domainPortBuffer, char allow);
     int load_(char *p, uint64_t size);
     int load1();
-    int load2(char *p, int size);
-    int load2_(char *p, uint64_t size, int count);
+    // int load2(char *p, uint size);
+    int load2(char *p, uint size, int type);
+    // int load2_(char *p, uint64_t size, int count);
 
 public:
     static UrlFilter *load(char *p, uint64_t size);
@@ -47,6 +48,7 @@ public:
 
     void clear_para();
     void clear_counter();
+    void clear_domain_list();
 
 public:
     char *p_;

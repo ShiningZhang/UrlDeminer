@@ -10,8 +10,9 @@ public:
     MidFile();
     ~MidFile();
     int init();
+    void uninit();
     int write_buf(char *p, int size);
-    int write_mid(char **p, int size, int idx);
+    int write_mid(char ***p, int *size, int idx);
     void sort_file_list();
 
     std::vector<FileElement *> file_list_;

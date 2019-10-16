@@ -360,15 +360,26 @@ DomainFilterMerge::DomainFilterMerge()
 
 DomainFilterMerge::~DomainFilterMerge()
 {
-    /* for (int i = 0; i < 2; ++i)
+    for (size_t i = 0; i < p_list_.size(); ++i)
     {
-        for (int j = 0; j < 65536; ++j)
+        if (p_list_[i] != NULL)
         {
-            if (port_start_[i][j] != NULL)
-            {
-                free(port_start_[i][j]);
-                port_start_[i][j] = NULL;
-            }
+            free(p_list_[i]);
         }
-    } */
+    }
+    p_list_.clear();
+    buf_size_list_.clear();
+}
+
+void DomainFilterMerge::cpy_filter_list(vector<DomainFilter *> &list)
+{
+    for (uint i = 0; i < list.size(); ++i)
+    {
+        p_list_.push_back(list[i]->p_ - BUFHEADSIZE);
+        buf_size_list_.push_back(list[i]->size_);
+        list[i]->p_ = NULL;
+        list[i]->size_ = 0;
+        delete list[i];
+    }
+    list.clear();
 }

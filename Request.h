@@ -29,7 +29,8 @@ public:
           fp_out_(NULL),
           mid_file_(NULL),
           domain_filter_(NULL),
-          prefix_filter_(NULL){};
+          prefix_filter_(NULL),
+          split_size_(0){};
     virtual ~Request()
     {
         for (size_t i = 0; i < domain_filter_list_.size(); ++i)
@@ -37,7 +38,7 @@ public:
         domain_filter_list_.clear();
         if (domain_filter_ != NULL)
         {
-            delete domain_filter_;
+            delete (DomainFilterMerge *)domain_filter_;
             domain_filter_ = NULL;
         }
         for (size_t i = 0; i < prefix_filter_list_.size(); ++i)
@@ -45,7 +46,7 @@ public:
         prefix_filter_list_.clear();
         if (prefix_filter_ != NULL)
         {
-            delete prefix_filter_;
+            delete (PrefixFilterMerge *)prefix_filter_;
             prefix_filter_ = NULL;
         }
         if (mid_file_ != NULL)
@@ -87,6 +88,7 @@ public:
     MidFile *mid_file_;
     DomainFilter *domain_filter_;
     PrefixFilter *prefix_filter_;
+    uint64_t split_size_;
 };
 
 class CRequest : public SP_Data_Block

@@ -19,7 +19,7 @@ using namespace std;
 #define FILESPLITSIZE 256 * 1024 * 1024
 #define SMALLSIZE 1100000000
 
-#define SMALLFILESIZE 100 * 1024 * 1024
+#define SMALLFILESIZE 10 * 1024 * 1024
 #define MAXSORT 8
 #define VERYSMALLSIZE 1000000
 
@@ -28,6 +28,10 @@ using namespace std;
 #define INITURLCOUNT 6000000
 
 #define DOMAIN_CHAR_COUNT 39 //26 + 10 + 3
+
+#define MAX_MEM_SIZE 12000000000
+
+#define MAX_USE_MEM_SIZE 10000000000
 
 #ifdef DEBUG
 #define LOG(format_string, ...)                                                                         \
@@ -74,9 +78,10 @@ struct DomainPortBuf
 
 struct FileElement
 {
-    FILE *fp_;
-    size_t size_;
+    FILE *fp_[DOMAIN_CHAR_COUNT];
+    size_t size_[DOMAIN_CHAR_COUNT];
     int idx;
+    size_t total_size_;
 };
 
 extern uint64_t temp[9];

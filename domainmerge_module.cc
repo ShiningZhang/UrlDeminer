@@ -46,6 +46,7 @@ void DomainMerge_Module::svc()
         if (data->recv_split_ == data->size_split_buf)
         {
             data->domain_filter_ = filter;
+            ((DomainFilterMerge *)filter)->cpy_filter_list(data->domain_filter_list_);
             data->reset_para();
 
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));
