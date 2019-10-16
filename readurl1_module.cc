@@ -65,7 +65,7 @@ void ReadUrl1_Module::svc()
             c_data->buffer_ = buf;
             c_data->size_ = size;
             c_data->url_filter_ = (filter);
-            c_data->idx_ = data->size_split_buf;
+            c_data->idx_ = split;
 
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
             ++split;

@@ -70,7 +70,8 @@ void Mid_Module::svc()
         {
             if (filter != NULL)
             {
-                mid_file->write_mid(filter->list_, filter->list_count_, c_data->idx_);
+                if (filter->size_ > 0)
+                    mid_file->write_mid(filter->list_, filter->list_count_, c_data->idx_);
                 {
                     filter->clear_para();
                     unique_lock<mutex> lock(gMutex);

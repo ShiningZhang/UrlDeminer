@@ -62,14 +62,19 @@ void ReadUrl2_Module::svc()
         for (uint i = 0; i < mid_file->file_list_.size(); ++i)
         {
             FileElement *e = mid_file->file_list_[i];
+            SP_DEBUG("ReadUrl2_Module:i=%d,total_size_=%d\n", i, e->total_size_);
             if (e->total_size_ == 0)
                 continue;
             uint offset = 0;
             for (uint j = 0; j < DOMAIN_CHAR_COUNT; ++j)
             {
-                uint size = readcontent_unlocked1(e->fp_[i], filter->p_ + offset, e->size_[i]);
-                filter->load2(filter->p_ + offset, size, j);
-                offset += size;
+                if (e->size_[j] > 0)
+                {
+                    SP_DEBUG("ReadUrl2_Module:i=%d,t=%d,size=%d\n", i, j, e->size_[j]);
+                    uint size = readcontent_unlocked1(e->fp_[j], filter->p_ + offset, e->size_[j]);
+                    filter->load2(filter->p_ + offset, size, j, e->count_[j]);
+                    offset += size;
+                }
             }
             filter->size_ = offset;
             SP_NEW(c_data, CRequest(data));

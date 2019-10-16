@@ -30,7 +30,7 @@ public:
     int load_(char *p, uint64_t size);
     int load1();
     // int load2(char *p, uint size);
-    int load2(char *p, uint size, int type);
+    int load2(char *p, uint size, int type, int count);
     // int load2_(char *p, uint64_t size, int count);
 
 public:

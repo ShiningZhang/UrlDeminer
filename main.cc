@@ -230,6 +230,7 @@ int main(int argc, char **argv)
         uint64_t max_file_size = max(domainFilter_size, urlPrefixFilter_size);
         if (max_file_size + urlid_size < MAX_USE_MEM_SIZE)
         {
+            // split_mem = ceil(urlid_size / 16) + 64;
             split_mem = ceil(urlid_size / 8) + 64;
         }
         else

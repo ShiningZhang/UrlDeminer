@@ -33,7 +33,7 @@ void UrlDP_Module::svc()
         c_data = reinterpret_cast<CRequest *>(msg->data());
         {
             UrlFilter *filter = c_data->url_filter_;
-            if (filter != NULL)
+            if (filter != NULL && filter->size_ > 0)
             {
                 filter->load1();
                 filter->domainfilter_ = c_data->request_->domain_filter_;

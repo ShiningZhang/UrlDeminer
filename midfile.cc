@@ -20,8 +20,10 @@ MidFile::~MidFile()
         FileElement *e = file_list_[i];
         for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
         {
-            fclose(e->fp_[j]);
+            if (e->fp_[j] != NULL)
+                fclose(e->fp_[j]);
         }
+        delete e;
     }
 }
 
@@ -75,9 +77,14 @@ int MidFile::write_mid(char ***p, int *size, int idx)
     FileElement *file = new FileElement;
     file->idx = idx;
     file->total_size_ = 0;
+    memset(file->fp_, 0, DOMAIN_CHAR_COUNT * sizeof(FILE *));
+    memset(file->size_, 0, DOMAIN_CHAR_COUNT * sizeof(size_t));
+    memset(file->count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
     {
-        sprintf(tmp_char, "tmp/%d_%d", idx, i);
+        if (size[i] == 0)
+            continue;
+        sprintf(tmp_char, "%d_%d", idx, i);
         FILE *fp = fopen(tmp_char, "wb+");
         size_t file_size = 0;
         int begin = 0;
@@ -92,6 +99,7 @@ int MidFile::write_mid(char ***p, int *size, int idx)
         file->fp_[i] = fp;
         file->size_[i] = file_size;
         file->total_size_ += file_size;
+        file->count_[i] = size[i];
     }
     file_list_.push_back(file);
     return 0;

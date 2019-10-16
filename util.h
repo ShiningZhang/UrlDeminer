@@ -82,6 +82,7 @@ struct FileElement
     size_t size_[DOMAIN_CHAR_COUNT];
     int idx;
     size_t total_size_;
+    int count_[DOMAIN_CHAR_COUNT];
 };
 
 extern uint64_t temp[9];

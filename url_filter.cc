@@ -257,9 +257,9 @@ inline int load2_(char *p, uint64_t size, char **list)
     return count;
 }
 
-int UrlFilter::load2(char *p, uint size, int type)
+int UrlFilter::load2(char *p, uint size, int type, int count)
 {
-    int count = prepare_buf2(p, size);
+    // int count = prepare_buf2(p, size);
     if (count + list_count_[type] > max_list_count_[type])
     {
         char **list = list_[type];
@@ -943,14 +943,21 @@ void UrlFilter::prepare_prefix()
 {
     for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
         out_size_ += list_count_[i] * 9;
-    out_ = (char *)malloc(out_size_);
+    if (out_size_ > 0)
+        out_ = (char *)malloc(out_size_);
     out_offset_ = 0;
 }
 
 int UrlFilter::write_tag(FILE *fp)
 {
-    int ret = fwrite(out_, out_offset_, 1, fp);
-    free(out_);
+    int ret = 0;
+    if (out_offset_ > 0)
+        ret = fwrite(out_, out_offset_, 1, fp);
+    if (out_ != NULL)
+    {
+        free(out_);
+        out_ = NULL;
+    }
     out_size_ = 0;
     out_offset_ = 0;
     return ret;
