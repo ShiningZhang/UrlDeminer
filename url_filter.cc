@@ -40,6 +40,12 @@ UrlFilter::~UrlFilter()
             list_domainport_[i] = NULL;
         }
     }
+    if (p_ != NULL)
+    {
+        p_ = p_ - BUFHEADSIZE;
+        free(p_);
+        p_ = NULL;
+    }
 }
 
 int UrlFilter::prepare_buf(char *p, uint64_t size)
