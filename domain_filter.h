@@ -39,8 +39,10 @@ public:
 	DomainFilterMerge();
 	virtual ~DomainFilterMerge();
 	int merge(vector<DomainFilter *> domain_filter_list, int type);
+	int merge(vector<DomainFilter *> domain_filter_list, int type, int i);
 
 	int merge_port(vector<DomainFilter *> list);
+	int merge_port(vector<DomainFilter *> list, int i);
 
 	void cpy_filter_list(vector<DomainFilter *> &list);
 	DomainPortBuf *port_start_[2][65536];

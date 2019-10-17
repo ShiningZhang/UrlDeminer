@@ -34,9 +34,10 @@ void DomainMerge_Module::svc()
         c_data = reinterpret_cast<CRequest *>(msg->data());
         data = c_data->request_;
         SP_DES(msg);
+        int idx = c_data->idx_;
 
         DomainFilter *filter = c_data->domain_filter_;
-        ((DomainFilterMerge *)filter)->merge(data->domain_filter_list_, c_data->idx_);
+        ((DomainFilterMerge *)filter)->merge(data->domain_filter_list_, c_data->idx_, c_data->idx_list_[0]);
 
         SP_DES(c_data);
 
@@ -54,7 +55,7 @@ void DomainMerge_Module::svc()
         }
 
         gettimeofday(&t2, 0);
-        SP_DEBUG("DomainMerge_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
+        SP_DEBUG("DomainMerge_Module=%ldms[%d].\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000, idx);
         //SP_LOGI("DomainMerge_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);
     }
 }

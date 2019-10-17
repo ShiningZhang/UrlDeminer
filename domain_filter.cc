@@ -6,6 +6,8 @@
 #include "util.h"
 #include "pdqsort.h"
 
+#include "Global_Macros.h"
+
 using namespace std;
 
 DomainFilter::DomainFilter()
@@ -233,7 +235,7 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
     filter->load_(p, size);
     filter->p_ = p;
     filter->size_ = size;
-    /*     for (int i = 0; i < 2; ++i)
+    for (int i = 0; i < 2; ++i)
     {
         {
             for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
@@ -251,10 +253,11 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
                 }
             }
         }
-    } */
+    }
     return filter;
 }
 
+#ifdef VER1
 int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int type)
 {
     if (type >= DOMAIN_CHAR_COUNT)
@@ -297,11 +300,324 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int type
     }
     return count;
 }
+#endif
+
+struct HeapItemDp
+{
+    int ed_;
+    int idx_;
+    int start_;
+    char **list_;
+    inline bool operator<(const HeapItemDp &y) const
+    {
+        if (idx_ == 0 || y.idx_ == 0)
+            return idx_ < y.idx_;
+        return compare_dp_char(list_[start_], y.list_[y.start_]);
+    }
+};
+
+typedef HeapItemDp *pHeapItemDp;
+
+HeapItemDp MinHI = {0, 0, 0, 0};
+
+static inline void LoserAdjust(int *ls, const HeapItemDp *arr, int s, const int n)
+{
+    int t1 = ((s + n) >> 1);
+    s = ls[s + n];
+    while (t1 > 0)
+    {
+        if (arr[ls[t1]] < arr[s])
+        {
+            s ^= ls[t1];
+            ls[t1] ^= s;
+            s ^= ls[t1];
+        }
+        t1 >>= 1;
+    }
+    ls[0] = s;
+}
+
+static inline void LoserBuild(int *ls, const HeapItemDp *arr, const int n)
+{
+    for (int i1 = 0; i1 < n; i1++)
+    {
+        ls[i1] = n;
+        ls[i1 + n] = i1;
+    }
+    for (int i1 = n - 1; i1 >= 0; i1--)
+    {
+        LoserAdjust(ls, arr, i1, n);
+    }
+}
+
+int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int type)
+{
+    if (type >= DOMAIN_CHAR_COUNT)
+    {
+        return merge_port(domain_filter_list);
+    }
+    int count = 0;
+    for (int i = 0; i < 2; ++i)
+    {
+        {
+            int size = 0;
+            for (size_t k = 0; k < domain_filter_list.size(); ++k)
+            {
+                size += domain_filter_list[k]->list_count_[i][type];
+                // SP_DEBUG("k=%d,size=%d,list=%p\n", k, domain_filter_list[k]->list_count_[i][type], domain_filter_list[k]->list_[i][type]);
+            }
+            if (size > 0)
+            {
+                count += size;
+                list_[i][type] = (char **)malloc(size * sizeof(char *));
+                list_count_[i][type] = size;
+                size = 0;
+                {
+                    size_t part_num = domain_filter_list.size();
+                    int *loser = (int *)malloc((2 * part_num + 1) * sizeof(int));
+                    int sl = 0;
+                    HeapItemDp *heap = (HeapItemDp *)malloc((part_num + 1) * sizeof(HeapItemDp));
+                    memset(heap, 0, (part_num + 1) * sizeof(HeapItemDp));
+                    for (int k = 0; k < part_num; ++k)
+                    {
+                        if (domain_filter_list[k]->list_count_[i][type] > 0)
+                        {
+                            // HeapItemDp *pHI = heap + sl++;
+                            heap[sl].ed_ = domain_filter_list[k]->list_count_[i][type] - 1;
+                            heap[sl].start_ = 0;
+                            heap[sl].list_ = domain_filter_list[k]->list_[i][type];
+                            heap[sl].idx_ = part_num;
+                            // SP_DEBUG("k=%d,sl=%d,ed=%d,list=%p\n", k, sl, heap[sl].ed_, heap[sl].list_);
+                            ++sl;
+                        }
+                    }
+                    if (sl > 0)
+                    {
+                        int wlen = 0;
+                        if (sl > 1)
+                        {
+                            heap[sl] = MinHI;
+                            LoserBuild(loser, heap, sl);
+                            while (sl > 1)
+                            {
+                                int win = loser[0];
+                                pHeapItemDp pHI = heap + win;
+                                list_[i][type][size++] = pHI->list_[pHI->start_];
+                                if (pHI->start_ < pHI->ed_)
+                                {
+                                    ++pHI->start_;
+                                    LoserAdjust(loser, heap, win, sl);
+                                }
+                                else
+                                {
+                                    if (win < --sl)
+                                    {
+                                        heap[win] = heap[sl];
+                                    }
+                                    if (sl > 1)
+                                    {
+                                        heap[sl] = MinHI;
+                                        LoserBuild(loser, heap, sl);
+                                    }
+                                }
+                            }
+                        }
+                        if (sl == 1)
+                        {
+                            pHeapItemDp pHI = heap + 0;
+                            memcpy(list_[i][type] + size, pHI->list_ + pHI->start_, (pHI->ed_ - pHI->start_ + 1) * sizeof(char *));
+                        }
+                    }
+                    free(loser);
+                    free(heap);
+                }
+                prepare_range(list_[i][type], list_count_[i][type], list_range_[i][type]);
+            }
+        }
+#ifdef DEBUG
+        for (int tmp = 0; tmp < list_count_[i][type]; ++tmp)
+        {
+            printf("DomainFilterMerge::mergehit=%d,port=0,type=%d,%s\n", i, type, list_[i][type][tmp]);
+        }
+#endif
+    }
+    return count;
+}
+
+int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int type, int i)
+{
+    if (type >= DOMAIN_CHAR_COUNT)
+    {
+        return merge_port(domain_filter_list, i);
+    }
+    int count = 0;
+    // for (int i = 0; i < 2; ++i)
+    {
+        {
+            int size = 0;
+            for (size_t k = 0; k < domain_filter_list.size(); ++k)
+            {
+                size += domain_filter_list[k]->list_count_[i][type];
+                // SP_DEBUG("k=%d,size=%d,list=%p\n", k, domain_filter_list[k]->list_count_[i][type], domain_filter_list[k]->list_[i][type]);
+            }
+            if (size > 0)
+            {
+                count += size;
+                list_[i][type] = (char **)malloc(size * sizeof(char *));
+                list_count_[i][type] = size;
+                size = 0;
+                {
+                    size_t part_num = domain_filter_list.size();
+                    int *loser = (int *)malloc((2 * part_num + 1) * sizeof(int));
+                    int sl = 0;
+                    HeapItemDp *heap = (HeapItemDp *)malloc((part_num + 1) * sizeof(HeapItemDp));
+                    memset(heap, 0, (part_num + 1) * sizeof(HeapItemDp));
+                    for (int k = 0; k < part_num; ++k)
+                    {
+                        if (domain_filter_list[k]->list_count_[i][type] > 0)
+                        {
+                            // HeapItemDp *pHI = heap + sl++;
+                            heap[sl].ed_ = domain_filter_list[k]->list_count_[i][type] - 1;
+                            heap[sl].start_ = 0;
+                            heap[sl].list_ = domain_filter_list[k]->list_[i][type];
+                            heap[sl].idx_ = part_num;
+                            // SP_DEBUG("k=%d,sl=%d,ed=%d,list=%p\n", k, sl, heap[sl].ed_, heap[sl].list_);
+                            ++sl;
+                        }
+                    }
+                    if (sl > 0)
+                    {
+                        int wlen = 0;
+                        if (sl > 1)
+                        {
+                            heap[sl] = MinHI;
+                            LoserBuild(loser, heap, sl);
+                            while (sl > 1)
+                            {
+                                int win = loser[0];
+                                pHeapItemDp pHI = heap + win;
+                                list_[i][type][size++] = pHI->list_[pHI->start_];
+                                if (pHI->start_ < pHI->ed_)
+                                {
+                                    ++pHI->start_;
+                                    LoserAdjust(loser, heap, win, sl);
+                                }
+                                else
+                                {
+                                    if (win < --sl)
+                                    {
+                                        heap[win] = heap[sl];
+                                    }
+                                    if (sl > 1)
+                                    {
+                                        heap[sl] = MinHI;
+                                        LoserBuild(loser, heap, sl);
+                                    }
+                                }
+                            }
+                        }
+                        if (sl == 1)
+                        {
+                            pHeapItemDp pHI = heap + 0;
+                            memcpy(list_[i][type] + size, pHI->list_ + pHI->start_, (pHI->ed_ - pHI->start_ + 1) * sizeof(char *));
+                        }
+                    }
+                    free(loser);
+                    free(heap);
+                }
+                prepare_range(list_[i][type], list_count_[i][type], list_range_[i][type]);
+            }
+        }
+#ifdef DEBUG
+        for (int tmp = 0; tmp < list_count_[i][type]; ++tmp)
+        {
+            printf("DomainFilterMerge::mergehit=%d,port=0,type=%d,%s\n", i, type, list_[i][type][tmp]);
+        }
+#endif
+    }
+    return count;
+}
 
 int DomainFilterMerge::merge_port(vector<DomainFilter *> domain_filter_list)
 {
     int count = 0;
     for (int i = 0; i < 2; ++i)
+    {
+        int size = 0;
+        for (size_t k = 0; k < domain_filter_list.size(); ++k)
+        {
+            size += domain_filter_list[k]->list_port_count_[i];
+        }
+        if (size > 0)
+        {
+            count += size;
+            list_port_[i] = (DomainPortBuf *)malloc(size * sizeof(DomainPortBuf));
+            list_port_count_[i] = size;
+            size = 0;
+            for (size_t k = 0; k < domain_filter_list.size(); ++k)
+            {
+                if (domain_filter_list[k]->list_port_count_[i] != 0)
+                {
+                    memcpy(list_port_[i] + size, domain_filter_list[k]->list_port_[i], domain_filter_list[k]->list_port_count_[i] * sizeof(DomainPortBuf));
+                    size += domain_filter_list[k]->list_port_count_[i];
+                }
+            }
+            pdqsort(list_port_[i], list_port_[i] + list_port_count_[i], compare_dp);
+            {
+                int port = 0;
+                DomainPortBuf *list = list_port_[i];
+                for (int m = 0; m < size; ++m)
+                {
+                    DomainPortBuf *p = list + m;
+                    if (port != p->port)
+                    {
+                        port = p->port;
+                        port_start_[i][port] = p;
+                        ++port_size_[i][port];
+                    }
+                    else
+                    {
+                        ++port_size_[i][port];
+                    }
+                }
+            }
+            for (int port = 0; port < 65536; ++port)
+            {
+                if (port_size_[i][port] > 0)
+                {
+                    port_range_[i][port] = (int *)malloc(port_size_[i][port] * sizeof(int));
+                    DomainPortBuf *pa = port_start_[i][port];
+                    port_range_[i][port][0] = 1;
+                    for (int m = 1; m < port_size_[i][port]; ++m)
+                    {
+                        DomainPortBuf *pb = port_start_[i][port] + m;
+                        if (compare_dp_eq(pa, pb) != 0)
+                        {
+                            pa = pb;
+                            port_range_[i][port][m] = 1;
+                        }
+                        else
+                        {
+                            port_range_[i][port][m] = port_range_[i][port][m - 1] + 1;
+                        }
+                    }
+                }
+            }
+        }
+#ifdef DEBUG
+        for (int tmp = 0; tmp < list_port_count_[i]; ++tmp)
+        {
+            printf("DomainFilterMerge::merge_port:hit=%d,port=%d,n=%d,%s\n", list_port_[i][tmp].hit, list_port_[i][tmp].port, list_port_[i][tmp].n, list_port_[i][tmp].start);
+        }
+#endif
+    }
+    return count;
+}
+
+int DomainFilterMerge::merge_port(vector<DomainFilter *> domain_filter_list, int i)
+{
+    int count = 0;
+    // for (int i = 0; i < 2; ++i)
     {
         int size = 0;
         for (size_t k = 0; k < domain_filter_list.size(); ++k)

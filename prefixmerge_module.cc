@@ -34,6 +34,7 @@ void PrefixMerge_Module::svc()
         c_data = reinterpret_cast<CRequest *>(msg->data());
         data = c_data->request_;
         SP_DES(msg);
+        int idx = c_data->idx_;
 
         PrefixFilterMerge *filter = (PrefixFilterMerge *)data->prefix_filter_;
         if (filter != NULL)
@@ -54,7 +55,7 @@ void PrefixMerge_Module::svc()
         }
 
         gettimeofday(&t2, 0);
-        SP_DEBUG("PrefixMerge_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
+        SP_DEBUG("PrefixMerge_Module=%ldms.idx=%d\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000, idx);
         //SP_LOGI("PrefixMerge_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);
     }
 }

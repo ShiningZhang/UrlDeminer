@@ -1,4 +1,4 @@
 #!/bin/sh
 
 ulimit -c unlimited
-./filter "$@"
+exec ./filter "$@"

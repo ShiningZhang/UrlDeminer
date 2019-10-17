@@ -48,23 +48,23 @@ static void init_temp()
 {
     for (int i = 0; i < 256; ++i)
     {
-        if (i >= 'a' && i <= 'z')
+        if (i >= 'a' && i <= 'z') //0-25
         {
             domain_temp[i] = i - 'a';
         }
-        else if (i >= '0' && i <= '9')
+        else if (i >= '0' && i <= '9') //26-35
         {
             domain_temp[i] = i - '0' + 26;
         }
-        else if (i == '_')
+        else if (i == '_') //36
         {
             domain_temp[i] = 26 + 10;
         }
-        else if (i == '-')
+        else if (i == '-') //37
         {
             domain_temp[i] = 26 + 10 + 1;
         }
-        else
+        else //38
         {
             domain_temp[i] = 38;
         }
@@ -197,6 +197,8 @@ int main(int argc, char **argv)
     }
     else
     {
+        timeval t2, start;
+        gettimeofday(&start, 0);
         //domain file read
         SP_DEBUG("read doamin begin\n");
         fp = fopen(domainFilterPath, "r");
@@ -375,6 +377,8 @@ int main(int argc, char **argv)
             gQueue.pop();
             delete url_filter;
         }
+        gettimeofday(&t2, 0);
+        SP_DEBUG("main=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
     }
     return 0;
 }
