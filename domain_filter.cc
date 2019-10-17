@@ -20,6 +20,8 @@ DomainFilter::DomainFilter()
 
     memset(list_port_, 0, 2 * sizeof(DomainPortBuf *));
     memset(list_port_count_, 0, 2 * sizeof(int));
+
+    memset(list_c, 0, 2 * sizeof(int) * DOMAIN_CHAR_COUNT);
 }
 
 DomainFilter::~DomainFilter()
@@ -160,9 +162,17 @@ void DomainFilter::load_(char *p, uint64_t size)
         }
         else
         {
+
             *(uint16_t *)(s - 2) = (uint16_t)(len - 1);
-            this->list_[hit][t][count[hit][t]] = s;
-            ++count[hit][t];
+            if (len == 1)
+            {
+                ++list_c[hit][t];
+            }
+            else
+            {
+                this->list_[hit][t][count[hit][t]] = s;
+                ++count[hit][t];
+            }
 #ifdef DEBUG
             printf("DomainFilter::load_:hit=%d,n=%d,t=%d,%s\n", hit, len - 1, t, s);
 #endif

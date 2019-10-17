@@ -31,6 +31,7 @@ public:
 	int *list_range_[2][DOMAIN_CHAR_COUNT];
 	DomainPortBuf *list_port_[2];
 	int list_port_count_[2];
+	int list_c[2][DOMAIN_CHAR_COUNT];
 };
 
 class DomainFilterMerge : public DomainFilter

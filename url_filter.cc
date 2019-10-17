@@ -548,6 +548,23 @@ int filter_domainport_1(const DomainPortBuf &in,
         if (n == in.n)
             return res.ret;
     }
+    if (res.ret > -1)
+    {
+        if (filter->list_c[1][t] > 0)
+        {
+            res.n = 1;
+            res.ret = 1;
+            res.port = 0;
+            return res.ret;
+        }
+        else if (filter->list_c[0][t] > 0)
+        {
+            res.n = 1;
+            res.ret = 0;
+            res.port = 0;
+            return res.ret;
+        }
+    }
 
     return res.ret;
 }
