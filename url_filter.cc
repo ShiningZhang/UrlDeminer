@@ -425,6 +425,25 @@ int filter_domainport_(const DomainPortBuf &in,
     return -1;
 }
 
+struct stDP_Port_CMP
+{
+    uint16_t n;
+    char c;
+};
+
+inline bool cmp_dp_len(const char *pa, const uint16_t na, const char *pb, const uint16_t nb)
+{
+    return (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.')));
+}
+
+bool cmp_dp1_loop(const stDP_Port_CMP &e1, const char *e2)
+{
+    uint16_t nb = *(uint16_t *)(e2 - 2);
+    if (e1.n > nb)
+        return false;
+    return e1.c < e2[nb - e1.n];
+}
+
 int filter_domainport_impl(const DomainPortBuf &in,
                            char **start,
                            const int size,
@@ -441,34 +460,82 @@ int filter_domainport_impl(const DomainPortBuf &in,
     char *pa = in.start;
     uint16_t na = in.n;
     int count = range[iter - start];
-    while (count > 0)
-    {
-        const char *pb = *iter;
-        uint16_t nb = *(uint16_t *)(pb - 2);
-        int ret = cmpbuf_dp(pa, na, pb, nb);
+    //cmp the last one
+    const char *pb = *iter;
+    uint16_t nb = *(uint16_t *)(pb - 2);
+    int ret = cmpbuf_dp(pa, na, pb, nb);
 
-        if (ret == 0 && (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.'))))
+    if (ret == 0 && (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.'))))
+    {
+        return (int)nb;
+    }
+    else
+    {
+        --iter;
+        --count;
+    }
+    if (count < 3)
+    {
+        while (count > 0)
         {
-            return nb;
+            pb = *iter;
+            nb = *(uint16_t *)(pb - 2);
+            ret = cmpbuf_dp(pa, na, pb, nb);
+
+            if (ret == 0 && (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.'))))
+            {
+                return (int)nb;
+            }
+            else
+            {
+                --iter;
+                --count;
+            }
         }
-        else
+    }
+    else
+    {
+        //cmp the first one
+        char **p = iter + 1 - count;
+        pb = p[0];
+        nb = *(uint16_t *)(pb - 2);
+        if (na > nb)
         {
-            --iter;
-            --count;
+            ret = cmpbuf_dp(pa, na, pb, nb);
+            if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
+            {
+                int final = (int)nb;
+                uint16_t count = nb + 1;
+                p += 1;
+                stDP_Port_CMP s1 = {count, pa[na - count]};
+                while (count <= na)
+                {
+                    char **p1 = upper_bound(p, iter + 1, s1, cmp_dp1_loop);
+                    if (p1 > iter)
+                    {
+                        break;
+                    }
+                    pb = *p1;
+                    nb = *(uint16_t *)(pb - 2);
+                    ret = cmpbuf_dp(pa, na - count, pb, nb - count);
+                    if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
+                    {
+                        final = (int)nb;
+                    }
+                    if (p1 == iter)
+                    {
+                        break;
+                    }
+                    ++count;
+                    p = p1 + 1;
+                    ++s1.n;
+                    s1.c = pa[na - count];
+                }
+                return final;
+            }
         }
     }
     return -1;
-}
-
-struct stDP_Port_CMP
-{
-    uint16_t n;
-    char c;
-};
-
-inline bool cmp_dp_len(const char *pa, const uint16_t na, const char *pb, const uint16_t nb)
-{
-    return (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.')));
 }
 
 bool cmp_dp_port_loop(const stDP_Port_CMP &e1, const DomainPortBuf &e2)
@@ -495,13 +562,26 @@ int filter_port_impl(DomainPortBuf in,
     char *pa = in.start;
     uint16_t na = in.n;
     int count = range[iter - start];
+    const char *pb = iter->start;
+    uint16_t nb = iter->n;
+    int ret = cmpbuf_dp(pa, na, pb, nb);
+
+    if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
+    {
+        return (int)nb;
+    }
+    else
+    {
+        --iter;
+        --count;
+    }
     if (count < 3)
     {
         while (count > 0)
         {
-            const char *pb = iter->start;
-            uint16_t nb = iter->n;
-            int ret = cmpbuf_dp(pa, na, pb, nb);
+            pb = iter->start;
+            nb = iter->n;
+            ret = cmpbuf_dp(pa, na, pb, nb);
 
             if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
             {
@@ -517,11 +597,11 @@ int filter_port_impl(DomainPortBuf in,
     else
     {
         DomainPortBuf *p = iter + 1 - count;
-        const char *pb = p->start;
-        uint16_t nb = p->n;
+        pb = p->start;
+        nb = p->n;
         if (na > nb)
         {
-            int ret = cmpbuf_dp(pa, na, pb, nb);
+            ret = cmpbuf_dp(pa, na, pb, nb);
             if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
             {
                 int final = (int)nb;
@@ -538,9 +618,9 @@ int filter_port_impl(DomainPortBuf in,
                     pb = p1->start;
                     nb = p1->n;
                     ret = cmpbuf_dp(pa, na - count, pb, nb - count);
-                    if (ret == 0 && cmp_dp_len(pa, na, p1->start, p1->n))
+                    if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
                     {
-                        final = p1->n;
+                        final = (int)nb;
                     }
                     if (p1 == iter)
                     {
@@ -548,6 +628,8 @@ int filter_port_impl(DomainPortBuf in,
                     }
                     ++count;
                     p = p1 + 1;
+                    ++s1.n;
+                    s1.c = pa[na - count];
                 }
                 return final;
             }
