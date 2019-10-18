@@ -852,6 +852,36 @@ bool cmp_pfres(const stPFRES &e1, const stPFRES &e2)
     return false;
 }
 
+struct stPF_CMP
+{
+    uint16_t die_8;
+    uint16_t l8;
+    uint16_t n;
+    char c;
+};
+inline int com_locat(const stPF_CMP &s1, uint16_t nb)
+{
+    int ret = 0;
+    if (nb >= s1.die_8)
+    {
+        ret = s1.die_8 - s1.l8;
+    }
+    else
+    {
+        ret = s1.die_8 - 8 + s1.l8 - 1;
+    }
+    return ret;
+}
+
+bool cmp_pf_loop(const stPF_CMP &e1, const char *e2)
+{
+    uint16_t nb = *(uint16_t *)(e2);
+    e2 += 3;
+    if (e1.n > nb)
+        return false;
+    return e1.c < e2[com_locat(e1, nb)];
+}
+
 int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, stPFRES &output)
 {
     // vector<char *>::iterator start, end;
@@ -916,18 +946,87 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
         --res;
         if (res >= start)
         {
-            int count = filter->list_range_[1][1][https][idx1][res - start];
-            while (count > 0)
+            if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
             {
-                if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
-                {
-                    output.len = (int)*((uint16_t *)(*res));
-                    output.type = 1;
-                    output.hit = 1;
-                    break;
-                }
+                output.len = (int)*((uint16_t *)(*res));
+                output.type = 1;
+                output.hit = 1;
+            }
+            else
+            {
                 --res;
-                --count;
+                if (res >= start)
+                {
+                    int count = filter->list_range_[1][1][https][idx1][res - start];
+                    if (count < 3)
+                    {
+                        while (count > 0)
+                        {
+                            if (len_eq(in, *res) > 0 && cmp_pf_eq(in, *res) == 0)
+                            {
+                                output.len = (int)*((uint16_t *)(*res));
+                                output.type = 1;
+                                output.hit = 1;
+                                break;
+                            }
+                            --res;
+                            --count;
+                        }
+                    }
+                    else
+                    {
+                        char **p = res + 1 - count;
+                        const char *pa = in;
+                        uint16_t na = *(uint16_t *)(pa);
+                        const char *pb = *p;
+                        uint16_t nb = *(uint16_t *)(pb);
+                        pa += 3;
+                        if (na > nb)
+                        {
+                            int ret = cmpbuf_pf(pa, na, pb + 3, nb);
+                            if (ret == 0)
+                            {
+                                int final = (int)nb;
+                                uint16_t count = nb + 1;
+                                p += 1;
+                                stPF_CMP s1;
+                                s1.n = count;
+                                s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
+                                s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
+                                s1.c = pa[com_locat(s1, na)];
+                                while (count < na)
+                                {
+                                    char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop);
+                                    if (p1 > res)
+                                    {
+                                        break;
+                                    }
+                                    pb = *p1;
+                                    nb = *(uint16_t *)(pb);
+                                    int offset = ((int)(count / 8)) * 8;
+                                    ret = cmpbuf_pf(pa, na - offset, pb, nb - offset);
+                                    if (ret == 0)
+                                    {
+                                        final = (int)nb;
+                                    }
+                                    if (p1 == res)
+                                    {
+                                        break;
+                                    }
+                                    ++count;
+                                    p = p1 + 1;
+                                    ++s1.n;
+                                    s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
+                                    s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
+                                    s1.c = pa[com_locat(s1, na)];
+                                }
+                                output.len = final;
+                                output.type = 1;
+                                output.hit = 1;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
