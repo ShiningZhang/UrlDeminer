@@ -983,8 +983,8 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                     else
                     {
                         char **p = res + 1 - count;
-                        const char *pb = *p;
-                        uint16_t nb = *(uint16_t *)(pb);
+                        pb = *p;
+                        nb = *(uint16_t *)(pb);
                         if (na > nb)
                         {
                             int ret = cmpbuf_pf(pa, na, pb + 3, nb);
@@ -1088,8 +1088,8 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                     else
                     {
                         char **p = res + 1 - count;
-                        const char *pb = *p;
-                        uint16_t nb = *(uint16_t *)(pb);
+                        pb = *p;
+                        nb = *(uint16_t *)(pb);
                         if (na > nb)
                         {
                             int ret = cmpbuf_pf(pa, na, pb + 3, nb);
@@ -1190,7 +1190,6 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                             nb = *(uint16_t *)(pb);
                             if (na > nb && cmpbuf_pf(pa, na, pb + 3, nb) == 0)
                             {
-                                output.len = nb;
                                 if (nb > output.len)
                                 {
                                     output.len = nb;
@@ -1206,8 +1205,8 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                     else
                     {
                         char **p = res + 1 - count;
-                        const char *pb = *p;
-                        uint16_t nb = *(uint16_t *)(pb);
+                        pb = *p;
+                        nb = *(uint16_t *)(pb);
                         if (na > nb)
                         {
                             int ret = cmpbuf_pf(pa, na, pb + 3, nb);
@@ -1284,6 +1283,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
             }
         }
         --res;
+
         if (res >= start)
         {
             const char *pb = *res;
@@ -1311,7 +1311,6 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                             nb = *(uint16_t *)(pb);
                             if (na > nb && cmpbuf_pf(pa, na, pb + 3, nb) == 0)
                             {
-                                output.len = nb;
                                 if (nb > output.len)
                                 {
                                     output.len = nb;
@@ -1327,8 +1326,8 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                     else
                     {
                         char **p = res + 1 - count;
-                        const char *pb = *p;
-                        uint16_t nb = *(uint16_t *)(pb);
+                        pb = *p;
+                        nb = *(uint16_t *)(pb);
                         if (na > nb)
                         {
                             int ret = cmpbuf_pf(pa, na, pb + 3, nb);
