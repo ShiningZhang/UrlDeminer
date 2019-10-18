@@ -50,17 +50,17 @@ void DomainLoad_Module::svc()
         if (data->recv_split_ == data->size_split_buf && data->is_read_end_)
         {
             data->reset_para();
-            data->size_split_buf = (DOMAIN_CHAR_COUNT + 1) * 2;
+            data->size_split_buf = 8;
             filter = new DomainFilterMerge();
-            for (int i = 0; i < DOMAIN_CHAR_COUNT + 1; ++i)
+            for (int i = 0; i < 8; ++i)
             {
-                for (int j = 0; j < 2; ++j)
+                // for (int j = 0; j < 2; ++j)
                 {
                     SP_NEW(c_data, CRequest(data));
                     c_data->domain_filter_ = filter;
                     c_data->idx_ = i;
-                    c_data->idx_list_[0] = j;
-                    c_data->idx_list_[1] = i;
+                    // c_data->idx_list_[0] = j;
+                    // c_data->idx_list_[1] = i;
                     SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
                     put_next(msg);
                 }

@@ -17,6 +17,8 @@ DomainMerge_Module::~DomainMerge_Module()
 {
 }
 
+static int gidx[2] = {0};
+
 int DomainMerge_Module::open()
 {
     activate(threads_num_);
@@ -35,11 +37,37 @@ void DomainMerge_Module::svc()
         data = c_data->request_;
         SP_DES(msg);
         int idx = c_data->idx_;
-
         DomainFilter *filter = c_data->domain_filter_;
-        ((DomainFilterMerge *)filter)->merge(data->domain_filter_list_, c_data->idx_, c_data->idx_list_[0]);
-
         SP_DES(c_data);
+        int idx1 = 0;
+        int idx2 = 0;
+        {
+            unique_lock<mutex> lock(lock_);
+            idx1 = gidx[0];
+            idx2 = gidx[1];
+            ++gidx[1];
+            if (gidx[1] == DOMAIN_CHAR_COUNT + 1)
+            {
+                ++gidx[0];
+                gidx[1] = 0;
+            }
+        }
+        while (idx1 < 2)
+        {
+            SP_DEBUG("[%d,%d]\n", idx1, idx2);
+            ((DomainFilterMerge *)filter)->merge(data->domain_filter_list_, idx1, idx2);
+            {
+                unique_lock<mutex> lock(lock_);
+                idx1 = gidx[0];
+                idx2 = gidx[1];
+                ++gidx[1];
+                if (gidx[1] == DOMAIN_CHAR_COUNT + 1)
+                {
+                    ++gidx[0];
+                    gidx[1] = 0;
+                }
+            }
+        }
 
         lock_.lock();
         data->recv_split_++;

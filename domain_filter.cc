@@ -454,7 +454,7 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int type
     return count;
 }
 
-int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int type, int i)
+int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int i, int type)
 {
     if (type >= DOMAIN_CHAR_COUNT)
     {

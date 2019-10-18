@@ -40,7 +40,7 @@ public:
 	DomainFilterMerge();
 	virtual ~DomainFilterMerge();
 	int merge(vector<DomainFilter *> domain_filter_list, int type);
-	int merge(vector<DomainFilter *> domain_filter_list, int type, int i);
+	int merge(vector<DomainFilter *> domain_filter_list, int i, int type);
 
 	int merge_port(vector<DomainFilter *> list);
 	int merge_port(vector<DomainFilter *> list, int i);
