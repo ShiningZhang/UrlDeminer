@@ -419,15 +419,23 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
     filter->load_(p, size);
     filter->p_ = p;
     filter->buf_size_ = size;
-    /* for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 2; ++j)
         {
-            pdqsort(filter->list_https_[i][j][0], filter->list_https_[i][j][0] + filter->list_count_[i][j][0], compare_prefix);
-            pdqsort(filter->list_https_[i][j][1], filter->list_https_[i][j][1] + filter->list_count_[i][j][1], compare_prefix);
+            for (int k = 0; k < 2; ++k)
+            {
+                for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
+                {
+                    if (filter->list_count_[i][j][k][m] > 0)
+                    {
+                        pdqsort(filter->list_https_[i][j][k][m], filter->list_https_[i][j][k][m] + filter->list_count_[i][j][k][m], compare_prefix);
+                    }
+                }
+            }
         }
     }
-    for (int i = 0; i < 2; ++i)
+    /*for (int i = 0; i < 2; ++i)
     {
         for (int j = 0; j < 2; ++j)
         {
@@ -501,6 +509,7 @@ void PrefixFilter::prepare_range(char **list, int size, int *&range)
     return filter;
 } */
 
+#ifdef VER1
 int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx)
 {
     int size = 0;
@@ -529,6 +538,141 @@ int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx)
                         }
                     }
                     pdqsort(list_https_[i][j][k][idx], list_https_[i][j][k][idx] + list_count_[i][j][k][idx], compare_prefix);
+                    prepare_range(list_https_[i][j][k][idx], list_count_[i][j][k][idx], list_range_[i][j][k][idx]);
+                }
+            }
+        }
+    }
+    return 0;
+}
+#endif
+
+struct HeapItemPf
+{
+    int ed_;
+    int idx_;
+    int start_;
+    char **list_;
+    inline bool operator<(const HeapItemPf &y) const
+    {
+        if (idx_ == 0 || y.idx_ == 0)
+            return idx_ < y.idx_;
+        return compare_prefix(list_[start_], y.list_[y.start_]);
+    }
+};
+
+typedef HeapItemPf *pHeapItemPf;
+
+HeapItemPf MinHIpf = {0, 0, 0, 0};
+
+static inline void LoserAdjust(int *ls, const HeapItemPf *arr, int s, const int n)
+{
+    int t1 = ((s + n) >> 1);
+    s = ls[s + n];
+    while (t1 > 0)
+    {
+        if (arr[ls[t1]] < arr[s])
+        {
+            s ^= ls[t1];
+            ls[t1] ^= s;
+            s ^= ls[t1];
+        }
+        t1 >>= 1;
+    }
+    ls[0] = s;
+}
+
+static inline void LoserBuild(int *ls, const HeapItemPf *arr, const int n)
+{
+    for (int i1 = 0; i1 < n; i1++)
+    {
+        ls[i1] = n;
+        ls[i1 + n] = i1;
+    }
+    for (int i1 = n - 1; i1 >= 0; i1--)
+    {
+        LoserAdjust(ls, arr, i1, n);
+    }
+}
+
+int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx)
+{
+    int size = 0;
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                size = 0;
+                for (uint m = 0; m < list.size(); ++m)
+                {
+                    size += list[m]->list_count_[i][j][k][idx];
+                }
+                if (size > 0)
+                {
+                    list_https_[i][j][k][idx] = (char **)malloc(size * sizeof(char *));
+                    list_count_[i][j][k][idx] = size;
+                    size = 0;
+                    {
+                        size_t part_num = list.size();
+                        int *loser = (int *)malloc((2 * part_num + 1) * sizeof(int));
+                        int sl = 0;
+                        HeapItemPf *heap = (HeapItemPf *)malloc((part_num + 1) * sizeof(HeapItemPf));
+                        memset(heap, 0, (part_num + 1) * sizeof(HeapItemPf));
+                        for (int m = 0; m < part_num; ++m)
+                        {
+                            if (list[m]->list_count_[i][j][k][idx] > 0)
+                            {
+                                // HeapItemDp *pHI = heap + sl++;
+                                heap[sl].ed_ = list[m]->list_count_[i][j][k][idx] - 1;
+                                heap[sl].start_ = 0;
+                                heap[sl].list_ = list[m]->list_https_[i][j][k][idx];
+                                heap[sl].idx_ = part_num;
+                                // SP_DEBUG("k=%d,sl=%d,ed=%d,list=%p\n", k, sl, heap[sl].ed_, heap[sl].list_);
+                                ++sl;
+                            }
+                        }
+                        if (sl > 0)
+                        {
+                            int wlen = 0;
+                            if (sl > 1)
+                            {
+                                heap[sl] = MinHIpf;
+                                LoserBuild(loser, heap, sl);
+                                while (sl > 1)
+                                {
+                                    int win = loser[0];
+                                    pHeapItemPf pHI = heap + win;
+                                    list_https_[i][j][k][idx][size++] = pHI->list_[pHI->start_];
+                                    if (pHI->start_ < pHI->ed_)
+                                    {
+                                        ++pHI->start_;
+                                        LoserAdjust(loser, heap, win, sl);
+                                    }
+                                    else
+                                    {
+                                        if (win < --sl)
+                                        {
+                                            heap[win] = heap[sl];
+                                        }
+                                        if (sl > 1)
+                                        {
+                                            heap[sl] = MinHIpf;
+                                            LoserBuild(loser, heap, sl);
+                                        }
+                                    }
+                                }
+                            }
+                            if (sl == 1)
+                            {
+                                pHeapItemPf pHI = heap + 0;
+                                memcpy(list_https_[i][j][k][idx] + size, pHI->list_ + pHI->start_, (pHI->ed_ - pHI->start_ + 1) * sizeof(char *));
+                            }
+                        }
+                        free(loser);
+                        free(heap);
+                    }
                     prepare_range(list_https_[i][j][k][idx], list_count_[i][j][k][idx], list_range_[i][j][k][idx]);
                 }
             }

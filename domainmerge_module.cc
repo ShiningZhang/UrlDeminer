@@ -17,7 +17,7 @@ DomainMerge_Module::~DomainMerge_Module()
 {
 }
 
-static int gidx[2] = {0};
+static int gidx_dp[2] = {0};
 
 int DomainMerge_Module::open()
 {
@@ -43,28 +43,27 @@ void DomainMerge_Module::svc()
         int idx2 = 0;
         {
             unique_lock<mutex> lock(lock_);
-            idx1 = gidx[0];
-            idx2 = gidx[1];
-            ++gidx[1];
-            if (gidx[1] == DOMAIN_CHAR_COUNT + 1)
+            idx1 = gidx_dp[0];
+            idx2 = gidx_dp[1];
+            ++gidx_dp[1];
+            if (gidx_dp[1] == DOMAIN_CHAR_COUNT + 1)
             {
-                ++gidx[0];
-                gidx[1] = 0;
+                ++gidx_dp[0];
+                gidx_dp[1] = 0;
             }
         }
         while (idx1 < 2)
         {
-            SP_DEBUG("[%d,%d]\n", idx1, idx2);
             ((DomainFilterMerge *)filter)->merge(data->domain_filter_list_, idx1, idx2);
             {
                 unique_lock<mutex> lock(lock_);
-                idx1 = gidx[0];
-                idx2 = gidx[1];
-                ++gidx[1];
-                if (gidx[1] == DOMAIN_CHAR_COUNT + 1)
+                idx1 = gidx_dp[0];
+                idx2 = gidx_dp[1];
+                ++gidx_dp[1];
+                if (gidx_dp[1] == DOMAIN_CHAR_COUNT + 1)
                 {
-                    ++gidx[0];
-                    gidx[1] = 0;
+                    ++gidx_dp[0];
+                    gidx_dp[1] = 0;
                 }
             }
         }
