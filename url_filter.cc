@@ -1008,7 +1008,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     pb = *p1;
                                     nb = *(uint16_t *)(pb);
                                     int offset = ((int)(count / 8)) * 8;
-                                    ret = cmpbuf_pf(pa, na - offset, pb, nb - offset);
+                                    ret = cmpbuf_pf(pa + offset, na - offset, pb + 3 + offset, nb - offset);
                                     if (ret == 0)
                                     {
                                         final = (int)nb;
@@ -1113,7 +1113,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     pb = *p1;
                                     nb = *(uint16_t *)(pb);
                                     int offset = ((int)(count / 8)) * 8;
-                                    ret = cmpbuf_pf(pa, na - offset, pb, nb - offset);
+                                    ret = cmpbuf_pf(pa + offset, na - offset, pb + 3 + offset, nb - offset);
                                     if (ret == 0)
                                     {
                                         final = (int)nb;
@@ -1351,7 +1351,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     pb = *p1;
                                     nb = *(uint16_t *)(pb);
                                     int offset = ((int)(count / 8)) * 8;
-                                    ret = cmpbuf_pf(pa, na - offset, pb, nb - offset);
+                                    ret = cmpbuf_pf(pa + offset, na - offset, pb + 3 + offset, nb - offset);
                                     if (ret == 0)
                                     {
                                         final = (int)nb;
