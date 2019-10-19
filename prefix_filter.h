@@ -45,9 +45,28 @@ public:
     PrefixFilterMerge();
     virtual ~PrefixFilterMerge();
     int merge(std::vector<PrefixFilter *> list, int idx);
+    int merge_large(std::vector<PrefixFilter *> list, int idx);
     void cpy_filter_list(std::vector<PrefixFilter *> &list);
     std::vector<char *> p_list_;
     std::vector<int> buf_size_list_;
+};
+
+class PrefixFilterLargeLoad
+{
+public:
+    PrefixFilterLargeLoad();
+    ~PrefixFilterLargeLoad();
+
+    void load_large_(char *p, uint64_t size);
+    void prepare_buf_large(char *p, uint64_t size);
+    static PrefixFilterLargeLoad *load_large(char *p, uint64_t size);
+
+public:
+    char *p_;
+    uint64_t buf_size_;
+    char **list_https_large_[3][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    int list_count_large_[3][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    int list_cc_[3][2][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
 };
 
 #endif

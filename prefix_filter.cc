@@ -48,6 +48,10 @@ PrefixFilter::~PrefixFilter()
             }
         }
     }
+    for (uint i = 0; i < list_str_.size(); ++i)
+    {
+        free(list_str_[i]);
+    }
 }
 
 inline int find_port(char *s)
@@ -681,6 +685,95 @@ int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx)
     return 0;
 }
 
+/* int PrefixFilterMerge::merge_large(vector<PrefixFilter *> list, int idx)
+{
+    int size = 0;
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                for (int n = 0; n < DOMAIN_CHAR_COUNT; ++n)
+                {
+                    size = 0;
+                    for (uint m = 0; m < list.size(); ++m)
+                    {
+                        size += list[m]->list_count_large_[i][j][k][idx][n];
+                    }
+                    if (size > 0)
+                    {
+                        list_https_large_[i][j][k][idx][n] = (char **)malloc(size * sizeof(char *));
+                        list_count_large_[i][j][k][idx][n] = size;
+                        size = 0;
+                        {
+                            size_t part_num = list.size();
+                            int *loser = (int *)malloc((2 * part_num + 1) * sizeof(int));
+                            int sl = 0;
+                            HeapItemPf *heap = (HeapItemPf *)malloc((part_num + 1) * sizeof(HeapItemPf));
+                            memset(heap, 0, (part_num + 1) * sizeof(HeapItemPf));
+                            for (int m = 0; m < part_num; ++m)
+                            {
+                                if (list[m]->list_count_large_[i][j][k][idx][n] > 0)
+                                {
+                                    // HeapItemDp *pHI = heap + sl++;
+                                    heap[sl].ed_ = list[m]->list_count_large_[i][j][k][idx][n] - 1;
+                                    heap[sl].start_ = 0;
+                                    heap[sl].list_ = list[m]->list_https_large_[i][j][k][idx][n];
+                                    heap[sl].idx_ = part_num;
+                                    // SP_DEBUG("k=%d,sl=%d,ed=%d,list=%p\n", k, sl, heap[sl].ed_, heap[sl].list_);
+                                    ++sl;
+                                }
+                            }
+                            if (sl > 0)
+                            {
+                                int wlen = 0;
+                                if (sl > 1)
+                                {
+                                    heap[sl] = MinHIpf;
+                                    LoserBuild(loser, heap, sl);
+                                    while (sl > 1)
+                                    {
+                                        int win = loser[0];
+                                        pHeapItemPf pHI = heap + win;
+                                        list_https_large_[i][j][k][idx][n][size++] = pHI->list_[pHI->start_];
+                                        if (pHI->start_ < pHI->ed_)
+                                        {
+                                            ++pHI->start_;
+                                            LoserAdjust(loser, heap, win, sl);
+                                        }
+                                        else
+                                        {
+                                            if (win < --sl)
+                                            {
+                                                heap[win] = heap[sl];
+                                            }
+                                            if (sl > 1)
+                                            {
+                                                heap[sl] = MinHIpf;
+                                                LoserBuild(loser, heap, sl);
+                                            }
+                                        }
+                                    }
+                                }
+                                if (sl == 1)
+                                {
+                                    pHeapItemPf pHI = heap + 0;
+                                    memcpy(list_https_large_[i][j][k][idx][n] + size, pHI->list_ + pHI->start_, (pHI->ed_ - pHI->start_ + 1) * sizeof(char *));
+                                }
+                            }
+                            free(loser);
+                            free(heap);
+                        }
+                        // prepare_range(list_https_[i][j][k][idx], list_count_[i][j][k][idx], list_range_[i][j][k][idx]);
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+} */
+
 void PrefixFilterMerge::cpy_filter_list(vector<PrefixFilter *> &list)
 {
     for (uint i = 0; i < list.size(); ++i)
@@ -709,4 +802,151 @@ PrefixFilterMerge::~PrefixFilterMerge()
     }
     p_list_.clear();
     buf_size_list_.clear();
+}
+
+PrefixFilterLargeLoad::PrefixFilterLargeLoad()
+{
+    p_ = NULL;
+    buf_size_ = 0;
+    memset(list_count_large_, 0, 3 * 2 * sizeof(int) * DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT);
+    memset(list_cc_, 0, 3 * 2 * 2 * sizeof(int) * DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT);
+}
+
+PrefixFilterLargeLoad::~PrefixFilterLargeLoad()
+{
+    if (p_ != NULL)
+    {
+        p_ = p_ - BUFHEADSIZE;
+        free(p_);
+        p_ = NULL;
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            // for (int k = 0; k < 2; ++k)
+            {
+                for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
+                {
+                    for (int n = 0; n < DOMAIN_CHAR_COUNT; ++n)
+                    {
+                        if (list_count_large_[i][j][m][n] > 0)
+                        {
+                            list_https_large_[i][j][m][n] = (char **)malloc(list_count_large_[i][j][m][n] * sizeof(char *));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void PrefixFilterLargeLoad::prepare_buf_large(char *p, uint64_t size)
+{
+    char *e = p + size;
+    char *s = p;
+    while (s < e)
+    {
+        char *se = strchr(s, '\n');
+        uint8_t type = se[-3] == '=' ? 2 : se[-3] == '+' ? 1 : 0;
+        bool hit = se[-1] == '-' ? true : false;
+        if (s[0] == '/')
+        {
+            int t = domain_temp[((unsigned char)*(s + 2))];
+            int t1 = domain_temp[((unsigned char)*(s + 3))];
+            ++this->list_count_large_[type][hit][t][t1];
+        }
+        else if (s[7] == '/')
+        {
+            int t = domain_temp[((unsigned char)*(s + 8))];
+            int t1 = domain_temp[((unsigned char)*(s + 9))];
+            ++this->list_count_large_[type][hit][t][t1];
+        }
+        else
+        {
+            int t = domain_temp[((unsigned char)*(s + 7))];
+            int t1 = domain_temp[((unsigned char)*(s + 8))];
+            ++this->list_count_large_[type][hit][t][t1];
+        }
+        s = se + 1;
+    }
+}
+
+PrefixFilterLargeLoad *PrefixFilterLargeLoad::load_large(char *p, uint64_t size)
+{
+    if (size == 0)
+    {
+        if (p != NULL)
+        {
+            p = p - BUFHEADSIZE;
+            free(p);
+        }
+        return NULL;
+    }
+    PrefixFilterLargeLoad *filter = new PrefixFilterLargeLoad();
+    filter->prepare_buf_large(p, size);
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            // for (int k = 0; k < 2; ++k)
+            {
+                for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
+                {
+                    for (int n = 0; n < DOMAIN_CHAR_COUNT; ++n)
+                    {
+                        if (filter->list_count_large_[i][j][m][n] > 0)
+                        {
+                            filter->list_https_large_[i][j][m][n] = (char **)malloc(filter->list_count_large_[i][j][m][n] * sizeof(char *));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    filter->load_large_(p, size);
+    filter->p_ = p;
+    filter->buf_size_ = size;
+    return filter;
+}
+
+void PrefixFilterLargeLoad::load_large_(char *p, uint64_t size)
+{
+    char *e = p + size;
+    char *s = p;
+    int count[3][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT] = {0};
+    while (s < e)
+    {
+        char *se = strchr(s, '\n');
+        int port_type = 0;
+        if (s[0] == '/')
+        {
+            s += 2;
+            port_type = 0; //80 | 443
+        }
+        else if (s[7] == '/')
+        {
+            s += 8;
+            port_type = 2; // 443
+        }
+        else
+        {
+            s += 7;
+            port_type = 1; // 80
+        }
+        s[-1] = port_type;
+        int t = domain_temp[((unsigned char)(*s))];
+        int t1 = domain_temp[((unsigned char)(*(s + 1)))];
+        uint16_t len = se - s - 4 - 2;
+        *(uint16_t *)(s) = len;
+        uint8_t type = se[-3] == '=' ? 2 : se[-3] == '+' ? 1 : 0;
+        bool hit = se[-1] == '-' ? true : false;
+        list_https_large_[type][hit][t][t1][count[type][hit][t][t1]] = s;
+        ++count[type][hit][t][t1];
+#ifdef DEBUG
+        *se = '\0';
+        printf("PrefixFilter::load_:%d,%s\n", len, s);
+#endif
+        s = se + 1;
+    }
 }

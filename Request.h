@@ -83,6 +83,7 @@ public:
     FILE *fp_out_;
     vector<DomainFilter *> domain_filter_list_;
     vector<PrefixFilter *> prefix_filter_list_;
+    vector<PrefixFilterLargeLoad *> prefix_load_list_;
     vector<UrlFilter *> url_filter_list_;
     FilterCounters counter_;
     MidFile *mid_file_;
@@ -95,7 +96,7 @@ class CRequest : public SP_Data_Block
 {
 public:
     CRequest(Request *r)
-        : request_(r), buffer_(NULL), size_(0), url_filter_(NULL), domain_filter_(NULL){};
+        : request_(r), buffer_(NULL), size_(0), url_filter_(NULL), domain_filter_(NULL), obj_(NULL){};
     virtual ~CRequest(){};
 
     std::mutex lock_;
@@ -107,6 +108,7 @@ public:
     int idx_;
     UrlFilter *url_filter_;
     DomainFilter *domain_filter_;
+    void *obj_;
     int idx_list_[3];
 };
 

@@ -6,8 +6,24 @@ queue<UrlFilter *> gQueueCache;
 queue<UrlFilter *> gQueue;
 mutex gMutex;
 condition_variable gCV;
+bool gStart;
+queue<UrlPFFilter *> gQueueFilter;
+
+queue<UrlPFFilter *> gQUrlPfTask;
+mutex gMutexUrlPfTask;
+condition_variable gCVUrlPfTask;
+
+queue<UrlPFFilter *> gQWriteUrlTask;
+mutex gMutexWriteUrlTask;
+condition_variable gCVWriteUrlTask;
+
+mutex gMCount;
+Request *gRequest;
+
+bool gEnd;
 
 int domain_temp[256];
+int domain_temp2[256];
 
 FilterCounters::FilterCounters()
 {

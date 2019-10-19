@@ -27,11 +27,13 @@ using namespace std;
 
 #define INITURLCOUNT 6000000
 
-#define DOMAIN_CHAR_COUNT 39 //26 + 10 + 3
+#define DOMAIN_CHAR_COUNT 41 //- . / 0-9 : a-z _
+// #define DOMAIN_CHAR_COUNT 38 //26 + 10 + 2
+// #define DOMAIN_CHAR_COUNT2 40 //26 + 10 + 2
 
 #define MAX_MEM_SIZE 12000000000
 
-#define MAX_USE_MEM_SIZE 10000000000
+#define MAX_USE_MEM_SIZE 9000000000
 
 #ifdef DEBUG
 #define LOG(format_string, ...)                                                                         \
@@ -47,6 +49,8 @@ using namespace std;
 class DomainFilter;
 class PrefixFilter;
 class UrlFilter;
+class UrlPFFilter;
+class Request;
 
 struct GlobalST
 {
@@ -85,13 +89,44 @@ struct FileElement
     int count_[DOMAIN_CHAR_COUNT];
 };
 
+struct FileElementLarge : public FileElement
+{
+    int count1_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    size_t size1_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+};
+
+struct FileElementPrefix
+{
+    FILE *fp_;
+    size_t wt_size_;
+    size_t rd_size_;
+    size_t size1_[DOMAIN_CHAR_COUNT];
+    size_t size2_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    int idx_;
+    int count_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT][3][2];
+};
+
 extern uint64_t temp[9];
 extern int domain_temp[256];
+extern int domain_temp2[256];
 
 extern queue<UrlFilter *> gQueue;
 extern queue<UrlFilter *> gQueueCache;
 extern mutex gMutex;
 extern condition_variable gCV;
+extern bool gStart;
+extern queue<UrlPFFilter *> gQueueFilter;
+extern queue<UrlPFFilter *> gQUrlPfTask;
+extern mutex gMutexUrlPfTask;
+extern condition_variable gCVUrlPfTask;
+extern queue<UrlPFFilter *> gQWriteUrlTask;
+extern mutex gMutexWriteUrlTask;
+extern condition_variable gCVWriteUrlTask;
+
+extern Request *gRequest;
+extern mutex gMCount;
+
+extern bool gEnd;
 
 size_t readcontent_unlocked(FILE *handle, char *p, uint64_t isize, int *end);
 uint64_t sizeoffile(FILE *handle);

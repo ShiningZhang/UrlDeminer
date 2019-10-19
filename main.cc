@@ -39,6 +39,17 @@
 #include "domainmerge_module.h"
 #include "prefixmerge_module.h"
 
+#include "urldp1_module.h"
+#include "midlarge_module.h"
+
+#include "prefixloadlarge_module.h"
+#include "prefixmergelarge_module.h"
+#include "prefixwrite_module.h"
+
+#include "readurllarge_module.h"
+#include "urlpflarge_module.h"
+#include "writeurllarge_module.h"
+
 using namespace std;
 
 static SP_Stream *s_instance_stream = NULL;
@@ -48,25 +59,60 @@ static void init_temp()
 {
     for (int i = 0; i < 256; ++i)
     {
-        if (i >= 'a' && i <= 'z') //0-25
+        if (i >= 'a' && i <= 'z') //11-36
         {
-            domain_temp[i] = i - 'a';
+            domain_temp[i] = i - 'a' + 11;
         }
-        else if (i >= '0' && i <= '9') //26-35
+        else if (i >= '0' && i <= '9') //1-10
         {
-            domain_temp[i] = i - '0' + 26;
+            domain_temp[i] = i - '0' + 1;
         }
-        else if (i == '_') //36
+        else if (i == '_') //37
         {
-            domain_temp[i] = 26 + 10;
+            domain_temp[i] = 37;
         }
-        else if (i == '-') //37
+        else if (i == '-') //0
         {
-            domain_temp[i] = 26 + 10 + 1;
+            domain_temp[i] = 0;
         }
-        else //38
+        else
         {
             domain_temp[i] = 38;
+        }
+    }
+}
+
+static void init_temp2()
+{
+    for (int i = 0; i < 256; ++i)
+    {
+        if (i >= 'a' && i <= 'z') //14-39
+        {
+            domain_temp[i] = i - 'a' + 14;
+        }
+        else if (i >= '0' && i <= '9') //3-12
+        {
+            domain_temp[i] = i - '0' + 3;
+        }
+        else if (i == '_') //40
+        {
+            domain_temp[i] = 40;
+        }
+        else if (i == '-') //0
+        {
+            domain_temp[i] = 0;
+        }
+        else if (i == '.')
+        {
+            domain_temp[i] = 1;
+        }
+        else if (i == '/')
+        {
+            domain_temp[i] = 2;
+        }
+        else if (i == ':')
+        {
+            domain_temp[i] = 13;
         }
     }
 }
@@ -83,7 +129,9 @@ static void dumpCounters(FILE *out, const FilterCounters *cc)
 
 int main(int argc, char **argv)
 {
-    init_temp();
+    // init_temp();
+    init_temp2();
+    gEnd = false;
 
     FilterCounters counters;
     const char *domainFilterPath = argv[1];
@@ -96,19 +144,23 @@ int main(int argc, char **argv)
     uint64_t urlid_size = file_size(urlidPath);
 
     Request *data = new Request();
+    gRequest = data;
     SP_Message_Block_Base *msg = NULL;
 
     uint64_t size = domainFilter_size;
     FILE *fp;
 
+    int case_type = 0;
+
     // if (size < SMALLSIZE)
-    if (false)
+    if (case_type == 0)
     {
         fp = fopen(domainFilterPath, "r");
         // uint64_t size = sizeoffile(fp);
         SP_DEBUG("fp=%s,size=%lld\n", domainFilterPath, size);
         data->fp_in_ = fp;
         data->length_ = size;
+        gStart = false;
 
         SP_NEW_RETURN(s_instance_stream, SP_Stream, -1);
         SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
@@ -195,7 +247,7 @@ int main(int argc, char **argv)
         delete s_instance_stream;
         s_instance_stream = NULL;
     }
-    else
+    else if (case_type == 1)
     {
         timeval t2, start;
         gettimeofday(&start, 0);
@@ -377,6 +429,190 @@ int main(int argc, char **argv)
             gQueue.pop();
             delete url_filter;
         }
+        gettimeofday(&t2, 0);
+        SP_DEBUG("main=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
+    }
+    else //2
+    {
+        timeval t2, start;
+        gettimeofday(&start, 0);
+        //domain file read
+        SP_DEBUG("read doamin begin\n");
+        fp = fopen(domainFilterPath, "r");
+        // uint64_t size = sizeoffile(fp);
+        SP_DEBUG("fp=%p,size=%lld\n", fp, size);
+        data->fp_in_ = fp;
+        data->length_ = size;
+
+        SP_NEW_RETURN(s_instance_stream, SP_Stream, -1);
+        SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
+        SP_NEW_RETURN(modules[1], DomainLoad_Module(8), -1);
+        SP_NEW_RETURN(modules[2], DomainMerge_Module(8), -1);
+
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->push_module(modules[i]);
+        }
+        SP_NEW_RETURN(msg, SP_Message_Block_Base((SP_Data_Block *)data), -1);
+        s_instance_stream->put(msg);
+        s_instance_stream->get(msg);
+        fclose(fp);
+        fp = NULL;
+        data->fp_in_ = NULL;
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->pop();
+        }
+        SP_DEBUG("read doamin end\n");
+
+        //url file read and domain filter
+        SP_DEBUG("init urlfilter begin\n");
+        uint64_t split_mem = 0;
+        uint64_t max_file_size = domainFilter_size;
+        if (max_file_size + urlid_size < MAX_USE_MEM_SIZE)
+        {
+            // split_mem = ceil(urlid_size / 16) + 64;
+            split_mem = ceil(urlid_size / 8) + 64;
+        }
+        else
+        {
+            split_mem = ceil((MAX_USE_MEM_SIZE - max_file_size) / 8 + SMALLFILESIZE);
+        }
+        //prepare urlfilter
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                UrlFilter *filter = new UrlFilterLarge();
+                filter->buf_size_ = split_mem;
+                filter->p_ = (char *)malloc(filter->buf_size_ + BUFHEADSIZE);
+                filter->p_ = filter->p_ + BUFHEADSIZE;
+                // filter->max_list_domainport_count_ = INITURLCOUNT;
+                // filter->list_domainport_ = (DomainPortBuf *)malloc(filter->max_list_domainport_count_ * sizeof(DomainPortBuf));
+                // filter->max_list_count_ = INITURLCOUNT;
+                // filter->list_ = (char **)malloc(filter->max_list_count_ * sizeof(char *));
+                gQueue.push(filter);
+            }
+        }
+        SP_DEBUG("init urlfilter end\n");
+
+        SP_DEBUG("read urlfilter begin\n");
+        SP_NEW_RETURN(modules[0], ReadUrl1_Module(1), -1);
+        SP_NEW_RETURN(modules[1], UrlDP1_Module(8), -1);
+        SP_NEW_RETURN(modules[2], MidLarge_Module(1), -1);
+
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->push_module(modules[i]);
+        }
+        size = urlid_size;
+
+        fp = fopen(urlidPath, "r");
+        data->fp_in_ = fp;
+        data->length_ = size;
+        data->fp_out_ = stdout;
+        data->reset_para();
+        data->mid_file_ = new MidFile();
+        data->mid_file_->init();
+        data->split_size_ = split_mem;
+        s_instance_stream->put(msg);
+        s_instance_stream->get(msg);
+        fclose(fp);
+        delete (DomainFilterMerge *)(data->domain_filter_);
+        data->domain_filter_ = NULL;
+        int count = (int)gQueue.size();
+        UrlFilterLarge *f = NULL;
+        while (count > 0)
+        {
+            f = (UrlFilterLarge *)gQueue.front();
+            gQueue.pop();
+            // f->clear_domain_list();
+            delete f;
+            // gQueue.push(f);
+            // count--;
+            SP_DEBUG("gQueue->clear_domain_list\n");
+        }
+
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->pop();
+        }
+        SP_DEBUG("read urlfilter end\n");
+
+        //prefix filter load
+        SP_DEBUG("read prefix begin\n");
+        SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
+        SP_NEW_RETURN(modules[1], PrefixLoadLarge_Module(8), -1);
+        SP_NEW_RETURN(modules[2], PrefixWrite_Module(1), -1);
+
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->push_module(modules[i]);
+        }
+
+        fp = fopen(urlPrefixFilterPath, "r");
+        // size = file_size(urlPrefixFilterPath);
+        size = urlPrefixFilter_size;
+        SP_DEBUG("fp=%p,size=%lld\n", fp, size);
+        data->fp_in_ = fp;
+        data->length_ = size;
+        s_instance_stream->put(msg);
+        s_instance_stream->get(msg);
+        fclose(fp);
+        fp = NULL;
+        data->fp_in_ = NULL;
+        data->mid_file_->uninit();
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->pop();
+        }
+        SP_DEBUG("read prefix end\n");
+
+        //tmp url read and prefix filter
+        SP_DEBUG(" prefix filter begin\n");
+        SP_NEW_RETURN(modules[0], ReadUrlLarge_Module(1), -1);
+        SP_NEW_RETURN(modules[1], UrlPFLarge_Module(8), -1);
+        SP_NEW_RETURN(modules[2], WriteUrlLarge_Module(1), -1);
+
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->push_module(modules[i]);
+        }
+        UrlPFFilter *url_pf_filter;
+        for (int i = 0; i < 8; ++i)
+        {
+            url_pf_filter = new UrlPFFilter();
+            gQueueFilter.push(url_pf_filter);
+        }
+        data->fp_out_ = stdout;
+        data->reset_para();
+        s_instance_stream->put(msg);
+        s_instance_stream->get(msg);
+        while (!gQueueFilter.empty())
+        {
+            url_pf_filter = gQueueFilter.front();
+            gQueueFilter.pop();
+            data->counter_.pass += url_pf_filter->counters_.pass;
+            data->counter_.hit += url_pf_filter->counters_.hit;
+            data->counter_.miss += url_pf_filter->counters_.miss;
+            data->counter_.passchecksum ^= url_pf_filter->counters_.passchecksum;
+            data->counter_.hitchecksum ^= url_pf_filter->counters_.hitchecksum;
+            delete url_pf_filter;
+        }
+        dumpCounters(stdout, &data->counter_);
+        gEnd = true;
+        gCVUrlPfTask.notify_all();
+        gCVWriteUrlTask.notify_all();
+        for (int i = 2; i >= 0; --i)
+        {
+            s_instance_stream->pop();
+        }
+        SP_DEBUG(" prefix filter end\n");
+        delete data;
+        SP_DES(msg);
+        s_instance_stream->close();
+        delete s_instance_stream;
+        s_instance_stream = NULL;
+        SP_DEBUG("gQueueCache:%zu,gQueue:%zu\n", gQueueCache.size(), gQueue.size());
         gettimeofday(&t2, 0);
         SP_DEBUG("main=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
     }

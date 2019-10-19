@@ -388,7 +388,7 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int type
                     int sl = 0;
                     HeapItemDp *heap = (HeapItemDp *)malloc((part_num + 1) * sizeof(HeapItemDp));
                     memset(heap, 0, (part_num + 1) * sizeof(HeapItemDp));
-                    for (int k = 0; k < part_num; ++k)
+                    for (uint k = 0; k < part_num; ++k)
                     {
                         if (domain_filter_list[k]->list_count_[i][type] > 0)
                         {
@@ -403,7 +403,6 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int type
                     }
                     if (sl > 0)
                     {
-                        int wlen = 0;
                         if (sl > 1)
                         {
                             heap[sl] = MinHI;
@@ -482,7 +481,7 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int i, i
                     int sl = 0;
                     HeapItemDp *heap = (HeapItemDp *)malloc((part_num + 1) * sizeof(HeapItemDp));
                     memset(heap, 0, (part_num + 1) * sizeof(HeapItemDp));
-                    for (int k = 0; k < part_num; ++k)
+                    for (uint k = 0; k < part_num; ++k)
                     {
                         if (domain_filter_list[k]->list_count_[i][type] > 0)
                         {
@@ -497,7 +496,6 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int i, i
                     }
                     if (sl > 0)
                     {
-                        int wlen = 0;
                         if (sl > 1)
                         {
                             heap[sl] = MinHI;

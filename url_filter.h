@@ -73,4 +73,53 @@ public:
     int max_list_domainport_count_[DOMAIN_CHAR_COUNT];
 };
 
+class UrlFilterLarge : public UrlFilter
+{
+public:
+    UrlFilterLarge();
+    ~UrlFilterLarge();
+    void filter_domainport_large();
+    void prepare_write();
+
+    char **list_write_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    int list_write_count_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+};
+
+class UrlPFFilter
+{
+public:
+    UrlPFFilter();
+    ~UrlPFFilter();
+    void load_buf(char *buf, uint64_t buf_size, uint64_t pf_size, uint64_t url_size, int count[3][2], int count_url);
+    void release_buf();
+    int load_pf();
+    int load_url();
+    void pre_pf();
+    void prepare_range(char **list, int size, int *&range);
+    void pre_url();
+    void filter();
+    int write_tag(FILE *fp);
+
+public:
+    char *buf_;
+    uint64_t buf_size_;
+    uint64_t pf_size_;
+    uint64_t url_size_;
+    int count_[3][2];
+    int *rd_count_;
+    char **pf_list_[3][2][2];
+    int pf_count_[3][2][2];
+    int *pf_range_[3][2][2];
+    int pf_len_;
+    char *pf_buf_;
+    char *url_buf_;
+    vector<char *> list_str_;
+    char **url_list_;
+    int url_count_;
+    FilterCounters counters_;
+    char *out_;
+    uint64_t out_size_;
+    int out_offset_;
+};
+
 #endif

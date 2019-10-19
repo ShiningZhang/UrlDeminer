@@ -1230,7 +1230,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     pb = *p1;
                                     nb = *(uint16_t *)(pb);
                                     int offset = ((int)(count / 8)) * 8;
-                                    ret = cmpbuf_pf(pa, na - offset, pb, nb - offset);
+                                    ret = cmpbuf_pf(pa + offset, na - offset, pb + 3 + offset, nb - offset);
                                     if (ret == 0)
                                     {
                                         final = (int)nb;
@@ -1486,4 +1486,1020 @@ void UrlFilter::clear_domain_list()
     }
     memset(list_domainport_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     memset(max_list_domainport_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
+}
+
+UrlFilterLarge::UrlFilterLarge()
+{
+    memset(list_write_, 0, DOMAIN_CHAR_COUNT * sizeof(char **) * DOMAIN_CHAR_COUNT);
+    memset(list_write_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int) * DOMAIN_CHAR_COUNT);
+}
+
+UrlFilterLarge::~UrlFilterLarge()
+{
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
+        {
+            if (list_write_[i][j] != NULL)
+            {
+                free(list_write_[i][j]);
+            }
+        }
+    }
+}
+void UrlFilterLarge::filter_domainport_large()
+{
+    stDPRES res, output;
+    int count[DOMAIN_CHAR_COUNT] = {0};
+    DomainFilterMerge *filter = (DomainFilterMerge *)(this->domainfilter_);
+    for (int t = 0; t < DOMAIN_CHAR_COUNT; ++t)
+    {
+        for (int i = 0; i < list_domainport_count_[t]; ++i)
+        {
+            DomainPortBuf &in = list_domainport_[t][i];
+            res = {0, 0, -1};
+            // for (int j = list_domainfilter_.size() - 1; j < list_domainfilter_.size(); ++j)
+            {
+                if (filter_domainport_1(in, filter, t, output) != -1)
+                {
+                    if (output.n > res.n)
+                    {
+                        res = output;
+                    }
+                    else if (output.n == res.n)
+                    {
+                        if (output.port > res.port)
+                            res = output;
+                        else if (output.port == res.port && output.ret > res.ret)
+                            res = output;
+                    }
+                }
+            }
+            if (res.ret == 1) // -
+            {
+                counters_.hit++;
+                uint32_t tag = (uint32_t)strtoul(in.start + (*((uint16_t *)(in.start - 2))) + 1 + 1, NULL, 16);
+                counters_.hitchecksum ^= tag;
+            }
+            else
+            {
+                if (res.ret == -1) //miss
+                {
+                    in.start[-3] |= 0x40;
+                }
+                // arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
+                int t1 = domain_temp[(unsigned char)*in.start];
+                list_[t1][count[t1]++] = (in.start - 2);
+#ifdef DEBUG
+                printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
+#endif
+            }
+        }
+    }
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+        list_count_[i] = count[i];
+}
+
+void UrlFilterLarge::prepare_write()
+{
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        for (int j = 0; j < list_count_[i]; ++j)
+        {
+            int t = domain_temp[list_[i][j][3]];
+            ++list_write_count_[i][t];
+        }
+    }
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
+        {
+            list_write_[i][j] = (char **)malloc(list_write_count_[i][j] * sizeof(char *));
+        }
+    }
+    int count[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT] = {0};
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        for (int j = 0; j < list_count_[i]; ++j)
+        {
+            int t = domain_temp[list_[i][j][3]];
+            list_write_[i][t][count[i][t]++] = list_[i][j];
+        }
+    }
+}
+
+UrlPFFilter::UrlPFFilter()
+{
+    buf_ = NULL;
+    buf_size_ = 0;
+    pf_size_ = 0;
+    url_size_ = 0;
+    memset(count_, 0, 3 * 2 * sizeof(int));
+    rd_count_ = NULL;
+    url_list_ = NULL;
+    url_count_ = 0;
+    memset(pf_range_, 0, 3 * 2 * 2 * sizeof(int *));
+    out_size_ = 0;
+    out_offset_ = 0;
+    out_ = NULL;
+}
+
+UrlPFFilter::~UrlPFFilter()
+{
+    if (buf_ != NULL)
+    {
+        free(buf_);
+        buf_ = NULL;
+    }
+    if (rd_count_ != NULL)
+    {
+        free(rd_count_);
+        rd_count_ = NULL;
+    }
+    if (url_list_ != NULL)
+    {
+        free(url_list_);
+        url_list_ = NULL;
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                if (pf_list_[i][j][k] != NULL)
+                {
+                    free(pf_list_[i][j][k]);
+                    pf_list_[i][j][k] = NULL;
+                }
+                if (pf_range_[i][j][k] != NULL)
+                {
+                    free(pf_range_[i][j][k]);
+                    pf_range_[i][j][k] = NULL;
+                }
+            }
+        }
+    }
+    if (out_ != NULL)
+    {
+        free(out_);
+        out_ = NULL;
+    }
+}
+
+void UrlPFFilter::load_buf(char *buf, uint64_t buf_size, uint64_t pf_size, uint64_t url_size, int count[3][2], int count_url)
+{
+    buf_ = buf;
+    buf_size_ = buf_size;
+    pf_size_ = pf_size;
+    url_size_ = url_size;
+    memcpy(count_, count, 3 * 2 * sizeof(int));
+    pf_buf_ = buf_;
+    url_buf_ = buf_ + pf_size_;
+    url_count_ = count_url;
+    out_size_ = 0;
+    out_offset_ = 0;
+    if (out_ != NULL)
+    {
+        free(out_);
+        out_ = NULL;
+    }
+}
+
+void UrlPFFilter::release_buf()
+{
+    if (buf_ != NULL)
+    {
+        free(buf_);
+        buf_ = NULL;
+    }
+    buf_size_ = 0;
+    pf_size_ = 0;
+    url_size_ = 0;
+    if (rd_count_ != NULL)
+    {
+        free(rd_count_);
+        rd_count_ = NULL;
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                if (pf_list_[i][j][k] != NULL)
+                {
+                    free(pf_list_[i][j][k]);
+                    pf_list_[i][j][k] = NULL;
+                }
+                if (pf_range_[i][j][k] != NULL)
+                {
+                    free(pf_range_[i][j][k]);
+                    pf_range_[i][j][k] = NULL;
+                }
+            }
+        }
+    }
+    if (url_list_ != NULL)
+    {
+        free(url_list_);
+        url_list_ = NULL;
+    }
+}
+
+int UrlPFFilter::load_pf()
+{
+    if (pf_size_ == 0)
+    {
+        return -1;
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                pf_list_[i][j][k] = (char **)malloc(count_[i][j] * sizeof(char *));
+            }
+        }
+    }
+    int idx = 0;
+    int count = 0;
+    int begin = 0;
+    char *s = pf_buf_;
+    char *se = pf_buf_ + pf_size_;
+    s += 1;
+    int count_list[3][2][2];
+    for (int c = 0; c < pf_size_; ++c)
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            for (int j = 0; j < 2; ++j)
+            {
+                count = rd_count_[idx++];
+                if (count == 0)
+                {
+                    continue;
+                }
+                begin = 0;
+                while (begin < count)
+                {
+                    uint16_t na = *(uint16_t *)(s);
+                    uint16_t nb = 0;
+                    int port_type = (int)s[-1];
+                    s += 2;
+                    char *domainend = strchr(s, '/');
+                    char *offset = domainend - 1;
+                    domainend = s > (domainend - 6) ? s : (domainend - 6);
+                    while (offset > domainend)
+                    {
+                        if (*offset != ':')
+                            --offset;
+                        else
+                            break;
+                    }
+                    if (*offset == ':')
+                    {
+                        char *offset_1 = offset + 1;
+                        int port_size = domainend - offset_1;
+                        if (port_type == 1 && port_size == 2 && memcmp(offset_1, "80", 2) == 0)
+                        {
+                            memmove(s + 3, s, offset - s - 1);
+                            s += 3;
+                            nb = na - 3;
+                        }
+                        else if (port_type == 2 && port_size == 3 && memcmp(offset_1, "443", 3) == 0)
+                        {
+                            memmove(s + 4, s, offset - s);
+                            s += 4;
+                            nb = na - 4;
+                        }
+                        else if (port_type == 0)
+                        {
+                            if (port_size == 2 && memcmp(offset_1, "80", 2) == 0)
+                            {
+                                memmove(s + 3, s, offset - s);
+                                s += 3;
+                                port_type = 4;
+                                nb = na - 3;
+                            }
+                            else if (port_size == 3 && memcmp(offset_1, "443", 3) == 0)
+                            {
+                                port_type = 5;
+                            }
+                        }
+                    }
+                    if (nb > 0)
+                    {
+                        na = nb;
+                        *(uint16_t *)(s - 2) = na;
+                    }
+                    if (port_type == 1)
+                    {
+                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                    }
+                    else if (port_type == 2)
+                    {
+                        pf_list_[i][j][1][count_list[i][j][1]++] = s - 2;
+                    }
+                    else if (port_type == 0)
+                    {
+                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                        pf_list_[i][j][1][count_list[i][j][1]++] = s - 2;
+                    }
+                    /* else if (port_type == 4)
+                    {
+                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                        int str_length = na + 3 + 2;
+                        char *str = (char *)malloc(str_length);
+                        int tmp = 0;
+                        *((uint16_t *)(str)) = (uint16_t)(na + 3);
+                        tmp += 2;
+                    } */
+                    arrangesuffix(s, na);
+                    ++begin;
+                    s += na + 3;
+                }
+            }
+        }
+    }
+    memcpy(pf_count_, count_list, 3 * 2 * 2 * sizeof(int));
+    return 0;
+}
+
+int UrlPFFilter::load_url()
+{
+    if (url_size_ == 0)
+    {
+        return -1;
+    }
+    char *s = url_buf_;
+    char *se = url_buf_ + url_size_;
+    url_list_ = (char **)malloc(url_count_ * sizeof(char *));
+    s += 1;
+    int count = 0;
+    while (s < se)
+    {
+        uint16_t na = *(uint16_t *)(s);
+        url_list_[count++] = s;
+        s += na + 3;
+    }
+    return 0;
+}
+
+#include "pdqsort.h"
+
+bool compare_prefix_large(const char *e1, const char *e2)
+{
+    const char *pa = e1;
+    const char *pb = e2;
+    uint16_t na = *((uint16_t *)pa);
+    uint16_t nb = *((uint16_t *)pb);
+    pa += 2;
+    pb += 2;
+    int ret = cmpbuf_pf(pa, na, pb, nb);
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    if (na < nb)
+        return true;
+    else if (na > nb)
+        return false;
+    return e1 < e2;
+}
+
+void UrlPFFilter::pre_pf()
+{
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large);
+                prepare_range(pf_list_[i][j][k], pf_count_[i][j][k], pf_range_[i][j][k]);
+            }
+        }
+    }
+}
+
+inline bool compare_prefix_eq_large(const char *e1, const char *e2)
+{
+    const char *pa = e1;
+    const char *pb = e2;
+    int na = (int)*((uint16_t *)pa);
+    int nb = (int)*((uint16_t *)pb);
+    pa += 2;
+    pb += 2;
+    int ret = cmpbuf_pf(pa, na, pb, nb);
+    return ret;
+}
+
+void UrlPFFilter::prepare_range(char **list, int size, int *&range)
+{
+    if (size == 0)
+        return;
+    range = (int *)malloc(size * sizeof(int));
+    char *pa = list[0];
+    range[0] = 1;
+    for (int i = 1; i < size; ++i)
+    {
+        char *pb = list[i];
+        if (compare_prefix_eq_large(pa, pb) != 0)
+        {
+            pa = pb;
+            range[i] = 1;
+        }
+        else
+        {
+            range[i] = range[i - 1] + 1;
+        }
+    }
+}
+
+void UrlPFFilter::pre_url()
+{
+    out_size_ = url_count_;
+    if (out_size_ > 0)
+        out_ = (char *)malloc(out_size_);
+    out_offset_ = 0;
+}
+
+struct stUrlPfL
+{
+    const char *p_;
+    uint16_t n_;
+};
+
+bool cmp_pf_large(const stUrlPfL &e1, const char *e2)
+{
+    const char *pb = e2;
+    int nb = (int)*((uint16_t *)pb);
+    pb += 2;
+    int ret = cmpbuf_pf(e1.p_, e1.n_, pb, nb);
+#ifdef DEBUG
+    printf("cmp_pf:ret=%d,e1:%s,%d,e2:%s,%d\n", ret, e1.p_ + 2, e1.n_, e2 + 2, nb);
+#endif
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    return e1.n_ <= nb;
+}
+
+bool cmp_pf_loop_large(const stPF_CMP &e1, const char *e2)
+{
+    uint16_t nb = *(uint16_t *)(e2);
+    e2 += 2;
+    if (e1.n > nb)
+        return false;
+    return e1.c < e2[com_locat(e1, nb)];
+}
+
+void UrlPFFilter::filter()
+{
+    stPFRES output, res;
+    for (int i = 0; i < url_count_; ++i)
+    {
+        res = {0, -1, 0};
+        const char *in = url_list_[i];
+        const char *pa = in;
+        uint16_t na = *(uint16_t *)(pa);
+        bool https = (pa[-1] & 0x0f) == 1;
+        pa += 2;
+        do
+        {
+            output = res;
+            const char *pb = NULL;
+            uint16_t nb = 0;
+            char **start;
+            char **end;
+            char **res;
+            stUrlPfL st = {pa, na};
+            if (pf_count_[2][1][https] > 0)
+            {
+                start = pf_list_[2][1][https];
+                end = pf_list_[2][1][https] + pf_count_[2][1][https];
+                res = upper_bound(start, end, st, cmp_pf_large);
+                if (res != end)
+                {
+                    pb = *res;
+                    nb = *(uint16_t *)pb;
+                    if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                    {
+                        output.len = 10000;
+                        output.type = 2;
+                        output.hit = 1;
+                        break;
+                    }
+                }
+            }
+#ifdef DEBUG
+            printf("filter_prefix_:https:[%d,%d]\n", 2, 0);
+#endif
+            if (pf_count_[2][0][https] > 0)
+            {
+                start = pf_list_[2][0][https];
+                end = pf_list_[2][0][https] + pf_count_[2][0][https];
+                res = upper_bound(start, end, st, cmp_pf_large);
+                if (res != end)
+                {
+                    pb = *res;
+                    nb = *(uint16_t *)pb;
+                    if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                    {
+                        output.len = 10000;
+                        output.type = 2;
+                        output.hit = 0;
+                        break;
+                    }
+                }
+            }
+#ifdef DEBUG
+            printf("filter_prefix_:https:[%d,%d]\n", 1, 1);
+#endif
+            if (pf_count_[1][1][https] > 0)
+            {
+                start = pf_list_[1][1][https];
+                end = pf_list_[1][1][https] + pf_count_[1][1][https];
+                res = upper_bound(start, end, st, cmp_pf_large);
+#ifdef DEBUG
+                printf("start=%p,end=%p,res=%p\n", start, end, res);
+#endif
+                --res;
+                if (res >= start)
+                {
+                    pb = *res;
+                    nb = *(uint16_t *)(pb);
+                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                    {
+                        output.len = nb;
+                        output.type = 1;
+                        output.hit = 1;
+                    }
+                    else
+                    {
+                        --res;
+                        if (res >= start)
+                        {
+                            int count = pf_range_[1][1][https][res - start];
+                            if (count < 3)
+                            {
+                                while (count > 0)
+                                {
+                                    pb = *res;
+                                    nb = *(uint16_t *)(pb);
+                                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                                    {
+                                        output.len = nb;
+                                        output.type = 1;
+                                        output.hit = 1;
+                                        break;
+                                    }
+                                    --res;
+                                    --count;
+                                }
+                            }
+                            else
+                            {
+                                char **p = res + 1 - count;
+                                pb = *p;
+                                nb = *(uint16_t *)(pb);
+                                if (na > nb)
+                                {
+                                    int ret = cmpbuf_pf(pa, na, pb + 2, nb);
+                                    if (ret == 0)
+                                    {
+                                        int final = (int)nb;
+                                        uint16_t count = nb + 1;
+                                        p += 1;
+                                        stPF_CMP s1;
+                                        s1.n = count;
+                                        s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
+                                        s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
+                                        s1.c = pa[com_locat(s1, na)];
+                                        while (count < na)
+                                        {
+                                            char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop_large);
+                                            if (p1 > res)
+                                            {
+                                                break;
+                                            }
+                                            pb = *p1;
+                                            nb = *(uint16_t *)(pb);
+                                            int offset = ((int)(count / 8)) * 8;
+                                            ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
+                                            if (ret == 0)
+                                            {
+                                                final = (int)nb;
+                                            }
+                                            if (p1 == res)
+                                            {
+                                                break;
+                                            }
+                                            ++count;
+                                            p = p1 + 1;
+                                            ++s1.n;
+                                            s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
+                                            s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
+                                            s1.c = pa[com_locat(s1, na)];
+                                        }
+                                        output.len = final;
+                                        output.type = 1;
+                                        output.hit = 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+#ifdef DEBUG
+            printf("filter_prefix_:https:[%d,%d]\n", 1, 0);
+#endif
+            if (pf_count_[1][0][https] > 0)
+            {
+                start = pf_list_[1][0][https];
+                end = pf_list_[1][0][https] + pf_count_[1][0][https];
+#ifdef DEBUG
+                printf("start=%p,end=%p,res=%p\n", start, end, res);
+#endif
+                res = upper_bound(start, end, st, cmp_pf_large);
+                --res;
+                if (res >= start)
+                {
+                    pb = *res;
+                    nb = *(uint16_t *)(pb);
+                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                    {
+                        if (nb > output.len)
+                        {
+                            output.len = nb;
+                            output.type = 1;
+                            output.hit = 0;
+                        }
+                    }
+                    else
+                    {
+                        --res;
+                        if (res >= start)
+                        {
+                            int count = pf_range_[1][0][https][res - start];
+                            if (count < 3)
+                            {
+                                while (count > 0)
+                                {
+                                    pb = *res;
+                                    nb = *(uint16_t *)(pb);
+                                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                                    {
+                                        if (nb > output.len)
+                                        {
+                                            output.len = nb;
+                                            output.type = 1;
+                                            output.hit = 0;
+                                        }
+                                        break;
+                                    }
+                                    --res;
+                                    --count;
+                                }
+                            }
+                            else
+                            {
+                                char **p = res + 1 - count;
+                                pb = *p;
+                                nb = *(uint16_t *)(pb);
+                                if (na > nb)
+                                {
+                                    int ret = cmpbuf_pf(pa, na, pb + 2, nb);
+                                    if (ret == 0)
+                                    {
+                                        int final = (int)nb;
+                                        uint16_t count = nb + 1;
+                                        p += 1;
+                                        stPF_CMP s1;
+                                        s1.n = count;
+                                        s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
+                                        s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
+                                        s1.c = pa[com_locat(s1, na)];
+                                        while (count < na)
+                                        {
+                                            char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop_large);
+                                            if (p1 > res)
+                                            {
+                                                break;
+                                            }
+                                            pb = *p1;
+                                            nb = *(uint16_t *)(pb);
+                                            int offset = ((int)(count / 8)) * 8;
+                                            ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
+                                            if (ret == 0)
+                                            {
+                                                final = (int)nb;
+                                            }
+                                            if (p1 == res)
+                                            {
+                                                break;
+                                            }
+                                            ++count;
+                                            p = p1 + 1;
+                                            ++s1.n;
+                                            s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
+                                            s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
+                                            s1.c = pa[com_locat(s1, na)];
+                                        }
+                                        if (final > output.len)
+                                        {
+                                            output.len = final;
+                                            output.type = 1;
+                                            output.hit = 0;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+#ifdef DEBUG
+            printf("filter_prefix_:https:[%d,%d]\n", 0, 1);
+#endif
+            if (pf_count_[0][1][https] > 0)
+            {
+                start = pf_list_[0][1][https];
+                end = pf_list_[0][1][https] + pf_count_[0][1][https];
+                res = upper_bound(start, end, st, cmp_pf_large);
+                if (res != end)
+                {
+                    const char *pb = *res;
+                    uint16_t nb = *(uint16_t *)(pb);
+                    if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                    {
+                        output.len = nb;
+                        output.type = 0;
+                        output.hit = 1;
+                        break;
+                    }
+                }
+                --res;
+                if (res >= start)
+                {
+                    const char *pb = *res;
+                    uint16_t nb = *(uint16_t *)(pb);
+                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                    {
+                        if (nb > output.len)
+                        {
+                            output.len = nb;
+                            output.type = 0;
+                            output.hit = 1;
+                        }
+                    }
+                    else
+                    {
+                        --res;
+                        if (res >= start)
+                        {
+                            int count = pf_range_[0][1][https][res - start];
+                            if (count < 3)
+                            {
+                                while (count > 0)
+                                {
+                                    pb = *res;
+                                    nb = *(uint16_t *)(pb);
+                                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                                    {
+                                        if (nb > output.len)
+                                        {
+                                            output.len = nb;
+                                            output.type = 0;
+                                            output.hit = 1;
+                                        }
+                                        break;
+                                    }
+                                    --res;
+                                    --count;
+                                }
+                            }
+                            else
+                            {
+                                char **p = res + 1 - count;
+                                pb = *p;
+                                nb = *(uint16_t *)(pb);
+                                if (na > nb)
+                                {
+                                    int ret = cmpbuf_pf(pa, na, pb + 2, nb);
+                                    if (ret == 0)
+                                    {
+                                        int final = (int)nb;
+                                        uint16_t count = nb + 1;
+                                        p += 1;
+                                        stPF_CMP s1;
+                                        s1.n = count;
+                                        s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
+                                        s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
+                                        s1.c = pa[com_locat(s1, na)];
+                                        while (count < na)
+                                        {
+                                            char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop_large);
+                                            if (p1 > res)
+                                            {
+                                                break;
+                                            }
+                                            pb = *p1;
+                                            nb = *(uint16_t *)(pb);
+                                            int offset = ((int)(count / 8)) * 8;
+                                            ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
+                                            if (ret == 0)
+                                            {
+                                                final = (int)nb;
+                                            }
+                                            if (p1 == res)
+                                            {
+                                                break;
+                                            }
+                                            ++count;
+                                            p = p1 + 1;
+                                            ++s1.n;
+                                            s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
+                                            s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
+                                            s1.c = pa[com_locat(s1, na)];
+                                        }
+                                        if (final > output.len)
+                                        {
+                                            output.len = final;
+                                            output.type = 0;
+                                            output.hit = 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+#ifdef DEBUG
+            printf("filter_prefix_:https:[%d,%d]\n", 0, 0);
+#endif
+            if (pf_count_[0][0][https] > 0)
+            {
+                start = pf_list_[0][0][https];
+                end = pf_list_[0][0][https] + pf_count_[0][0][https];
+                res = upper_bound(start, end, st, cmp_pf_large);
+#ifdef DEBUG
+                printf("start=%p,end=%p,res=%p\n", start, end, res);
+#endif
+                if (res != end)
+                {
+                    const char *pb = *res;
+                    uint16_t nb = *(uint16_t *)(pb);
+                    if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                    {
+                        output.len = nb;
+                        output.type = 0;
+                        output.hit = 0;
+                        break;
+                    }
+                }
+                --res;
+
+                if (res >= start)
+                {
+                    const char *pb = *res;
+                    uint16_t nb = *(uint16_t *)(pb);
+                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                    {
+                        if (nb > output.len)
+                        {
+                            output.len = nb;
+                            output.type = 0;
+                            output.hit = 0;
+                        }
+                    }
+                    else
+                    {
+                        --res;
+                        if (res >= start)
+                        {
+                            int count = pf_range_[0][0][https][res - start];
+                            if (count < 3)
+                            {
+                                while (count > 0)
+                                {
+                                    pb = *res;
+                                    nb = *(uint16_t *)(pb);
+                                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                                    {
+                                        if (nb > output.len)
+                                        {
+                                            output.len = nb;
+                                            output.type = 0;
+                                            output.hit = 0;
+                                        }
+                                        break;
+                                    }
+                                    --res;
+                                    --count;
+                                }
+                            }
+                            else
+                            {
+                                char **p = res + 1 - count;
+                                pb = *p;
+                                nb = *(uint16_t *)(pb);
+                                if (na > nb)
+                                {
+                                    int ret = cmpbuf_pf(pa, na, pb + 2, nb);
+                                    if (ret == 0)
+                                    {
+                                        int final = (int)nb;
+                                        uint16_t count = nb + 1;
+                                        p += 1;
+                                        stPF_CMP s1;
+                                        s1.n = count;
+                                        s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
+                                        s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
+                                        s1.c = pa[com_locat(s1, na)];
+                                        while (count < na)
+                                        {
+                                            char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop_large);
+                                            if (p1 > res)
+                                            {
+                                                break;
+                                            }
+                                            pb = *p1;
+                                            nb = *(uint16_t *)(pb);
+                                            int offset = ((int)(count / 8)) * 8;
+                                            ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
+                                            if (ret == 0)
+                                            {
+                                                final = (int)nb;
+                                            }
+                                            if (p1 == res)
+                                            {
+                                                break;
+                                            }
+                                            ++count;
+                                            p = p1 + 1;
+                                            ++s1.n;
+                                            s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
+                                            s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
+                                            s1.c = pa[com_locat(s1, na)];
+                                        }
+                                        if (final > output.len)
+                                        {
+                                            output.len = final;
+                                            output.type = 0;
+                                            output.hit = 0;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } while (0);
+        res = output;
+#ifdef DEBUG
+        printf("filter_prefix:https:%d,in:%s,len:%d,type:%d,hit:%d\n", ((in[-1] & 0x0f) == 1), in + 2, res.len, res.type, res.hit);
+#endif
+        const char *tagbuf = in + na + 2 + 1;
+        // printf("tagbuf:%s\n", tagbuf);
+        uint32_t tag = (uint32_t)strtoul(tagbuf, NULL, 16);
+        if (res.hit == 1)
+        {
+            counters_.hit++;
+
+            counters_.hitchecksum ^= tag;
+        }
+        else
+        {
+
+#ifdef DEBUG
+            printf("output->type=%d,in[-1]=%d\n", res.type, in[-1]);
+#endif
+            if (res.type == -1 && int(in[-1]) > 1)
+            {
+                counters_.miss++;
+            }
+            counters_.pass++;
+            counters_.passchecksum ^= tag;
+            memcpy(out_ + out_offset_, tagbuf, 9);
+            out_offset_ += 9;
+        }
+    }
+}
+
+int UrlPFFilter::write_tag(FILE *fp)
+{
+    int ret = 0;
+    if (out_offset_ > 0)
+        ret = fwrite(out_, out_offset_, 1, fp);
+    if (out_ != NULL)
+    {
+        free(out_);
+        out_ = NULL;
+    }
+    out_size_ = 0;
+    out_offset_ = 0;
+    return ret;
 }
