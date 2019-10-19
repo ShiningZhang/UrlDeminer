@@ -29,42 +29,21 @@ void WriteUrlLarge_Module::svc()
     Request *data = gRequest;
     CRequest *c_data = NULL;
     UrlPFFilter *filter = NULL;
-    while (true)
+    for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;
         gettimeofday(&start, 0);
-        {
+        filter = reinterpret_cast<UrlPFFilter *>(msg->data());
 
-            unique_lock<mutex> lock(gMutexWriteUrlTask);
-            if (gEnd)
-            {
-                return;
-            }
-            while (gQWriteUrlTask.empty())
-            {
-                gCVWriteUrlTask.wait(lock);
-                if (gEnd)
-                {
-                    return;
-                }
-            }
-            filter = gQWriteUrlTask.front();
-            gQWriteUrlTask.pop();
-        }
         filter->write_tag(stdout);
         filter->release_buf();
         gMCount.lock();
         ++data->recv_split_;
         gMCount.unlock();
 
-        {
-            unique_lock<mutex> lock1(gMutex);
-            gQueueFilter.push(filter);
-            gCV.notify_one();
-        }
+        put_next(msg);
         if (data->size_split_buf == data->recv_split_)
         {
-            SP_Message_Block_Base *msg;
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));
             put_next(msg);
         }

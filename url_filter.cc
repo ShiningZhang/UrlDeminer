@@ -1550,6 +1550,7 @@ void UrlFilterLarge::filter_domainport_large()
                 // arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
                 int t1 = domain_temp[(unsigned char)*in.start];
                 list_[t1][count[t1]++] = (in.start - 2);
+                arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
 #ifdef DEBUG
                 printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
 #endif
@@ -1574,7 +1575,8 @@ void UrlFilterLarge::prepare_write()
     {
         for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
         {
-            list_write_[i][j] = (char **)malloc(list_write_count_[i][j] * sizeof(char *));
+            if (list_write_count_[i][j] > 0)
+                list_write_[i][j] = (char **)malloc(list_write_count_[i][j] * sizeof(char *));
         }
     }
     int count[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT] = {0};
@@ -1582,7 +1584,7 @@ void UrlFilterLarge::prepare_write()
     {
         for (int j = 0; j < list_count_[i]; ++j)
         {
-            int t = domain_temp[list_[i][j][3]];
+            int t = domain_temp[(unsigned char)list_[i][j][3]];
             list_write_[i][t][count[i][t]++] = list_[i][j];
         }
     }
@@ -1595,7 +1597,7 @@ UrlPFFilter::UrlPFFilter()
     pf_size_ = 0;
     url_size_ = 0;
     memset(count_, 0, 3 * 2 * sizeof(int));
-    rd_count_ = NULL;
+    memset(rd_count_, 0, 16 * 3 * 2 * sizeof(int));
     url_list_ = NULL;
     url_count_ = 0;
     memset(pf_range_, 0, 3 * 2 * 2 * sizeof(int *));
@@ -1610,11 +1612,6 @@ UrlPFFilter::~UrlPFFilter()
     {
         free(buf_);
         buf_ = NULL;
-    }
-    if (rd_count_ != NULL)
-    {
-        free(rd_count_);
-        rd_count_ = NULL;
     }
     if (url_list_ != NULL)
     {
@@ -1676,11 +1673,6 @@ void UrlPFFilter::release_buf()
     buf_size_ = 0;
     pf_size_ = 0;
     url_size_ = 0;
-    if (rd_count_ != NULL)
-    {
-        free(rd_count_);
-        rd_count_ = NULL;
-    }
     for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 2; ++j)
@@ -1719,7 +1711,8 @@ int UrlPFFilter::load_pf()
         {
             for (int k = 0; k < 2; ++k)
             {
-                pf_list_[i][j][k] = (char **)malloc(count_[i][j] * sizeof(char *));
+                if (count_[i][j] > 0)
+                    pf_list_[i][j][k] = (char **)malloc(count_[i][j] * sizeof(char *));
             }
         }
     }
@@ -1727,16 +1720,17 @@ int UrlPFFilter::load_pf()
     int count = 0;
     int begin = 0;
     char *s = pf_buf_;
+    fprintf(stderr, "begin:%s\n", s);
     char *se = pf_buf_ + pf_size_;
     s += 1;
-    int count_list[3][2][2];
-    for (int c = 0; c < pf_size_; ++c)
+    int count_list[3][2][2] = {0};
+    for (int c = 0; c < file_size_; ++c)
     {
         for (int i = 0; i < 3; ++i)
         {
             for (int j = 0; j < 2; ++j)
             {
-                count = rd_count_[idx++];
+                count = rd_count_[c][i][j];
                 if (count == 0)
                 {
                     continue;
@@ -1748,6 +1742,7 @@ int UrlPFFilter::load_pf()
                     uint16_t nb = 0;
                     int port_type = (int)s[-1];
                     s += 2;
+                    fprintf(stderr, "%s\n", s);
                     char *domainend = strchr(s, '/');
                     char *offset = domainend - 1;
                     domainend = s > (domainend - 6) ? s : (domainend - 6);
@@ -1818,7 +1813,7 @@ int UrlPFFilter::load_pf()
                     } */
                     arrangesuffix(s, na);
                     ++begin;
-                    s += na + 3;
+                    s += na + 1;
                 }
             }
         }
@@ -1842,7 +1837,7 @@ int UrlPFFilter::load_url()
     {
         uint16_t na = *(uint16_t *)(s);
         url_list_[count++] = s;
-        s += na + 3;
+        s += na + 13;
     }
     return 0;
 }
@@ -1875,8 +1870,11 @@ void UrlPFFilter::pre_pf()
         {
             for (int k = 0; k < 2; ++k)
             {
-                pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large);
-                prepare_range(pf_list_[i][j][k], pf_count_[i][j][k], pf_range_[i][j][k]);
+                if (pf_count_[i][j][k] > 0)
+                {
+                    pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large);
+                    prepare_range(pf_list_[i][j][k], pf_count_[i][j][k], pf_range_[i][j][k]);
+                }
             }
         }
     }

@@ -37,6 +37,7 @@ void PrefixLoadLarge_Module::svc()
         PrefixFilterLargeLoad *filter = PrefixFilterLargeLoad::load_large(c_data->buffer_, c_data->size_);
         if (filter != NULL)
             c_data->obj_ = (void *)filter;
+        put_next(msg);
 
         gettimeofday(&t2, 0);
         SP_DEBUG("PrefixLoadLarge_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);

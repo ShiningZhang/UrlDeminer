@@ -150,7 +150,7 @@ int main(int argc, char **argv)
     uint64_t size = domainFilter_size;
     FILE *fp;
 
-    int case_type = 0;
+    int case_type = 2;
 
     // if (size < SMALLSIZE)
     if (case_type == 0)
@@ -520,15 +520,16 @@ int main(int argc, char **argv)
         delete (DomainFilterMerge *)(data->domain_filter_);
         data->domain_filter_ = NULL;
         int count = (int)gQueue.size();
+        SP_DEBUG("count=%d\n", count);
         UrlFilterLarge *f = NULL;
         while (count > 0)
         {
-            f = (UrlFilterLarge *)gQueue.front();
+            f = (UrlFilterLarge *)(gQueue.front());
             gQueue.pop();
             // f->clear_domain_list();
             delete f;
             // gQueue.push(f);
-            // count--;
+            count--;
             SP_DEBUG("gQueue->clear_domain_list\n");
         }
 
@@ -555,6 +556,7 @@ int main(int argc, char **argv)
         SP_DEBUG("fp=%p,size=%lld\n", fp, size);
         data->fp_in_ = fp;
         data->length_ = size;
+        data->reset_para();
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
         fclose(fp);
@@ -578,19 +580,24 @@ int main(int argc, char **argv)
             s_instance_stream->push_module(modules[i]);
         }
         UrlPFFilter *url_pf_filter;
+        data->fp_out_ = stdout;
+        data->reset_para();
+        UrlPFFilter *list_url_pf_filter_[8];
         for (int i = 0; i < 8; ++i)
         {
             url_pf_filter = new UrlPFFilter();
-            gQueueFilter.push(url_pf_filter);
+            // gQueueFilter.push(url_pf_filter);
+            list_url_pf_filter_[i] = url_pf_filter;
+            SP_NEW_RETURN(msg, SP_Message_Block_Base((SP_Data_Block *)url_pf_filter), -1);
+            s_instance_stream->put(msg);
         }
-        data->fp_out_ = stdout;
-        data->reset_para();
-        s_instance_stream->put(msg);
+
+        // s_instance_stream->put(msg);
         s_instance_stream->get(msg);
-        while (!gQueueFilter.empty())
+        for (int i = 0; i < 8; ++i)
         {
-            url_pf_filter = gQueueFilter.front();
-            gQueueFilter.pop();
+            url_pf_filter = list_url_pf_filter_[i];
+            // gQueueFilter.pop();
             data->counter_.pass += url_pf_filter->counters_.pass;
             data->counter_.hit += url_pf_filter->counters_.hit;
             data->counter_.miss += url_pf_filter->counters_.miss;

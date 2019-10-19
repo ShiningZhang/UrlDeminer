@@ -172,7 +172,7 @@ int MidFile::write_mid_large(char **p[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT], int
         rewind(fp);
         file->fp_[i] = fp;
     }
-    file_list_.push_back(file);
+    largefile_list_.push_back(file);
     return 0;
 }
 
@@ -185,7 +185,7 @@ inline int write_prefix_(char **p, int &begin, int end, int buf_size, char *&buf
     {
         pa = p[begin];
         na = (int)*((uint16_t *)pa);
-        na += 5; //3+(len+2)
+        na += 3; //3+(len+2)
         memcpy(buf + offset, pa - 1, na);
         offset += na;
         ++begin;
@@ -221,7 +221,7 @@ int MidFile::write_prefix(PrefixFilterLargeLoad *filter, int idx)
                     {
                         do
                         {
-                            int size = write_(p, begin, end, buf_size_, buf_);
+                            int size = write_prefix_(p, begin, end, buf_size_, buf_);
                             fwrite(buf_, size, 1, fp);
                             file_size += size;
                         } while (begin < end);

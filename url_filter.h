@@ -85,11 +85,13 @@ public:
     int list_write_count_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
 };
 
-class UrlPFFilter
+#include "SP_Data_Block.h"
+
+class UrlPFFilter : public SP_Data_Block
 {
 public:
     UrlPFFilter();
-    ~UrlPFFilter();
+    virtual ~UrlPFFilter();
     void load_buf(char *buf, uint64_t buf_size, uint64_t pf_size, uint64_t url_size, int count[3][2], int count_url);
     void release_buf();
     int load_pf();
@@ -106,7 +108,8 @@ public:
     uint64_t pf_size_;
     uint64_t url_size_;
     int count_[3][2];
-    int *rd_count_;
+    int rd_count_[16][3][2];
+    int file_size_;
     char **pf_list_[3][2][2];
     int pf_count_[3][2][2];
     int *pf_range_[3][2][2];

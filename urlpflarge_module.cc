@@ -29,39 +29,19 @@ void UrlPFLarge_Module::svc()
     Request *data = gRequest;
     CRequest *c_data = NULL;
     UrlPFFilter *filter = NULL;
-    while (true)
+    for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;
         gettimeofday(&start, 0);
-        {
+        filter = reinterpret_cast<UrlPFFilter *>(msg->data());
 
-            unique_lock<mutex> lock(gMutexUrlPfTask);
-            if (gEnd)
-            {
-                return;
-            }
-            while (gQUrlPfTask.empty())
-            {
-                gCVUrlPfTask.wait(lock);
-                if (gEnd)
-                {
-                    return;
-                }
-            }
-            filter = gQUrlPfTask.front();
-            gQUrlPfTask.pop();
-        }
         filter->load_pf();
         filter->load_url();
         filter->pre_pf();
         filter->pre_url();
         filter->filter();
 
-        {
-            unique_lock<mutex> lock1(gMutexWriteUrlTask);
-            gQWriteUrlTask.push(filter);
-            gCVWriteUrlTask.notify_one();
-        }
+        put_next(msg);
 
         gettimeofday(&t2, 0);
         SP_DEBUG("UrlPFLarge_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);

@@ -26,15 +26,15 @@ int ReadUrlLarge_Module::open()
 
 void ReadUrlLarge_Module::svc()
 {
-    Request *data = NULL;
+    Request *data = gRequest;
     CRequest *c_data = NULL;
-    for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
+    SP_Message_Block_Base *msg = NULL;
+    // for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;
         gettimeofday(&start, 0);
         UrlPFFilter *filter = NULL;
-        data = reinterpret_cast<Request *>(msg->data());
-        SP_DES(msg);
+        data = gRequest;
         MidFile *mid_file = data->mid_file_;
         data->size_split_buf = DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT;
         uint64_t read_size = 0;
@@ -59,6 +59,7 @@ void ReadUrlLarge_Module::svc()
                 {
                     read_url_size += mid_file->largefile_list_[k]->size1_[i][j];
                 }
+                SP_DEBUG("[%d,%d]read_pf_size=%d,read_url_size=%d\n", i, j, read_pf_size, read_url_size);
                 if (read_url_size == 0)
                 {
                     gMCount.lock();
@@ -66,10 +67,14 @@ void ReadUrlLarge_Module::svc()
                     gMCount.unlock();
                     continue;
                 }
+                buf = (char *)malloc((read_pf_size + read_url_size) * sizeof(char));
                 for (int k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                 {
                     FileElementPrefix *p = mid_file->prefixfile_list_[k];
-                    uint64_t size = readcontent_unlocked1(p->fp_, buf + buf_size, p->size2_[i][j]);
+                    if (p->size2_[i][j] == 0)
+                        continue;
+                    size_t size = fread_unlocked(buf + buf_size, 1, p->size2_[i][j], p->fp_);
+                    fprintf(stderr, "[%d,%d,%d]size=%d,prefixfile:%s\n", i, j, k, size, buf + buf_size + 3);
                     buf_size += size;
                     for (int m = 0; m < 3; ++m)
                     {
@@ -81,39 +86,26 @@ void ReadUrlLarge_Module::svc()
                 }
                 for (int k = 0; k < mid_file->largefile_list_.size(); ++k)
                 {
-                    uint64_t size = readcontent_unlocked1(mid_file->largefile_list_[k]->fp_[i], buf + buf_size, mid_file->largefile_list_[k]->size1_[i][j]);
+                    if (mid_file->largefile_list_[k]->size1_[i][j] == 0)
+                        continue;
+                    size_t size = fread_unlocked(buf + buf_size, 1, mid_file->largefile_list_[k]->size1_[i][j], mid_file->largefile_list_[k]->fp_[i]);
+                    fprintf(stderr, "largefile:%s\n", buf + buf_size + 3);
                     buf_size += size;
                     count_url += mid_file->largefile_list_[k]->count1_[i][j];
                 }
-                {
-                    unique_lock<mutex> lock(gMutex);
-                    while (gQueueFilter.empty())
-                    {
-                        gCV.wait(lock);
-                    }
-                    filter = gQueueFilter.front();
-                    gQueueFilter.pop();
-                }
+                get(msg);
+                filter = reinterpret_cast<UrlPFFilter *>(msg->data());
+
                 filter->load_buf(buf, buf_size, read_pf_size, read_url_size, count_pf, count_url);
-                filter->rd_count_ = (int *)malloc(mid_file->prefixfile_list_.size() * 6);
+                filter->file_size_ = mid_file->prefixfile_list_.size();
                 for (int k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                 {
                     FileElementPrefix *p = mid_file->prefixfile_list_[k];
-                    for (int m = 0; m < 3; ++m)
-                    {
-                        for (int n = 0; n < 2; ++n)
-                        {
-                            filter->rd_count_[k * 6 + m * 2 + n] = p->count_[i][j][m][n];
-                        }
-                    }
+                    memcpy(filter->rd_count_[k], p->count_[i][j], 3 * 2 * sizeof(int));
                 }
                 filter->pf_len_ = mid_file->prefixfile_list_.size();
                 memset(count_pf, 0, 3 * 2 * sizeof(int));
-                {
-                    unique_lock<mutex> lock1(gMutexUrlPfTask);
-                    gQUrlPfTask.push(filter);
-                    gCVUrlPfTask.notify_one();
-                }
+                put_next(msg);
             }
         }
         SP_DEBUG("ReadUrlLarge_Module:size_split_buf=%d,end\n", data->size_split_buf);
