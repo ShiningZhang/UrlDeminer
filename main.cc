@@ -572,9 +572,12 @@ int main(int argc, char **argv)
 
         //tmp url read and prefix filter
         SP_DEBUG(" prefix filter begin\n");
+        SP_DEBUG("main:587:reset_para\n");
+        data->reset_para();
         SP_NEW_RETURN(modules[0], ReadUrlLarge_Module(1), -1);
         SP_NEW_RETURN(modules[1], UrlPFLarge_Module(8), -1);
-        SP_NEW_RETURN(modules[2], WriteUrlLarge_Module(1), -1);
+        // SP_NEW_RETURN(modules[2], WriteUrlLarge_Module(1), -1);
+        modules[2] = WriteUrlLarge_Module::instance();
 
         for (int i = 2; i >= 0; --i)
         {
@@ -582,7 +585,7 @@ int main(int argc, char **argv)
         }
         UrlPFFilter *url_pf_filter;
         data->fp_out_ = stdout;
-        data->reset_para();
+
         UrlPFFilter *list_url_pf_filter_[8];
         for (int i = 0; i < 8; ++i)
         {

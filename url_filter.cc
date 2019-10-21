@@ -1877,7 +1877,7 @@ void UrlPFFilter::pre_pf()
             {
                 if (pf_count_[i][j][k] > 0)
                 {
-                    SP_DEBUG("pre_pf:[%d,%d,%d]pf_count=%d\n", i, j, k, pf_count_[i][j][k]);
+                    // SP_DEBUG("pre_pf:[%d,%d,%d]pf_count=%d\n", i, j, k, pf_count_[i][j][k]);
                     pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large);
                     prepare_range(pf_list_[i][j][k], pf_count_[i][j][k], pf_range_[i][j][k]);
                 }
@@ -1926,7 +1926,7 @@ void UrlPFFilter::pre_url()
     if (out_size_ > 0)
         out_ = (char *)malloc(out_size_ * 9 * sizeof(char));
     out_offset_ = 0;
-    SP_DEBUG("pre_url:out_size_=%d,out_=%p,out_offset_=%d\n", out_size_, out_, out_offset_);
+    // SP_DEBUG("pre_url:out_size_=%d,out_=%p,out_offset_=%d\n", out_size_, out_, out_offset_);
 }
 
 struct stUrlPfL

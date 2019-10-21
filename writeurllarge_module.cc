@@ -38,14 +38,16 @@ void WriteUrlLarge_Module::svc()
         timeval t2, start;
         gettimeofday(&start, 0);
         filter = reinterpret_cast<UrlPFFilter *>(msg->data());
-
-        filter->write_tag(stdout);
-        filter->release_buf();
-        gMCount.lock();
-        ++data->recv_split_;
-        gMCount.unlock();
-
-        s_instance_stream->put(msg);
+        if (filter != NULL)
+        {
+            filter->write_tag(stdout);
+            filter->release_buf();
+            gMCount.lock();
+            ++data->recv_split_;
+            gMCount.unlock();
+            SP_DEBUG("WriteUrlLarge_Module:send=%d,recv=%d\n", data->size_split_buf, data->recv_split_);
+            s_instance_stream->put(msg);
+        }
         if (data->size_split_buf == data->recv_split_)
         {
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));
