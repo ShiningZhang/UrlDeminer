@@ -690,7 +690,7 @@ int filter_domainport_1(const DomainPortBuf &in,
         if (n == in.n)
             return res.ret;
     }
-    if (res.ret > -1)
+    if (res.ret == -1)
     {
         if (filter->list_c[1][t] > 0)
         {
@@ -1799,7 +1799,7 @@ int UrlPFFilter::load_pf()
                             s += 4;
                             nb = na - 4;
                         }
-                        else if (port_type == 0)
+                        /* else if (port_type == 0)
                         {
                             if (port_size == 2 && memcmp(offset_1, "80", 2) == 0)
                             {
@@ -1812,7 +1812,7 @@ int UrlPFFilter::load_pf()
                             {
                                 port_type = 5;
                             }
-                        }
+                        } */
                     }
                     if (nb > 0)
                     {
@@ -1988,7 +1988,7 @@ int UrlPFFilter::load_pf2()
                             s += 2;
                             nb = na - 3;
                         }
-                        else if (port_type == 0)
+                        /* else if (port_type == 0)
                         {
                             if (port_size == 2 && memcmp(offset_1, "80", 2) == 0)
                             {
@@ -2000,7 +2000,7 @@ int UrlPFFilter::load_pf2()
                             {
                                 port_type = 5;
                             }
-                        }
+                        } */
                     }
                     if (nb > 0)
                     {
