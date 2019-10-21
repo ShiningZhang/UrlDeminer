@@ -96,7 +96,7 @@ class CRequest : public SP_Data_Block
 {
 public:
     CRequest(Request *r)
-        : request_(r), buffer_(NULL), size_(0), url_filter_(NULL), domain_filter_(NULL), obj_(NULL){};
+        : request_(r), buffer_(NULL), size_(0), url_filter_(NULL), domain_filter_(NULL), obj_(NULL), idx_(0){};
     virtual ~CRequest(){};
 
     std::mutex lock_;

@@ -51,6 +51,7 @@ void ReadUrlLarge_Module::svc()
                 read_pf_size = 0;
                 read_url_size = 0;
                 count_url = 0;
+                buf_size = 0;
                 for (int k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                 {
                     read_pf_size += mid_file->prefixfile_list_[k]->size2_[i][j];
@@ -59,7 +60,7 @@ void ReadUrlLarge_Module::svc()
                 {
                     read_url_size += mid_file->largefile_list_[k]->size1_[i][j];
                 }
-                SP_DEBUG("[%d,%d]read_pf_size=%d,read_url_size=%d\n", i, j, read_pf_size, read_url_size);
+                // SP_DEBUG("[%d,%d]read_pf_size=%d,read_url_size=%d\n", i, j, read_pf_size, read_url_size);
                 if (read_url_size == 0)
                 {
                     gMCount.lock();
@@ -92,11 +93,13 @@ void ReadUrlLarge_Module::svc()
                     fprintf(stderr, "largefile:%s\n", buf + buf_size + 3);
                     buf_size += size;
                     count_url += mid_file->largefile_list_[k]->count1_[i][j];
+                    SP_DEBUG("[%d,%d][%d]count1_=%d\n", i, j, k, mid_file->largefile_list_[k]->count1_[i][j]);
                 }
                 get(msg);
                 filter = reinterpret_cast<UrlPFFilter *>(msg->data());
 
                 filter->load_buf(buf, buf_size, read_pf_size, read_url_size, count_pf, count_url);
+                SP_DEBUG("buf_size=%d,read_pf_size=%d, read_url_size=%d, count_url=%d\n", buf_size, read_pf_size, read_url_size, count_url);
                 filter->file_size_ = mid_file->prefixfile_list_.size();
                 for (int k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                 {

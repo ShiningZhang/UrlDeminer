@@ -52,7 +52,7 @@
 
 using namespace std;
 
-static SP_Stream *s_instance_stream = NULL;
+SP_Stream *s_instance_stream = NULL;
 static SP_Module *modules[10];
 
 static void init_temp()
@@ -559,6 +559,7 @@ int main(int argc, char **argv)
         data->reset_para();
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
+        SP_DES(msg);
         fclose(fp);
         fp = NULL;
         data->fp_in_ = NULL;

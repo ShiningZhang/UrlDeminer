@@ -6,8 +6,12 @@
 #include <string.h>
 #include <math.h>
 
+#include "SP_Stream.h"
+
 #include "url_filter.h"
 #include "midfile.h"
+
+#include "readurllarge_module.h"
 
 WriteUrlLarge_Module::WriteUrlLarge_Module(int threads)
     : threads_num_(threads)
@@ -23,7 +27,7 @@ int WriteUrlLarge_Module::open()
     activate(threads_num_);
     return 0;
 }
-
+extern SP_Stream *s_instance_stream;
 void WriteUrlLarge_Module::svc()
 {
     Request *data = gRequest;
@@ -41,7 +45,7 @@ void WriteUrlLarge_Module::svc()
         ++data->recv_split_;
         gMCount.unlock();
 
-        put_next(msg);
+        s_instance_stream->put(msg);
         if (data->size_split_buf == data->recv_split_)
         {
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));

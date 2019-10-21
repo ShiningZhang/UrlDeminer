@@ -1601,6 +1601,8 @@ UrlPFFilter::UrlPFFilter()
     url_list_ = NULL;
     url_count_ = 0;
     memset(pf_range_, 0, 3 * 2 * 2 * sizeof(int *));
+    memset(pf_list_, 0, 3 * 2 * 2 * sizeof(char *));
+    memset(pf_count_, 0, 3 * 2 * 2 * sizeof(int));
     out_size_ = 0;
     out_offset_ = 0;
     out_ = NULL;
@@ -1697,6 +1699,8 @@ void UrlPFFilter::release_buf()
         free(url_list_);
         url_list_ = NULL;
     }
+    memset(pf_count_, 0, 3 * 2 * 2 * sizeof(int));
+    memset(count_, 0, 3 * 2 * sizeof(int));
 }
 
 int UrlPFFilter::load_pf()
@@ -1720,7 +1724,6 @@ int UrlPFFilter::load_pf()
     int count = 0;
     int begin = 0;
     char *s = pf_buf_;
-    fprintf(stderr, "begin:%s\n", s);
     char *se = pf_buf_ + pf_size_;
     s += 1;
     int count_list[3][2][2] = {0};
@@ -1736,13 +1739,13 @@ int UrlPFFilter::load_pf()
                     continue;
                 }
                 begin = 0;
+                SP_DEBUG("[%d][%d,%d]count=%d\n", c, i, j, count);
                 while (begin < count)
                 {
                     uint16_t na = *(uint16_t *)(s);
                     uint16_t nb = 0;
                     int port_type = (int)s[-1];
                     s += 2;
-                    fprintf(stderr, "%s\n", s);
                     char *domainend = strchr(s, '/');
                     char *offset = domainend - 1;
                     domainend = s > (domainend - 6) ? s : (domainend - 6);
@@ -1837,6 +1840,7 @@ int UrlPFFilter::load_url()
     {
         uint16_t na = *(uint16_t *)(s);
         url_list_[count++] = s;
+        SP_DEBUG("load_url:na=%d,s=%s\n", na, s + 2);
         s += na + 13;
     }
     return 0;
@@ -1872,6 +1876,7 @@ void UrlPFFilter::pre_pf()
             {
                 if (pf_count_[i][j][k] > 0)
                 {
+                    SP_DEBUG("pre_pf:[%d,%d,%d]pf_count=%d\n", i, j, k, pf_count_[i][j][k]);
                     pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large);
                     prepare_range(pf_list_[i][j][k], pf_count_[i][j][k], pf_range_[i][j][k]);
                 }
@@ -1918,8 +1923,9 @@ void UrlPFFilter::pre_url()
 {
     out_size_ = url_count_;
     if (out_size_ > 0)
-        out_ = (char *)malloc(out_size_);
+        out_ = (char *)malloc(out_size_ * 9 * sizeof(char));
     out_offset_ = 0;
+    SP_DEBUG("pre_url:out_size_=%d,out_=%p,out_offset_=%d\n", out_size_, out_, out_offset_);
 }
 
 struct stUrlPfL
@@ -2489,6 +2495,7 @@ void UrlPFFilter::filter()
 
 int UrlPFFilter::write_tag(FILE *fp)
 {
+    SP_DEBUG("write_tag:out_offset_=%d,out_=%p\n", out_offset_, out_);
     int ret = 0;
     if (out_offset_ > 0)
         ret = fwrite(out_, out_offset_, 1, fp);
