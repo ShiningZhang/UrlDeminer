@@ -60,7 +60,7 @@ void MidLarge_Module::svc()
                 if (filter->size_ > 0)
                 {
                     filter->prepare_write();
-                    mid_file->write_mid_large(filter->list_write_, filter->list_write_count_, c_data->idx_);
+                    mid_file->write_mid_large(filter, filter->list_write_count_, c_data->idx_);
                 }
                 {
                     filter->clear_para();

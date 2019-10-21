@@ -34,16 +34,17 @@ void UrlPFLarge_Module::svc()
         timeval t2, start;
         gettimeofday(&start, 0);
         filter = reinterpret_cast<UrlPFFilter *>(msg->data());
-
-        if (filter->load_pf() != -1)
+        if (filter != NULL)
         {
-            // filter->load_pf();
-            filter->pre_pf();
+            if (filter->load_pf() != -1)
+            {
+                // filter->load_pf();
+                filter->pre_pf();
+            }
+            filter->load_url();
+            filter->pre_url();
+            filter->filter();
         }
-        filter->load_url();
-        filter->pre_url();
-        filter->filter();
-
         put_next(msg);
 
         gettimeofday(&t2, 0);

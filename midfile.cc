@@ -4,6 +4,7 @@
 #include "pdqsort.h"
 
 #include "prefix_filter.h"
+#include "url_filter.h"
 
 MidFile::MidFile()
 {
@@ -145,7 +146,7 @@ inline int write_large_(char **p, int &begin, int end, int buf_size, char *&buf)
     return offset;
 }
 
-int MidFile::write_mid_large(char **p[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT], int size[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT], int idx)
+int MidFile::write_mid_large(UrlFilterLarge *filter, int size[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT], int idx)
 {
     char tmp_char[32];
     FileElementLarge *file = new FileElementLarge;
@@ -162,22 +163,24 @@ int MidFile::write_mid_large(char **p[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT], int
         FILE *fp = fopen(tmp_char, "wb+");
         for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
         {
-            if (size[i][j] == 0)
+            int size = filter->list_write_count_[i][j];
+            if (size == 0)
                 continue;
+            char **p = filter->list_write_[i][j];
             size_t file_size = 0;
             int begin = 0;
-            int end = size[i][j];
+            int end = size;
             do
             {
-                int size1 = write_large_(p[i][j], begin, end, buf_size_, buf_);
+                int size1 = write_large_(p, begin, end, buf_size_, buf_);
                 fwrite(buf_, size1, 1, fp);
                 file_size += size1;
             } while (begin < end);
-            file->count1_[i][j] = size[i][j];
+            file->count1_[i][j] = size;
             file->size1_[i][j] = file_size;
             file->size_[i] += file_size;
             file->total_size_ += file_size;
-            file->count_[i] += size[i][j];
+            file->count_[i] += size;
         }
         rewind(fp);
         file->fp_[i] = fp;

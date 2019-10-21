@@ -114,6 +114,10 @@ static void init_temp2()
         {
             domain_temp[i] = 13;
         }
+        else
+        {
+            domain_temp[i] = 256;
+        }
     }
 }
 

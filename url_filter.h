@@ -46,7 +46,7 @@ public:
 
     int prepare_buf(char *p, uint64_t size);
 
-    void clear_para();
+    virtual void clear_para();
     void clear_counter();
     void clear_domain_list();
 
@@ -80,6 +80,7 @@ public:
     ~UrlFilterLarge();
     void filter_domainport_large();
     void prepare_write();
+    virtual void clear_para();
 
     char **list_write_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
     int list_write_count_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];

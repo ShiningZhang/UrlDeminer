@@ -779,6 +779,7 @@ void UrlFilter::filter_domainport()
                 arrangesuffix(in.start + 1, *(uint16_t *)(in.start - 2));
                 int t1 = domain_temp[(unsigned char)*in.start];
                 list_[t1][count[t1]++] = (in.start - 2);
+                // assert((in.start - 2) != NULL);
 #ifdef DEBUG
                 printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
 #endif
@@ -1550,6 +1551,7 @@ void UrlFilterLarge::filter_domainport_large()
                 // arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
                 int t1 = domain_temp[(unsigned char)*in.start];
                 list_[t1][count[t1]++] = (in.start - 2);
+                // assert((in.start - 2) != NULL);
                 arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
 #ifdef DEBUG
                 printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
@@ -1567,7 +1569,7 @@ void UrlFilterLarge::prepare_write()
     {
         for (int j = 0; j < list_count_[i]; ++j)
         {
-            int t = domain_temp[list_[i][j][3]];
+            int t = domain_temp[(unsigned char)(list_[i][j][3])];
             ++list_write_count_[i][t];
         }
     }
@@ -1584,10 +1586,30 @@ void UrlFilterLarge::prepare_write()
     {
         for (int j = 0; j < list_count_[i]; ++j)
         {
-            int t = domain_temp[(unsigned char)list_[i][j][3]];
+            int t = domain_temp[(unsigned char)(list_[i][j][3])];
             list_write_[i][t][count[i][t]++] = list_[i][j];
+            // assert(list_[i][j] != NULL);
         }
     }
+}
+
+void UrlFilterLarge::clear_para()
+{
+    memset(list_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
+    memset(list_domainport_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
+    size_ = 0;
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
+        {
+            if (list_write_[i][j] != NULL)
+            {
+                free(list_write_[i][j]);
+                list_write_[i][j] = NULL;
+            }
+        }
+    }
+    memset(list_write_count_, 0, sizeof(int) * DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT);
 }
 
 UrlPFFilter::UrlPFFilter()

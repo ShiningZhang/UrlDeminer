@@ -6,6 +6,7 @@
 
 class PrefixFilterMerge;
 class PrefixFilterLargeLoad;
+class UrlFilterLarge;
 
 class MidFile
 {
@@ -16,7 +17,7 @@ public:
     void uninit();
     int write_buf(char *p, int size);
     int write_mid(char ***p, int *size, int idx);
-    int write_mid_large(char **p[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT], int size[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT], int idx);
+    int write_mid_large(UrlFilterLarge *filter, int size[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT], int idx);
     void sort_file_list();
 
     int write_prefix(PrefixFilterLargeLoad *filter, int idx);
