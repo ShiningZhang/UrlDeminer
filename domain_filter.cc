@@ -543,6 +543,15 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int i, i
         }
 #endif
     }
+    for (size_t k = 0; k < domain_filter_list.size(); ++k)
+    {
+        if (domain_filter_list[k]->list_[i][type] != NULL)
+        {
+            free(domain_filter_list[k]->list_[i][type]);
+            domain_filter_list[k]->list_[i][type] = NULL;
+            domain_filter_list[k]->list_count_[i][type] = 0;
+        }
+    }
     return count;
 }
 
@@ -644,6 +653,9 @@ int DomainFilterMerge::merge_port(vector<DomainFilter *> domain_filter_list, int
                 {
                     memcpy(list_port_[i] + size, domain_filter_list[k]->list_port_[i], domain_filter_list[k]->list_port_count_[i] * sizeof(DomainPortBuf));
                     size += domain_filter_list[k]->list_port_count_[i];
+                    free(domain_filter_list[k]->list_port_[i]);
+                    domain_filter_list[k]->list_port_[i] = NULL;
+                    domain_filter_list[k]->list_port_count_[i] = 0;
                 }
             }
             pdqsort(list_port_[i], list_port_[i] + list_port_count_[i], compare_dp);

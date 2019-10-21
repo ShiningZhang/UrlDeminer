@@ -1770,6 +1770,7 @@ int UrlPFFilter::load_pf()
                     s += 2;
                     uint16_t nb = 0;
                     char *domainend = strchr(s, '/');
+                    // assert(domainend);
                     char *offset = domainend - 1;
                     domainend = s > (domainend - 6) ? s : (domainend - 6);
                     while (offset > domainend)
