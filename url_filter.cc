@@ -1629,6 +1629,7 @@ UrlPFFilter::UrlPFFilter()
     out_offset_ = 0;
     out_ = NULL;
     url_feature_ = 0;
+    file_size_ = 0;
 }
 
 UrlPFFilter::~UrlPFFilter()
@@ -1724,10 +1725,12 @@ void UrlPFFilter::release_buf()
     }
     memset(pf_count_, 0, 3 * 2 * 2 * sizeof(int));
     memset(count_, 0, 3 * 2 * sizeof(int));
+    file_size_ = 0;
 }
 
 int UrlPFFilter::load_pf()
 {
+    SP_DEBUG("load_pf\n");
     if (pf_size_ == 0)
     {
         return -1;
@@ -1852,6 +1855,7 @@ int UrlPFFilter::load_pf()
 
 int UrlPFFilter::load_pf1()
 {
+    SP_DEBUG("load_pf1\n");
     if (pf_size_ == 0)
     {
         return -1;
@@ -1928,6 +1932,7 @@ int UrlPFFilter::load_pf1()
 
 int UrlPFFilter::load_pf2()
 {
+    SP_DEBUG("load_pf2\n");
     if (pf_size_ == 0)
     {
         return -1;
