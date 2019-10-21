@@ -96,6 +96,8 @@ public:
     void load_buf(char *buf, uint64_t buf_size, uint64_t pf_size, uint64_t url_size, int count[3][2], int count_url);
     void release_buf();
     int load_pf();
+    int load_pf1();
+    int load_pf2();
     int load_url();
     void pre_pf();
     void prepare_range(char **list, int size, int *&range);
@@ -124,6 +126,7 @@ public:
     char *out_;
     uint64_t out_size_;
     int out_offset_;
+    int url_feature_; // 0:NULL 1:[][/] 2:[][:]
 };
 
 #endif

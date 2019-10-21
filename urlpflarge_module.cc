@@ -36,9 +36,20 @@ void UrlPFLarge_Module::svc()
         filter = reinterpret_cast<UrlPFFilter *>(msg->data());
         if (filter != NULL)
         {
-            if (filter->load_pf() != -1)
+            if (filter->pf_size_ != 0)
             {
-                // filter->load_pf();
+                if (filter->url_feature_ == 0)
+                {
+                    filter->load_pf();
+                }
+                else if (filter->url_feature_ == 1)
+                {
+                    filter->load_pf1();
+                }
+                else if (filter->url_feature_ == 2)
+                {
+                    filter->load_pf2();
+                }
                 filter->pre_pf();
             }
             filter->load_url();

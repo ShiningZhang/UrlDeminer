@@ -155,6 +155,10 @@ int main(int argc, char **argv)
     FILE *fp;
 
     int case_type = 2;
+    /* if (domainFilter_size < SMALLSIZE)
+    {
+        case_type = 0;
+    } */
 
     // if (size < SMALLSIZE)
     if (case_type == 0)
@@ -442,6 +446,7 @@ int main(int argc, char **argv)
         gettimeofday(&start, 0);
         //domain file read
         SP_DEBUG("read doamin begin\n");
+        fprintf(stderr, "read doamin begin\n");
         fp = fopen(domainFilterPath, "r");
         // uint64_t size = sizeoffile(fp);
         SP_DEBUG("fp=%p,size=%lld\n", fp, size);
@@ -467,9 +472,11 @@ int main(int argc, char **argv)
         {
             s_instance_stream->pop();
         }
+        fprintf(stderr, "read doamin end\n");
         SP_DEBUG("read doamin end\n");
 
         //url file read and domain filter
+        fprintf(stderr, "init urlfilter begin\n");
         SP_DEBUG("init urlfilter begin\n");
         uint64_t split_mem = 0;
         uint64_t max_file_size = domainFilter_size;
@@ -497,8 +504,10 @@ int main(int argc, char **argv)
                 gQueue.push(filter);
             }
         }
+        fprintf(stderr, "init urlfilter end\n");
         SP_DEBUG("init urlfilter end\n");
 
+        fprintf(stderr, "read urlfilter begin\n");
         SP_DEBUG("read urlfilter begin\n");
         SP_NEW_RETURN(modules[0], ReadUrl1_Module(1), -1);
         SP_NEW_RETURN(modules[1], UrlDP1_Module(8), -1);
@@ -541,9 +550,11 @@ int main(int argc, char **argv)
         {
             s_instance_stream->pop();
         }
+        fprintf(stderr, "read urlfilter end\n");
         SP_DEBUG("read urlfilter end\n");
 
         //prefix filter load
+        fprintf(stderr, "read prefix begin\n");
         SP_DEBUG("read prefix begin\n");
         SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
         SP_NEW_RETURN(modules[1], PrefixLoadLarge_Module(8), -1);
@@ -572,11 +583,12 @@ int main(int argc, char **argv)
         {
             s_instance_stream->pop();
         }
+        fprintf(stderr, "read prefix end\n");
         SP_DEBUG("read prefix end\n");
 
         //tmp url read and prefix filter
+        fprintf(stderr, "prefix filter begin\n");
         SP_DEBUG(" prefix filter begin\n");
-        SP_DEBUG("main:587:reset_para\n");
         data->reset_para();
         SP_NEW_RETURN(modules[0], ReadUrlLarge_Module(1), -1);
         SP_NEW_RETURN(modules[1], UrlPFLarge_Module(8), -1);
@@ -621,6 +633,7 @@ int main(int argc, char **argv)
         {
             s_instance_stream->pop();
         }
+        fprintf(stderr, "prefix filter end\n");
         SP_DEBUG(" prefix filter end\n");
         delete data;
         SP_DES(msg);

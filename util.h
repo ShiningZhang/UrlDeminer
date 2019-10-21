@@ -34,7 +34,7 @@ using namespace std;
 
 #define MAX_MEM_SIZE 12000000000
 
-#define MAX_USE_MEM_SIZE 9000000000
+#define MAX_USE_MEM_SIZE 7000000000
 
 #ifdef DEBUG
 #define LOG(format_string, ...)                                                                         \

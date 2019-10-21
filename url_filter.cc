@@ -1628,6 +1628,7 @@ UrlPFFilter::UrlPFFilter()
     out_size_ = 0;
     out_offset_ = 0;
     out_ = NULL;
+    url_feature_ = 0;
 }
 
 UrlPFFilter::~UrlPFFilter()
@@ -1765,9 +1766,9 @@ int UrlPFFilter::load_pf()
                 while (begin < count)
                 {
                     uint16_t na = *(uint16_t *)(s);
-                    uint16_t nb = 0;
                     int port_type = (int)s[-1];
                     s += 2;
+                    uint16_t nb = 0;
                     char *domainend = strchr(s, '/');
                     char *offset = domainend - 1;
                     domainend = s > (domainend - 6) ? s : (domainend - 6);
@@ -1802,6 +1803,192 @@ int UrlPFFilter::load_pf()
                                 s += 3;
                                 port_type = 4;
                                 nb = na - 3;
+                            }
+                            else if (port_size == 3 && memcmp(offset_1, "443", 3) == 0)
+                            {
+                                port_type = 5;
+                            }
+                        }
+                    }
+                    if (nb > 0)
+                    {
+                        na = nb;
+                        *(uint16_t *)(s - 2) = na;
+                    }
+                    if (port_type == 1)
+                    {
+                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                    }
+                    else if (port_type == 2)
+                    {
+                        pf_list_[i][j][1][count_list[i][j][1]++] = s - 2;
+                    }
+                    else if (port_type == 0)
+                    {
+                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                        pf_list_[i][j][1][count_list[i][j][1]++] = s - 2;
+                    }
+                    /* else if (port_type == 4)
+                    {
+                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                        int str_length = na + 3 + 2;
+                        char *str = (char *)malloc(str_length);
+                        int tmp = 0;
+                        *((uint16_t *)(str)) = (uint16_t)(na + 3);
+                        tmp += 2;
+                    } */
+                    // fprintf(stderr, "load_pf:na:%d,%s\n", na, s);
+                    arrangesuffix(s, na);
+                    ++begin;
+                    s += na + 1;
+                }
+            }
+        }
+    }
+    memcpy(pf_count_, count_list, 3 * 2 * 2 * sizeof(int));
+    return 0;
+}
+
+int UrlPFFilter::load_pf1()
+{
+    if (pf_size_ == 0)
+    {
+        return -1;
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                if (count_[i][j] > 0)
+                    pf_list_[i][j][k] = (char **)malloc(count_[i][j] * sizeof(char *));
+            }
+        }
+    }
+    int idx = 0;
+    int count = 0;
+    int begin = 0;
+    char *s = pf_buf_;
+    char *se = pf_buf_ + pf_size_;
+    s += 1;
+    int count_list[3][2][2] = {0};
+    for (int c = 0; c < file_size_; ++c)
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            for (int j = 0; j < 2; ++j)
+            {
+                count = rd_count_[c][i][j];
+                if (count == 0)
+                {
+                    continue;
+                }
+                begin = 0;
+                // SP_DEBUG("[%d][%d,%d]count=%d\n", c, i, j, count);
+                while (begin < count)
+                {
+                    uint16_t na = *(uint16_t *)(s);
+                    int port_type = (int)s[-1];
+                    s += 2;
+                    if (port_type == 1)
+                    {
+                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                    }
+                    else if (port_type == 2)
+                    {
+                        pf_list_[i][j][1][count_list[i][j][1]++] = s - 2;
+                    }
+                    else if (port_type == 0)
+                    {
+                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                        pf_list_[i][j][1][count_list[i][j][1]++] = s - 2;
+                    }
+                    /* else if (port_type == 4)
+                    {
+                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                        int str_length = na + 3 + 2;
+                        char *str = (char *)malloc(str_length);
+                        int tmp = 0;
+                        *((uint16_t *)(str)) = (uint16_t)(na + 3);
+                        tmp += 2;
+                    } */
+                    // fprintf(stderr, "load_pf:na:%d,%s\n", na, s);
+                    arrangesuffix(s, na);
+                    ++begin;
+                    s += na + 1;
+                }
+            }
+        }
+    }
+    memcpy(pf_count_, count_list, 3 * 2 * 2 * sizeof(int));
+    return 0;
+}
+
+int UrlPFFilter::load_pf2()
+{
+    if (pf_size_ == 0)
+    {
+        return -1;
+    }
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                if (count_[i][j] > 0)
+                    pf_list_[i][j][k] = (char **)malloc(count_[i][j] * sizeof(char *));
+            }
+        }
+    }
+    int idx = 0;
+    int count = 0;
+    int begin = 0;
+    char *s = pf_buf_;
+    char *se = pf_buf_ + pf_size_;
+    s += 1;
+    int count_list[3][2][2] = {0};
+    for (int c = 0; c < file_size_; ++c)
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            for (int j = 0; j < 2; ++j)
+            {
+                count = rd_count_[c][i][j];
+                if (count == 0)
+                {
+                    continue;
+                }
+                begin = 0;
+                // SP_DEBUG("[%d][%d,%d]count=%d\n", c, i, j, count);
+                while (begin < count)
+                {
+                    uint16_t na = *(uint16_t *)(s);
+                    int port_type = (int)s[-1];
+                    s += 2;
+                    uint16_t nb = 0;
+                    char *domainend = strchr(s, '/');
+                    {
+                        char *offset_1 = s;
+                        int port_size = domainend - offset_1;
+                        if (port_type == 1 && port_size == 2 && memcmp(offset_1, "80", 2) == 0)
+                        {
+                            s += 2;
+                            nb = na - 2;
+                        }
+                        else if (port_type == 2 && port_size == 3 && memcmp(offset_1, "443", 3) == 0)
+                        {
+                            s += 2;
+                            nb = na - 3;
+                        }
+                        else if (port_type == 0)
+                        {
+                            if (port_size == 2 && memcmp(offset_1, "80", 2) == 0)
+                            {
+                                s += 2;
+                                port_type = 4;
+                                nb = na - 2;
                             }
                             else if (port_size == 3 && memcmp(offset_1, "443", 3) == 0)
                             {
