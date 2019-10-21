@@ -36,6 +36,16 @@ MidFile::~MidFile()
         }
         delete e;
     }
+    for (uint a = 0; a < largefile_list_.size(); ++a)
+    {
+        FileElementLarge *e = largefile_list_[a];
+        for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
+        {
+            if (e->fp_[j] != NULL)
+                fclose(e->fp_[j]);
+        }
+        delete e;
+    }
 }
 
 int MidFile::init()

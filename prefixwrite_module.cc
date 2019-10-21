@@ -43,6 +43,8 @@ void PrefixWrite_Module::svc()
         if (filter != NULL)
         {
             mid_file->write_prefix(filter, data->recv_split_);
+            delete filter;
+            filter = NULL;
         }
         SP_DES(c_data);
 

@@ -810,6 +810,7 @@ PrefixFilterLargeLoad::PrefixFilterLargeLoad()
     buf_size_ = 0;
     memset(list_count_large_, 0, 3 * 2 * sizeof(int) * DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT);
     memset(list_cc_, 0, 3 * 2 * 2 * sizeof(int) * DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT);
+    memset(list_https_large_, 0, 3 * 2 * DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT * sizeof(char **));
 }
 
 PrefixFilterLargeLoad::~PrefixFilterLargeLoad()
@@ -830,9 +831,10 @@ PrefixFilterLargeLoad::~PrefixFilterLargeLoad()
                 {
                     for (int n = 0; n < DOMAIN_CHAR_COUNT; ++n)
                     {
-                        if (list_count_large_[i][j][m][n] > 0)
+                        if (list_https_large_[i][j][m][n] != NULL)
                         {
-                            list_https_large_[i][j][m][n] = (char **)malloc(list_count_large_[i][j][m][n] * sizeof(char *));
+                            free(list_https_large_[i][j][m][n]);
+                            list_https_large_[i][j][m][n] = NULL;
                         }
                     }
                 }
