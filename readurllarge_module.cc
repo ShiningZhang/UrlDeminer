@@ -135,7 +135,6 @@ void ReadUrlLarge_Module::svc()
             SP_DEBUG("ReadUrlLarge_Module:send\n");
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));
             WriteUrlLarge_Module::instance()->put_next(msg);
-            // put_next(msg);
         }
         SP_DEBUG("ReadUrlLarge_Module:size_split_buf=%d,recv=%d,end\n", data->size_split_buf, data->recv_split_);
         gettimeofday(&t2, 0);

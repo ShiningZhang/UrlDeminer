@@ -155,10 +155,13 @@ int main(int argc, char **argv)
     FILE *fp;
 
     int case_type = 2;
-    /* if (domainFilter_size < SMALLSIZE)
+    if (domainFilter_size < SMALLSIZE)
     {
         case_type = 0;
-    } */
+    }
+#if (SP_DEBUG_SWITCH == 1)
+    case_type = 2;
+#endif
 
     // if (size < SMALLSIZE)
     if (case_type == 0)
@@ -535,7 +538,7 @@ int main(int argc, char **argv)
         int count = (int)gQueue.size();
         SP_DEBUG("count=%d\n", count);
         UrlFilterLarge *f = NULL;
-        while (count > 0)
+        while (!gQueue.empty())
         {
             f = (UrlFilterLarge *)(gQueue.front());
             gQueue.pop();
