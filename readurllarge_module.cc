@@ -75,7 +75,7 @@ void ReadUrlLarge_Module::svc()
                     if (p->size2_[i][j] == 0)
                         continue;
                     size_t size = fread_unlocked(buf + buf_size, 1, p->size2_[i][j], p->fp_);
-                    fprintf(stderr, "[%d,%d,%d]size=%d,prefixfile:%s\n", i, j, k, size, buf + buf_size + 3);
+                    SP_DEBUG(stderr, "[%d,%d,%d]size=%d,prefixfile:%s\n", i, j, k, size, buf + buf_size + 3);
                     buf_size += size;
                     for (int m = 0; m < 3; ++m)
                     {
@@ -90,7 +90,7 @@ void ReadUrlLarge_Module::svc()
                     if (mid_file->largefile_list_[k]->size1_[i][j] == 0)
                         continue;
                     size_t size = fread_unlocked(buf + buf_size, 1, mid_file->largefile_list_[k]->size1_[i][j], mid_file->largefile_list_[k]->fp_[i]);
-                    fprintf(stderr, "largefile:%s\n", buf + buf_size + 3);
+                    SP_DEBUG(stderr, "largefile:%s\n", buf + buf_size + 3);
                     buf_size += size;
                     count_url += mid_file->largefile_list_[k]->count1_[i][j];
                     SP_DEBUG("[%d,%d][%d]count1_=%d\n", i, j, k, mid_file->largefile_list_[k]->count1_[i][j]);

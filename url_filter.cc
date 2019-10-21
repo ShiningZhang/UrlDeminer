@@ -1739,7 +1739,7 @@ int UrlPFFilter::load_pf()
                     continue;
                 }
                 begin = 0;
-                SP_DEBUG("[%d][%d,%d]count=%d\n", c, i, j, count);
+                // SP_DEBUG("[%d][%d,%d]count=%d\n", c, i, j, count);
                 while (begin < count)
                 {
                     uint16_t na = *(uint16_t *)(s);
@@ -1814,6 +1814,7 @@ int UrlPFFilter::load_pf()
                         *((uint16_t *)(str)) = (uint16_t)(na + 3);
                         tmp += 2;
                     } */
+                    // fprintf(stderr, "load_pf:na:%d,%s\n", na, s);
                     arrangesuffix(s, na);
                     ++begin;
                     s += na + 1;
@@ -1840,7 +1841,7 @@ int UrlPFFilter::load_url()
     {
         uint16_t na = *(uint16_t *)(s);
         url_list_[count++] = s;
-        SP_DEBUG("load_url:na=%d,s=%s\n", na, s + 2);
+        // SP_DEBUG("load_url:na=%d,s=%s\n", na, s + 2);
         s += na + 13;
     }
     return 0;
