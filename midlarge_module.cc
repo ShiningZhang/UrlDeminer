@@ -43,7 +43,6 @@ void MidLarge_Module::svc()
 
         if (filter != NULL)
         {
-
             data->counter_.pass += filter->counters_.pass;
             data->counter_.hit += filter->counters_.hit;
             data->counter_.miss += filter->counters_.miss;

@@ -55,6 +55,7 @@ void ReadUrlLarge_Module::svc()
                 read_url_size = 0;
                 count_url = 0;
                 buf_size = 0;
+                memset(count_pf, 0, 3 * 2 * sizeof(int));
                 for (int k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                 {
                     read_pf_size += mid_file->prefixfile_list_[k]->size2_[i][j];
@@ -68,7 +69,7 @@ void ReadUrlLarge_Module::svc()
                 {
                     for (int k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                     {
-                        fseek(mid_file->prefixfile_list_[k]->fp_, mid_file->prefixfile_list_[k]->size2_[i][j], SEEK_CUR);
+                        fseek(mid_file->prefixfile_list_[k]->fp_, (long)(mid_file->prefixfile_list_[k]->size2_[i][j]), SEEK_CUR);
                     }
                     gMCount.lock();
                     ++data->recv_split_;
@@ -126,7 +127,6 @@ void ReadUrlLarge_Module::svc()
                     filter->url_feature_ = 0;
                 }
                 SP_DEBUG("[%d,%d]feature=%d\n", i, j, filter->url_feature_);
-                memset(count_pf, 0, 3 * 2 * sizeof(int));
                 put_next(msg);
             }
         }

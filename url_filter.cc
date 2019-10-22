@@ -191,12 +191,12 @@ int UrlFilter::load1()
     {
         if (list_domainport_count_[i] > 0)
         {
-            if (max_list_domainport_count_[i] == 0)
+            // if (max_list_domainport_count_[i] == 0)
             {
                 list_domainport_[i] = (DomainPortBuf *)malloc(list_domainport_count_[i] * sizeof(DomainPortBuf));
                 max_list_domainport_count_[i] = list_domainport_count_[i];
             }
-            else if (list_domainport_count_[i] > max_list_domainport_count_[i])
+            /* else if (list_domainport_count_[i] > max_list_domainport_count_[i])
             {
                 if (list_domainport_[i] != NULL)
                 {
@@ -205,20 +205,20 @@ int UrlFilter::load1()
                 }
                 list_domainport_[i] = (DomainPortBuf *)malloc(list_domainport_count_[i] * sizeof(DomainPortBuf));
                 max_list_domainport_count_[i] = list_domainport_count_[i];
-            }
+            } */
         }
     }
     for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
     {
         if (list_count_[i] > 0)
         {
-            if (list_count_[i] > max_list_count_[i])
+            // if (list_count_[i] > max_list_count_[i])
             {
-                if (list_[i] != NULL)
+                /* if (list_[i] != NULL)
                 {
                     free(list_[i]);
                     list_[i] = NULL;
-                }
+                } */
                 list_[i] = (char **)malloc(list_count_[i] * sizeof(char *));
                 max_list_count_[i] = list_count_[i];
             }
@@ -690,7 +690,7 @@ int filter_domainport_1(const DomainPortBuf &in,
         if (n == in.n)
             return res.ret;
     }
-    if (res.ret == -1)
+    /* if (res.ret == -1)
     {
         if (filter->list_c[1][t] > 0)
         {
@@ -706,7 +706,7 @@ int filter_domainport_1(const DomainPortBuf &in,
             res.port = 0;
             return res.ret;
         }
-    }
+    } */
 
     return res.ret;
 }
@@ -1610,6 +1610,19 @@ void UrlFilterLarge::clear_para()
         }
     }
     memset(list_write_count_, 0, sizeof(int) * DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT);
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        if (list_domainport_[i] != NULL)
+        {
+            free(list_domainport_[i]);
+            list_domainport_[i] = NULL;
+        }
+        if (list_[i] != NULL)
+        {
+            free(list_[i]);
+            list_[i] = NULL;
+        }
+    }
 }
 
 UrlPFFilter::UrlPFFilter()
@@ -1775,8 +1788,7 @@ int UrlPFFilter::load_pf()
                     char *domainend = strchr(s, '/');
                     // assert(domainend);
                     char *offset = domainend - 1;
-                    domainend = s > (domainend - 6) ? s : (domainend - 6);
-                    while (offset > domainend)
+                    while (offset > s && offset > (domainend - 6))
                     {
                         if (*offset != ':')
                             --offset;

@@ -111,12 +111,11 @@ public:
     uint64_t pf_size_;
     uint64_t url_size_;
     int count_[3][2];
-    int rd_count_[16][3][2];
+    int rd_count_[32][3][2];
     int file_size_;
     char **pf_list_[3][2][2];
     int pf_count_[3][2][2];
     int *pf_range_[3][2][2];
-    int pf_len_;
     char *pf_buf_;
     char *url_buf_;
     vector<char *> list_str_;
