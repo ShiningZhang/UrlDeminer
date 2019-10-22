@@ -113,7 +113,6 @@ void ReadUrlLarge_Module::svc()
                     FileElementPrefix *p = mid_file->prefixfile_list_[k];
                     memcpy(filter->rd_count_[k], p->count_[i][j], 3 * 2 * sizeof(int));
                 }
-                filter->pf_len_ = mid_file->prefixfile_list_.size();
                 if (j == 2)
                 {
                     filter->url_feature_ = 1;

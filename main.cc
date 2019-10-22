@@ -479,7 +479,7 @@ int main(int argc, char **argv)
         //url file read and domain filter
         SP_DEBUG("init urlfilter begin\n");
         uint64_t split_mem = 0;
-        uint64_t max_file_size = max(domainFilter_size, urlPrefixFilter_size);
+        uint64_t max_file_size = domainFilter_size;
         if (max_file_size + urlid_size < MAX_USE_MEM_SIZE)
         {
             // split_mem = ceil(urlid_size / 16) + 64;

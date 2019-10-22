@@ -1801,7 +1801,7 @@ int UrlPFFilter::load_pf()
                         int port_size = domainend - offset_1;
                         if (port_type == 1 && port_size == 2 && memcmp(offset_1, "80", 2) == 0)
                         {
-                            memmove(s + 3, s, offset - s - 1);
+                            memmove(s + 3, s, offset - s);
                             s += 3;
                             nb = na - 3;
                         }
@@ -1811,7 +1811,7 @@ int UrlPFFilter::load_pf()
                             s += 4;
                             nb = na - 4;
                         }
-                        /* else if (port_type == 0)
+                        else if (port_type == 0)
                         {
                             if (port_size == 2 && memcmp(offset_1, "80", 2) == 0)
                             {
@@ -1824,7 +1824,9 @@ int UrlPFFilter::load_pf()
                             {
                                 port_type = 5;
                             }
-                        } */
+                            assert(port_size != 4);
+                            assert(port_size != 5);
+                        }
                     }
                     if (nb > 0)
                     {

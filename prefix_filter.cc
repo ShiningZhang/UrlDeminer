@@ -282,7 +282,7 @@ void PrefixFilter::load_(char *p, uint64_t size)
             int port_size = domainend - offset_1;
             if (port_type == 1 && port_size == 2 && memcmp(offset_1, "80", 2) == 0)
             {
-                memmove(s + 3, s, offset - s - 1);
+                memmove(s + 3, s, offset - s);
                 s += 3;
             }
             else if (port_type == 2 && port_size == 3 && memcmp(offset_1, "443", 3) == 0)
