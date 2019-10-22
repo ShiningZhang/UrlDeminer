@@ -506,7 +506,7 @@ int main(int argc, char **argv)
         }
         SP_DEBUG("init urlfilter end\n");
 
-        SP_DEBUG("read urlfilter begin\n");
+        SP_DEBUG("url1 begin\n");
         SP_NEW_RETURN(modules[0], ReadUrl1_Module(1), -1);
         SP_NEW_RETURN(modules[1], UrlDP1_Module(8), -1);
         SP_NEW_RETURN(modules[2], MidLarge_Module(1), -1);
@@ -518,6 +518,7 @@ int main(int argc, char **argv)
         size = urlid_size;
 
         fp = fopen(urlidPath, "r");
+        assert(fp);
         data->fp_in_ = fp;
         data->length_ = size;
         data->fp_out_ = stdout;
@@ -548,7 +549,7 @@ int main(int argc, char **argv)
         {
             s_instance_stream->pop();
         }
-        SP_DEBUG("read urlfilter end\n");
+        SP_DEBUG("url2 end\n");
 
         //prefix filter load
         SP_DEBUG("read prefix begin\n");
@@ -562,6 +563,7 @@ int main(int argc, char **argv)
         }
 
         fp = fopen(urlPrefixFilterPath, "r");
+        assert(fp);
         // size = file_size(urlPrefixFilterPath);
         size = urlPrefixFilter_size;
         SP_DEBUG("fp=%p,size=%lld\n", fp, size);

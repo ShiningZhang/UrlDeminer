@@ -285,6 +285,14 @@ int UrlFilter::load1()
             }
         }
     }
+    for (int j = 0; j < 2; ++j)
+    {
+        for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+        {
+            if (list_domain_sp_count_[j][i] > 0)
+                list_domain_sp_[j][i] = (DomainPortBuf *)malloc(list_domain_sp_count_[j][i] * sizeof(DomainPortBuf));
+        }
+    }
 
     load_(p_, size_);
     return count;
@@ -1810,6 +1818,56 @@ void UrlFilterLarge::filter_domainport_large()
 #ifdef DEBUG
                 printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
 #endif
+            }
+        }
+    }
+    for (int num1 = 0; num1 < 2; ++num1)
+    {
+        for (int t = 0; t < DOMAIN_CHAR_COUNT; ++t)
+        {
+            for (int i = 0; i < list_domain_sp_count_[num1][t]; ++i)
+            {
+                DomainPortBuf &in = list_domain_sp_[num1][t][i];
+                res = {0, 0, -1};
+                // for (int j = list_domainfilter_.size() - 1; j < list_domainfilter_.size(); ++j)
+                {
+                    if (filter_domainport_1_sp(in, filter, num1, t, output) != -1)
+                    {
+                        /* if (output.n > res.n)
+                        {
+                            res = output;
+                        }
+                        else if (output.n == res.n)
+                        {
+                            if (output.port > res.port)
+                                res = output;
+                            else if (output.port == res.port && output.ret > res.ret)
+                                res = output;
+                        } */
+                        res = output;
+                    }
+                }
+                if (res.ret == 1) // -
+                {
+                    counters_.hit++;
+                    uint32_t tag = (uint32_t)strtoul(in.start + (*((uint16_t *)(in.start - 2))) + 1 + 1, NULL, 16);
+                    counters_.hitchecksum ^= tag;
+                }
+                else
+                {
+                    if (res.ret == -1) //miss
+                    {
+                        in.start[-3] |= 0x40;
+                    }
+                    // arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
+                    int t1 = domain_temp[(unsigned char)*in.start];
+                    list_[t1][count[t1]++] = (in.start - 2);
+                    // assert((in.start - 2) != NULL);
+                    arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
+#ifdef DEBUG
+                    printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
+#endif
+                }
             }
         }
     }
