@@ -52,7 +52,7 @@ void DomainMerge_Module::svc()
                 gidx_dp[1] = 0;
             }
         }
-        while (idx1 < 2)
+        while (idx1 < 6)
         {
             ((DomainFilterMerge *)filter)->merge(data->domain_filter_list_, idx1, idx2);
             {

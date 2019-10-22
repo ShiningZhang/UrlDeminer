@@ -71,6 +71,8 @@ public:
     DomainPortBuf *list_domainport_[DOMAIN_CHAR_COUNT];
     int list_domainport_count_[DOMAIN_CHAR_COUNT];
     int max_list_domainport_count_[DOMAIN_CHAR_COUNT];
+    DomainPortBuf *list_domain_sp_[2][DOMAIN_CHAR_COUNT]; //.com 0 .cn 1
+    int list_domain_sp_count_[2][DOMAIN_CHAR_COUNT];
 };
 
 class UrlFilterLarge : public UrlFilter

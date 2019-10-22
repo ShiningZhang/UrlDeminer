@@ -23,6 +23,8 @@ UrlFilter::UrlFilter() : p_(NULL), size_(0), buf_size_(0), out_(NULL), out_size_
     memset(list_domainport_, 0, DOMAIN_CHAR_COUNT * sizeof(DomainPortBuf *));
     memset(list_domainport_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     memset(max_list_domainport_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
+    memset(list_domain_sp_, 0, 2 * DOMAIN_CHAR_COUNT * sizeof(DomainPortBuf *));
+    memset(list_domain_sp_count_, 0, 2 * DOMAIN_CHAR_COUNT * sizeof(int));
 }
 
 UrlFilter::~UrlFilter()
@@ -38,6 +40,14 @@ UrlFilter::~UrlFilter()
         {
             free(list_domainport_[i]);
             list_domainport_[i] = NULL;
+        }
+        for (int j = 0; j < 2; ++j)
+        {
+            if (list_domain_sp_[j][i] != NULL)
+            {
+                free(list_domain_sp_[j][i]);
+                list_domain_sp_[j][i] = NULL;
+            }
         }
     }
     if (p_ != NULL)
@@ -55,15 +65,16 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
     int count = 0;
     int domain_count[DOMAIN_CHAR_COUNT] = {0};
     int prefix_count[DOMAIN_CHAR_COUNT] = {0};
+    int domain_sp_count[2][DOMAIN_CHAR_COUNT] = {0};
     while (s < e)
     {
         char *se = strchr(s, '\n');
         s += 8;
         char *domain_end = strchr(s, '/');
         char *port = domain_end - 1;
-        domain_end = s > (domain_end - 6) ? s : (domain_end - 6);
+        char *start = s > (domain_end - 6) ? s : (domain_end - 6);
         int t = domain_temp[(unsigned char)(*port)];
-        while (port > domain_end)
+        while (port > start)
         {
             if (*port != ':')
                 --port;
@@ -71,8 +82,25 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
                 break;
         }
         if (*port == ':')
+        {
+            domain_end = port;
             t = domain_temp[(unsigned char)*(port - 1)];
-        ++domain_count[t];
+        }
+        --domain_end;
+        if (memcmp(domain_end - 3, ".com", 4) == 0)
+        {
+            int t1 = domain_temp[(unsigned char)*(domain_end - 4)];
+            ++domain_sp_count[0][t1];
+        }
+        else if (memcmp(domain_end - 2, ".cn", 3) == 0)
+        {
+            int t1 = domain_temp[(unsigned char)*(domain_end - 3)];
+            ++domain_sp_count[1][t1];
+        }
+        else
+        {
+            ++domain_count[t];
+        }
         ++count;
         if (s[-1] == '/')
             t = domain_temp[(unsigned char)*s];
@@ -86,6 +114,7 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
         this->list_domainport_count_[i] = domain_count[i];
         this->list_count_[i] = prefix_count[i];
     }
+    memcpy(this->list_domain_sp_count_, domain_sp_count, 2 * DOMAIN_CHAR_COUNT * sizeof(int));
     return count;
 }
 
@@ -96,6 +125,7 @@ int UrlFilter::load_(char *p, uint64_t size)
     char *s = p;
     DomainPortBuf b;
     int count[DOMAIN_CHAR_COUNT] = {0};
+    int count_sp[2][DOMAIN_CHAR_COUNT] = {0};
     // memset(count, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     while (s < e)
     {
@@ -125,6 +155,7 @@ int UrlFilter::load_(char *p, uint64_t size)
         }
         if (*port == ':')
         {
+            domain_end = port;
             t = domain_temp[(unsigned char)*(port - 1)];
             b.port = (uint16_t)strtoul(port + 1, NULL, 10);
             domain_len = port - s;
@@ -133,19 +164,41 @@ int UrlFilter::load_(char *p, uint64_t size)
                 memmove(s + 4, s, domain_len);
                 s += 4;
                 s[-3] = 1 & 0xff;
+                domain_end += 4;
             }
             else if (s[-3] == 0 && b.port == 80)
             {
                 memmove(s + 3, s, domain_len);
                 s += 3;
                 s[-3] = 0 & 0xff;
+                domain_end += 3;
             }
         }
         b.start = s;
         b.n = domain_len - 1;
         uint16_t len = se - s - 9; // -9 +2  [-1]type:len[2]:start->end
         *(uint16_t *)(s - 2) = len - 1;
-        list_domainport_[t][count[t]++] = (b);
+        assert(len != 2);
+        assert(len != 1);
+        --domain_end;
+        if (domain_len > 4 && memcmp(domain_end - 3, ".com", 4) == 0)
+        {
+            char *offset = domain_end - 3;
+            b.n = domain_len - 5;
+            int t1 = domain_temp[(unsigned char)(*(offset - 1))];
+            list_domain_sp_[0][t1][count_sp[0][t1]++] = b;
+        }
+        else if (domain_len > 3 && memcmp(domain_end - 2, ".cn", 3) == 0)
+        {
+            char *offset = domain_end - 2;
+            b.n = domain_len - 4;
+            int t1 = domain_temp[(unsigned char)(*(offset - 1))];
+            list_domain_sp_[1][t1][count_sp[1][t1]++] = b;
+        }
+        else
+        {
+            list_domainport_[t][count[t]++] = (b);
+        }
 #ifdef DEBUG
         *(se - 9) = '\0';
         printf("load:[%d,%d]%d %s\n", t, port, len, s);
@@ -177,6 +230,14 @@ UrlFilter *UrlFilter::load(char *p, uint64_t size)
     {
         if (filter->list_count_[i] > 0)
             filter->list_[i] = (char **)malloc(filter->list_count_[i] * sizeof(char *));
+    }
+    for (int j = 0; j < 2; ++j)
+    {
+        for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+        {
+            if (filter->list_domain_sp_count_[j][i] > 0)
+                filter->list_domain_sp_[j][i] = (DomainPortBuf *)malloc(filter->list_domain_sp_count_[j][i] * sizeof(DomainPortBuf));
+        }
     }
     filter->load_(p, size);
     filter->p_ = p;
@@ -474,7 +535,8 @@ int filter_domainport_impl(const DomainPortBuf &in,
         --iter;
         --count;
     }
-    if (count < 3)
+    // if (count < 3)
+    if (false)
     {
         while (count > 0)
         {
@@ -542,6 +604,7 @@ bool cmp_dp_port_loop(const stDP_Port_CMP &e1, const DomainPortBuf &e2)
 {
     if (e1.n > e2.n)
         return false;
+    LOG("cmp_dp_port_loop:%d,%c;%d,%s\n", e1.n, e1.c, e2.n, e2.start);
     return e1.c < e2.start[e2.n - e1.n];
 }
 
@@ -575,7 +638,8 @@ int filter_port_impl(DomainPortBuf in,
         --iter;
         --count;
     }
-    if (count < 3)
+    // if (count < 3)
+    if (true)
     {
         while (count > 0)
         {
@@ -711,6 +775,144 @@ int filter_domainport_1(const DomainPortBuf &in,
     return res.ret;
 }
 
+int filter_domainport_1_sp(DomainPortBuf in,
+                           const DomainFilterMerge *filter,
+                           int i,
+                           int t,
+                           stDPRES &res)
+{
+    res = {0, 0, -1};
+    DomainPortBuf *port_start = filter->port_start_[1][in.port];
+    int size = filter->port_size_[1][in.port];
+    in.n += 4 - i;
+    int n = filter_port_impl(in, port_start, size, filter->port_range_[1][in.port]);
+    if (n > 0)
+    {
+        res.n = n;
+        res.ret = 1;
+        res.port = in.port;
+        if (n == in.n)
+            return res.ret;
+    }
+    port_start = filter->port_start_[0][in.port];
+    size = filter->port_size_[0][in.port];
+    n = filter_port_impl(in, port_start, size, filter->port_range_[0][in.port]);
+    if (n > 0 && n > res.n)
+    {
+        res.n = n;
+        res.ret = 0;
+        res.port = in.port;
+        if (n == in.n)
+            return res.ret;
+    }
+    if (res.n != 0)
+        return res.ret;
+    in.n -= 4 - i;
+    if (in.n == 0)
+    {
+        if (filter->list_sp_cc_[i][1][t] > 0)
+        {
+            res.n = 4 + i;
+            res.ret = 1;
+            res.port = 0;
+            return res.ret;
+        }
+        else if (filter->list_sp_cc_[i][0][t] > 0)
+        {
+            res.n = 4 + i;
+            res.ret = 0;
+            res.port = 0;
+            return res.ret;
+        }
+        else if (filter->list_sp_c_[i][1] > 0)
+        {
+            res.n = 3 + i;
+            res.ret = 1;
+            res.port = 0;
+            return res.ret;
+        }
+        else if (filter->list_sp_c_[i][0] > 0)
+        {
+            res.n = 3 + i;
+            res.ret = 0;
+            res.port = 0;
+            return res.ret;
+        }
+    }
+    char **start = filter->list_sp_[i][1][t];
+    size = filter->list_sp_count_[i][1][t];
+    n = filter_domainport_impl(in, start, size, filter->list_sp_range_[i][1][t]);
+    if (n > 0)
+    {
+        res.n = n;
+        res.ret = 1;
+        res.port = 0;
+        if (n == in.n)
+            return res.ret;
+    }
+    start = filter->list_sp_[i][0][t];
+    size = filter->list_sp_count_[i][0][t];
+    n = filter_domainport_impl(in, start, size, filter->list_sp_range_[i][0][t]);
+    if (n > 0 && n > res.n)
+    {
+        res.n = n;
+        res.ret = 0;
+        res.port = 0;
+        if (n == in.n)
+            return res.ret;
+    }
+    /* if (res.ret == -1)
+    {
+        if (filter->list_c[1][t] > 0)
+        {
+            res.n = 1;
+            res.ret = 1;
+            res.port = 0;
+            return res.ret;
+        }
+        else if (filter->list_c[0][t] > 0)
+        {
+            res.n = 1;
+            res.ret = 0;
+            res.port = 0;
+            return res.ret;
+        }
+    } */
+    if (res.ret == -1)
+    {
+        if (filter->list_sp_cc_[i][1][t] > 0)
+        {
+            res.n = 4 + i;
+            res.ret = 1;
+            res.port = 0;
+            return res.ret;
+        }
+        else if (filter->list_sp_cc_[i][0][t] > 0)
+        {
+            res.n = 4 + i;
+            res.ret = 0;
+            res.port = 0;
+            return res.ret;
+        }
+        else if (filter->list_sp_c_[i][1] > 0)
+        {
+            res.n = 3 + i;
+            res.ret = 1;
+            res.port = 0;
+            return res.ret;
+        }
+        else if (filter->list_sp_c_[i][0] > 0)
+        {
+            res.n = 3 + i;
+            res.ret = 0;
+            res.port = 0;
+            return res.ret;
+        }
+    }
+
+    return res.ret;
+}
+
 bool cmp_dpres(const pair<int, vector<DomainPortBuf>::iterator> &e1, const pair<int, vector<DomainPortBuf>::iterator> &e2)
 {
     if (e2.first == -1)
@@ -783,6 +985,55 @@ void UrlFilter::filter_domainport()
 #ifdef DEBUG
                 printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
 #endif
+            }
+        }
+    }
+    for (int num1 = 0; num1 < 2; ++num1)
+    {
+        for (int t = 0; t < DOMAIN_CHAR_COUNT; ++t)
+        {
+            for (int i = 0; i < list_domain_sp_count_[num1][t]; ++i)
+            {
+                DomainPortBuf &in = list_domain_sp_[num1][t][i];
+                res = {0, 0, -1};
+                // for (int j = list_domainfilter_.size() - 1; j < list_domainfilter_.size(); ++j)
+                {
+                    if (filter_domainport_1_sp(in, filter, num1, t, output) != -1)
+                    {
+                        /* if (output.n > res.n)
+                        {
+                            res = output;
+                        }
+                        else if (output.n == res.n)
+                        {
+                            if (output.port > res.port)
+                                res = output;
+                            else if (output.port == res.port && output.ret > res.ret)
+                                res = output;
+                        } */
+                        res = output;
+                    }
+                }
+                if (res.ret == 1) // -
+                {
+                    counters_.hit++;
+                    uint32_t tag = (uint32_t)strtoul(in.start + (*((uint16_t *)(in.start - 2))) + 1 + 1, NULL, 16);
+                    counters_.hitchecksum ^= tag;
+                }
+                else
+                {
+                    if (res.ret == -1) //miss
+                    {
+                        in.start[-3] |= 0x40;
+                    }
+                    arrangesuffix(in.start + 1, *(uint16_t *)(in.start - 2));
+                    int t1 = domain_temp[(unsigned char)*in.start];
+                    list_[t1][count[t1]++] = (in.start - 2);
+                    // assert((in.start - 2) != NULL);
+#ifdef DEBUG
+                    printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
+#endif
+                }
             }
         }
     }
@@ -1518,6 +1769,7 @@ void UrlFilterLarge::filter_domainport_large()
         for (int i = 0; i < list_domainport_count_[t]; ++i)
         {
             DomainPortBuf &in = list_domainport_[t][i];
+            LOG("filter_domainport_large begin:in=%s\n", in.start, res.n, res.port, res.ret);
             res = {0, 0, -1};
             // for (int j = list_domainfilter_.size() - 1; j < list_domainfilter_.size(); ++j)
             {
@@ -1535,6 +1787,7 @@ void UrlFilterLarge::filter_domainport_large()
                             res = output;
                     }
                 }
+                LOG("filter_domainport_large:in=%s,res=[%d,%d,%d]\n", in.start, res.n, res.port, res.ret);
             }
             if (res.ret == 1) // -
             {
@@ -1553,6 +1806,7 @@ void UrlFilterLarge::filter_domainport_large()
                 list_[t1][count[t1]++] = (in.start - 2);
                 // assert((in.start - 2) != NULL);
                 arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
+                assert(*(uint16_t *)(in.start - 2) - 1);
 #ifdef DEBUG
                 printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
 #endif
@@ -1870,6 +2124,7 @@ int UrlPFFilter::load_pf()
 int UrlPFFilter::load_pf1()
 {
     SP_DEBUG("load_pf1\n");
+    assert(0);
     if (pf_size_ == 0)
     {
         return -1;
@@ -1946,6 +2201,7 @@ int UrlPFFilter::load_pf1()
 
 int UrlPFFilter::load_pf2()
 {
+    assert(0);
     SP_DEBUG("load_pf2\n");
     if (pf_size_ == 0)
     {
@@ -2274,7 +2530,8 @@ void UrlPFFilter::filter()
                         if (res >= start)
                         {
                             int count = pf_range_[1][1][https][res - start];
-                            if (count < 3)
+                            // if (count < 3)
+                            if (true)
                             {
                                 while (count > 0)
                                 {
@@ -2376,7 +2633,8 @@ void UrlPFFilter::filter()
                         if (res >= start)
                         {
                             int count = pf_range_[1][0][https][res - start];
-                            if (count < 3)
+                            // if (count < 3)
+                            if (true)
                             {
                                 while (count > 0)
                                 {
@@ -2493,7 +2751,8 @@ void UrlPFFilter::filter()
                         if (res >= start)
                         {
                             int count = pf_range_[0][1][https][res - start];
-                            if (count < 3)
+                            if (true)
+                            // if (count < 3)
                             {
                                 while (count > 0)
                                 {
@@ -2614,7 +2873,8 @@ void UrlPFFilter::filter()
                         if (res >= start)
                         {
                             int count = pf_range_[0][0][https][res - start];
-                            if (count < 3)
+                            if (true)
+                            // if (count < 3)
                             {
                                 while (count > 0)
                                 {
