@@ -624,7 +624,7 @@ int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx)
                         int sl = 0;
                         HeapItemPf *heap = (HeapItemPf *)malloc((part_num + 1) * sizeof(HeapItemPf));
                         memset(heap, 0, (part_num + 1) * sizeof(HeapItemPf));
-                        for (int m = 0; m < part_num; ++m)
+                        for (uint m = 0; m < part_num; ++m)
                         {
                             if (list[m]->list_count_[i][j][k][idx] > 0)
                             {

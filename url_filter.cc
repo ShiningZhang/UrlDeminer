@@ -497,7 +497,7 @@ int filter_domainport_(const DomainPortBuf &in,
 struct stDP_Port_CMP
 {
     uint16_t n;
-    char c;
+    char *c;
 };
 
 inline bool cmp_dp_len(const char *pa, const uint16_t na, const char *pb, const uint16_t nb)
@@ -507,10 +507,40 @@ inline bool cmp_dp_len(const char *pa, const uint16_t na, const char *pb, const 
 
 bool cmp_dp1_loop(const stDP_Port_CMP &e1, const char *e2)
 {
-    uint16_t nb = *(uint16_t *)(e2 - 2);
-    if (e1.n > nb)
-        return false;
-    return e1.c < e2[nb - e1.n];
+    const char *pa = e1.c;
+    const char *pb = e2;
+    uint16_t na = e1.n;
+    uint16_t nb = *(uint16_t *)(pb - 2);
+    int ret = cmpbuf_dp(pa, na, pb, nb);
+#ifdef DEBUG
+    printf("cmp_dp1_loop:ret=%d,e1:%s,%d,e2:%s,%d\n", ret, pa, na, pb, nb);
+#endif
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    return na <= nb;
+}
+
+inline uint16_t next_domain_suffix(stDP_Port_CMP &e1)
+{
+    uint16_t count = 0;
+    if (e1.c[0] == '.')
+    {
+        count = 1;
+        ++e1.c;
+        --e1.n;
+        return count;
+    }
+    while (count < e1.n)
+    {
+        if (e1.c[count] == '.')
+        {
+            break;
+        }
+        ++count;
+    }
+    e1.c += count;
+    e1.n -= count;
+    return count;
 }
 
 int filter_domainport_impl(const DomainPortBuf &in,
@@ -543,13 +573,18 @@ int filter_domainport_impl(const DomainPortBuf &in,
         --iter;
         --count;
     }
-    // if (count < 3)
-    if (true)
+    if (count < 7)
     {
         while (count > 0)
         {
             pb = *iter;
             nb = *(uint16_t *)(pb - 2);
+            if (na < nb)
+            {
+                --iter;
+                --count;
+                continue;
+            }
             ret = cmpbuf_dp(pa, na, pb, nb);
 
             if (ret == 0 && (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.'))))
@@ -569,40 +604,42 @@ int filter_domainport_impl(const DomainPortBuf &in,
         char **p = iter + 1 - count;
         pb = p[0];
         nb = *(uint16_t *)(pb - 2);
-        if (na > nb)
+        LOG("filter_domainport_impl:begin while: na=%d,%s;nb=%d,%s\n", na, pa, nb, pb);
+        if (na >= nb && cmpbuf_dp(pa, na, pb, nb) == 0)
         {
-            ret = cmpbuf_dp(pa, na, pb, nb);
-            if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
+            LOG("filter_domainport_impl:begin while1: na=%d,%s;nb=%d,%s\n", na, pa, nb, pb);
+            int final = -1;
+            if (cmp_dp_len(pa, na, pb, nb))
             {
-                int final = (int)nb;
-                uint16_t count = nb + 1;
-                p += 1;
-                stDP_Port_CMP s1 = {count, pa[na - count]};
-                while (count <= na)
-                {
-                    char **p1 = upper_bound(p, iter + 1, s1, cmp_dp1_loop);
-                    if (p1 > iter)
-                    {
-                        break;
-                    }
-                    pb = *p1;
-                    nb = *(uint16_t *)(pb - 2);
-                    ret = cmpbuf_dp(pa, na - count, pb, nb - count);
-                    if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
-                    {
-                        final = (int)nb;
-                    }
-                    if (p1 == iter)
-                    {
-                        break;
-                    }
-                    ++count;
-                    p = p1 + 1;
-                    ++s1.n;
-                    s1.c = pa[na - count];
-                }
-                return final;
+                final = (int)nb;
             }
+            LOG("filter_domainport_impl:begin while2 final=%d: na=%d,%s;nb=%d,%s\n", final, na, pa, nb, pb);
+            uint16_t min = nb;
+            stDP_Port_CMP s1 = {na, pa};
+            uint16_t count_suffix = next_domain_suffix(s1);
+            while (s1.n > min && iter > p)
+            {
+                char **p1 = upper_bound(p, iter + 1, s1, cmp_dp1_loop);
+                if (p1 == p)
+                {
+                    break;
+                }
+                if (p1 > iter)
+                {
+                    next_domain_suffix(s1);
+                    continue;
+                }
+                pb = p1[0];
+                nb = *(uint16_t *)(pb - 2);
+                if (s1.n == nb && cmpbuf_dp(s1.c, s1.n, pb, nb) == 0)
+                {
+                    final = (int)nb;
+                    break;
+                }
+                iter = p1 - 1;
+                next_domain_suffix(s1);
+            }
+            return final;
         }
     }
     return -1;
@@ -610,10 +647,17 @@ int filter_domainport_impl(const DomainPortBuf &in,
 
 bool cmp_dp_port_loop(const stDP_Port_CMP &e1, const DomainPortBuf &e2)
 {
-    if (e1.n > e2.n)
-        return false;
-    LOG("cmp_dp_port_loop:%d,%c;%d,%s\n", e1.n, e1.c, e2.n, e2.start);
-    return e1.c < e2.start[e2.n - e1.n];
+    const char *pa = e1.c;
+    const char *pb = e2.start;
+    uint16_t na = e1.n;
+    uint16_t nb = e2.n;
+    int ret = cmpbuf_dp(pa, na, pb, nb);
+#ifdef DEBUG
+    printf("cmp_dp_port_loop:ret=%d,e1:%s,%d,e2:%s,%d,port=%d\n", ret, pa, na, e2.start, nb, e2.port);
+#endif
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    return na <= nb;
 }
 
 int filter_port_impl(DomainPortBuf in,
@@ -646,13 +690,18 @@ int filter_port_impl(DomainPortBuf in,
         --iter;
         --count;
     }
-    // if (count < 3)
-    if (true)
+    if (count < 7)
     {
         while (count > 0)
         {
             pb = iter->start;
             nb = iter->n;
+            if (na < nb)
+            {
+                --iter;
+                --count;
+                continue;
+            }
             ret = cmpbuf_dp(pa, na, pb, nb);
 
             if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
@@ -671,40 +720,39 @@ int filter_port_impl(DomainPortBuf in,
         DomainPortBuf *p = iter + 1 - count;
         pb = p->start;
         nb = p->n;
-        if (na > nb)
+        if (na >= nb && cmpbuf_dp(pa, na, pb, nb) == 0)
         {
-            ret = cmpbuf_dp(pa, na, pb, nb);
-            if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
+            int final = -1;
+            if (cmp_dp_len(pa, na, pb, nb))
             {
-                int final = (int)nb;
-                uint16_t count = nb + 1;
-                p += 1;
-                stDP_Port_CMP s1 = {count, pa[na - count]};
-                while (count <= na)
-                {
-                    DomainPortBuf *p1 = upper_bound(p, iter + 1, s1, cmp_dp_port_loop);
-                    if (p1 > iter)
-                    {
-                        break;
-                    }
-                    pb = p1->start;
-                    nb = p1->n;
-                    ret = cmpbuf_dp(pa, na - count, pb, nb - count);
-                    if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
-                    {
-                        final = (int)nb;
-                    }
-                    if (p1 == iter)
-                    {
-                        break;
-                    }
-                    ++count;
-                    p = p1 + 1;
-                    ++s1.n;
-                    s1.c = pa[na - count];
-                }
-                return final;
+                final = (int)nb;
             }
+            uint16_t min = nb;
+            stDP_Port_CMP s1 = {na, pa};
+            uint16_t count_suffix = next_domain_suffix(s1);
+            while (s1.n > min && iter > p)
+            {
+                DomainPortBuf *p1 = upper_bound(p, iter + 1, s1, cmp_dp_port_loop);
+                if (p1 == p)
+                {
+                    break;
+                }
+                if (p1 > iter)
+                {
+                    next_domain_suffix(s1);
+                    continue;
+                }
+                pb = p1->start;
+                nb = p1->n;
+                if (s1.n == nb && cmpbuf_dp(s1.c, s1.n, pb, nb) == 0)
+                {
+                    final = (int)nb;
+                    break;
+                }
+                iter = p1 - 1;
+                next_domain_suffix(s1);
+            }
+            return final;
         }
     }
     return -1;
@@ -1251,14 +1299,14 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                             if (ret == 0)
                             {
                                 int final = (int)nb;
-                                uint16_t count = nb + 1;
+                                uint16_t count_suffix = nb + 1;
                                 p += 1;
                                 stPF_CMP s1;
-                                s1.n = count;
+                                s1.n = count_suffix;
                                 s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
                                 s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
                                 s1.c = pa[com_locat(s1, na)];
-                                while (count < na)
+                                while (count_suffix < na)
                                 {
                                     char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop);
                                     if (p1 > res)
@@ -1267,7 +1315,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     }
                                     pb = *p1;
                                     nb = *(uint16_t *)(pb);
-                                    int offset = ((int)(count / 8)) * 8;
+                                    int offset = ((int)(count_suffix / 8)) * 8;
                                     ret = cmpbuf_pf(pa + offset, na - offset, pb + 3 + offset, nb - offset);
                                     if (ret == 0)
                                     {
@@ -1277,7 +1325,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     {
                                         break;
                                     }
-                                    ++count;
+                                    ++count_suffix;
                                     p = p1 + 1;
                                     ++s1.n;
                                     s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
@@ -1356,14 +1404,14 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                             if (ret == 0)
                             {
                                 int final = (int)nb;
-                                uint16_t count = nb + 1;
+                                uint16_t count_suffix = nb + 1;
                                 p += 1;
                                 stPF_CMP s1;
-                                s1.n = count;
+                                s1.n = count_suffix;
                                 s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
                                 s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
                                 s1.c = pa[com_locat(s1, na)];
-                                while (count < na)
+                                while (count_suffix < na)
                                 {
                                     char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop);
                                     if (p1 > res)
@@ -1372,7 +1420,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     }
                                     pb = *p1;
                                     nb = *(uint16_t *)(pb);
-                                    int offset = ((int)(count / 8)) * 8;
+                                    int offset = ((int)(count_suffix / 8)) * 8;
                                     ret = cmpbuf_pf(pa + offset, na - offset, pb + 3 + offset, nb - offset);
                                     if (ret == 0)
                                     {
@@ -1382,7 +1430,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     {
                                         break;
                                     }
-                                    ++count;
+                                    ++count_suffix;
                                     p = p1 + 1;
                                     ++s1.n;
                                     s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
@@ -1473,14 +1521,14 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                             if (ret == 0)
                             {
                                 int final = (int)nb;
-                                uint16_t count = nb + 1;
+                                uint16_t count_suffix = nb + 1;
                                 p += 1;
                                 stPF_CMP s1;
-                                s1.n = count;
+                                s1.n = count_suffix;
                                 s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
                                 s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
                                 s1.c = pa[com_locat(s1, na)];
-                                while (count < na)
+                                while (count_suffix < na)
                                 {
                                     char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop);
                                     if (p1 > res)
@@ -1489,7 +1537,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     }
                                     pb = *p1;
                                     nb = *(uint16_t *)(pb);
-                                    int offset = ((int)(count / 8)) * 8;
+                                    int offset = ((int)(count_suffix / 8)) * 8;
                                     ret = cmpbuf_pf(pa + offset, na - offset, pb + 3 + offset, nb - offset);
                                     if (ret == 0)
                                     {
@@ -1499,7 +1547,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     {
                                         break;
                                     }
-                                    ++count;
+                                    ++count_suffix;
                                     p = p1 + 1;
                                     ++s1.n;
                                     s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
@@ -1594,14 +1642,14 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                             if (ret == 0)
                             {
                                 int final = (int)nb;
-                                uint16_t count = nb + 1;
+                                uint16_t count_suffix = nb + 1;
                                 p += 1;
                                 stPF_CMP s1;
-                                s1.n = count;
+                                s1.n = count_suffix;
                                 s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
                                 s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
                                 s1.c = pa[com_locat(s1, na)];
-                                while (count < na)
+                                while (count_suffix < na)
                                 {
                                     char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop);
                                     if (p1 > res)
@@ -1610,7 +1658,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     }
                                     pb = *p1;
                                     nb = *(uint16_t *)(pb);
-                                    int offset = ((int)(count / 8)) * 8;
+                                    int offset = ((int)(count_suffix / 8)) * 8;
                                     ret = cmpbuf_pf(pa + offset, na - offset, pb + 3 + offset, nb - offset);
                                     if (ret == 0)
                                     {
@@ -1620,7 +1668,7 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, s
                                     {
                                         break;
                                     }
-                                    ++count;
+                                    ++count_suffix;
                                     p = p1 + 1;
                                     ++s1.n;
                                     s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
@@ -2519,16 +2567,16 @@ void UrlPFFilter::filter()
             uint16_t nb = 0;
             char **start;
             char **end;
-            char **res;
+            char **p_res;
             stUrlPfL st = {pa, na};
             if (pf_count_[2][1][https] > 0)
             {
                 start = pf_list_[2][1][https];
                 end = pf_list_[2][1][https] + pf_count_[2][1][https];
-                res = upper_bound(start, end, st, cmp_pf_large);
-                if (res != end)
+                p_res = upper_bound(start, end, st, cmp_pf_large);
+                if (p_res != end)
                 {
-                    pb = *res;
+                    pb = *p_res;
                     nb = *(uint16_t *)pb;
                     if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                     {
@@ -2546,10 +2594,10 @@ void UrlPFFilter::filter()
             {
                 start = pf_list_[2][0][https];
                 end = pf_list_[2][0][https] + pf_count_[2][0][https];
-                res = upper_bound(start, end, st, cmp_pf_large);
-                if (res != end)
+                p_res = upper_bound(start, end, st, cmp_pf_large);
+                if (p_res != end)
                 {
-                    pb = *res;
+                    pb = *p_res;
                     nb = *(uint16_t *)pb;
                     if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                     {
@@ -2567,14 +2615,14 @@ void UrlPFFilter::filter()
             {
                 start = pf_list_[1][1][https];
                 end = pf_list_[1][1][https] + pf_count_[1][1][https];
-                res = upper_bound(start, end, st, cmp_pf_large);
+                p_res = upper_bound(start, end, st, cmp_pf_large);
 #ifdef DEBUG
-                printf("start=%p,end=%p,res=%p\n", start, end, res);
+                printf("start=%p,end=%p,p_res=%p\n", start, end, p_res);
 #endif
-                --res;
-                if (res >= start)
+                --p_res;
+                if (p_res >= start)
                 {
-                    pb = *res;
+                    pb = *p_res;
                     nb = *(uint16_t *)(pb);
                     if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                     {
@@ -2584,16 +2632,16 @@ void UrlPFFilter::filter()
                     }
                     else
                     {
-                        --res;
-                        if (res >= start)
+                        --p_res;
+                        if (p_res >= start)
                         {
-                            int count = pf_range_[1][1][https][res - start];
+                            int count = pf_range_[1][1][https][p_res - start];
                             // if (count < 3)
                             if (true)
                             {
                                 while (count > 0)
                                 {
-                                    pb = *res;
+                                    pb = *p_res;
                                     nb = *(uint16_t *)(pb);
                                     if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                                     {
@@ -2602,13 +2650,13 @@ void UrlPFFilter::filter()
                                         output.hit = 1;
                                         break;
                                     }
-                                    --res;
+                                    --p_res;
                                     --count;
                                 }
                             }
                             else
                             {
-                                char **p = res + 1 - count;
+                                char **p = p_res + 1 - count;
                                 pb = *p;
                                 nb = *(uint16_t *)(pb);
                                 if (na > nb)
@@ -2617,33 +2665,33 @@ void UrlPFFilter::filter()
                                     if (ret == 0)
                                     {
                                         int final = (int)nb;
-                                        uint16_t count = nb + 1;
+                                        uint16_t count_suffix = nb + 1;
                                         p += 1;
                                         stPF_CMP s1;
-                                        s1.n = count;
+                                        s1.n = count_suffix;
                                         s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
                                         s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
                                         s1.c = pa[com_locat(s1, na)];
-                                        while (count < na)
+                                        while (count_suffix < na)
                                         {
-                                            char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop_large);
-                                            if (p1 > res)
+                                            char **p1 = upper_bound(p, p_res + 1, s1, cmp_pf_loop_large);
+                                            if (p1 > p_res)
                                             {
                                                 break;
                                             }
                                             pb = *p1;
                                             nb = *(uint16_t *)(pb);
-                                            int offset = ((int)(count / 8)) * 8;
+                                            int offset = ((int)(count_suffix / 8)) * 8;
                                             ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
                                             if (ret == 0)
                                             {
                                                 final = (int)nb;
                                             }
-                                            if (p1 == res)
+                                            if (p1 == p_res)
                                             {
                                                 break;
                                             }
-                                            ++count;
+                                            ++count_suffix;
                                             p = p1 + 1;
                                             ++s1.n;
                                             s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
@@ -2668,13 +2716,13 @@ void UrlPFFilter::filter()
                 start = pf_list_[1][0][https];
                 end = pf_list_[1][0][https] + pf_count_[1][0][https];
 #ifdef DEBUG
-                printf("start=%p,end=%p,res=%p\n", start, end, res);
+                printf("start=%p,end=%p,res=%p\n", start, end, p_res);
 #endif
-                res = upper_bound(start, end, st, cmp_pf_large);
-                --res;
-                if (res >= start)
+                p_res = upper_bound(start, end, st, cmp_pf_large);
+                --p_res;
+                if (p_res >= start)
                 {
-                    pb = *res;
+                    pb = *p_res;
                     nb = *(uint16_t *)(pb);
                     if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                     {
@@ -2687,16 +2735,16 @@ void UrlPFFilter::filter()
                     }
                     else
                     {
-                        --res;
-                        if (res >= start)
+                        --p_res;
+                        if (p_res >= start)
                         {
-                            int count = pf_range_[1][0][https][res - start];
+                            int count = pf_range_[1][0][https][p_res - start];
                             // if (count < 3)
                             if (true)
                             {
                                 while (count > 0)
                                 {
-                                    pb = *res;
+                                    pb = *p_res;
                                     nb = *(uint16_t *)(pb);
                                     if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                                     {
@@ -2708,13 +2756,13 @@ void UrlPFFilter::filter()
                                         }
                                         break;
                                     }
-                                    --res;
+                                    --p_res;
                                     --count;
                                 }
                             }
                             else
                             {
-                                char **p = res + 1 - count;
+                                char **p = p_res + 1 - count;
                                 pb = *p;
                                 nb = *(uint16_t *)(pb);
                                 if (na > nb)
@@ -2723,33 +2771,33 @@ void UrlPFFilter::filter()
                                     if (ret == 0)
                                     {
                                         int final = (int)nb;
-                                        uint16_t count = nb + 1;
+                                        uint16_t count_suffix = nb + 1;
                                         p += 1;
                                         stPF_CMP s1;
-                                        s1.n = count;
+                                        s1.n = count_suffix;
                                         s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
                                         s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
                                         s1.c = pa[com_locat(s1, na)];
-                                        while (count < na)
+                                        while (count_suffix < na)
                                         {
-                                            char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop_large);
-                                            if (p1 > res)
+                                            char **p1 = upper_bound(p, p_res + 1, s1, cmp_pf_loop_large);
+                                            if (p1 > p_res)
                                             {
                                                 break;
                                             }
                                             pb = *p1;
                                             nb = *(uint16_t *)(pb);
-                                            int offset = ((int)(count / 8)) * 8;
+                                            int offset = ((int)(count_suffix / 8)) * 8;
                                             ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
                                             if (ret == 0)
                                             {
                                                 final = (int)nb;
                                             }
-                                            if (p1 == res)
+                                            if (p1 == p_res)
                                             {
                                                 break;
                                             }
-                                            ++count;
+                                            ++count_suffix;
                                             p = p1 + 1;
                                             ++s1.n;
                                             s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
@@ -2776,11 +2824,11 @@ void UrlPFFilter::filter()
             {
                 start = pf_list_[0][1][https];
                 end = pf_list_[0][1][https] + pf_count_[0][1][https];
-                res = upper_bound(start, end, st, cmp_pf_large);
-                if (res != end)
+                p_res = upper_bound(start, end, st, cmp_pf_large);
+                if (p_res != end)
                 {
-                    const char *pb = *res;
-                    uint16_t nb = *(uint16_t *)(pb);
+                    pb = *p_res;
+                    nb = *(uint16_t *)(pb);
                     if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                     {
                         output.len = nb;
@@ -2789,11 +2837,11 @@ void UrlPFFilter::filter()
                         break;
                     }
                 }
-                --res;
-                if (res >= start)
+                --p_res;
+                if (p_res >= start)
                 {
-                    const char *pb = *res;
-                    uint16_t nb = *(uint16_t *)(pb);
+                    pb = *p_res;
+                    nb = *(uint16_t *)(pb);
                     if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                     {
                         if (nb > output.len)
@@ -2805,16 +2853,16 @@ void UrlPFFilter::filter()
                     }
                     else
                     {
-                        --res;
-                        if (res >= start)
+                        --p_res;
+                        if (p_res >= start)
                         {
-                            int count = pf_range_[0][1][https][res - start];
+                            int count = pf_range_[0][1][https][p_res - start];
                             if (true)
                             // if (count < 3)
                             {
                                 while (count > 0)
                                 {
-                                    pb = *res;
+                                    pb = *p_res;
                                     nb = *(uint16_t *)(pb);
                                     if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                                     {
@@ -2826,13 +2874,13 @@ void UrlPFFilter::filter()
                                         }
                                         break;
                                     }
-                                    --res;
+                                    --p_res;
                                     --count;
                                 }
                             }
                             else
                             {
-                                char **p = res + 1 - count;
+                                char **p = p_res + 1 - count;
                                 pb = *p;
                                 nb = *(uint16_t *)(pb);
                                 if (na > nb)
@@ -2841,33 +2889,33 @@ void UrlPFFilter::filter()
                                     if (ret == 0)
                                     {
                                         int final = (int)nb;
-                                        uint16_t count = nb + 1;
+                                        uint16_t count_suffix = nb + 1;
                                         p += 1;
                                         stPF_CMP s1;
-                                        s1.n = count;
+                                        s1.n = count_suffix;
                                         s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
                                         s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
                                         s1.c = pa[com_locat(s1, na)];
-                                        while (count < na)
+                                        while (count_suffix < na)
                                         {
-                                            char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop_large);
-                                            if (p1 > res)
+                                            char **p1 = upper_bound(p, p_res + 1, s1, cmp_pf_loop_large);
+                                            if (p1 > p_res)
                                             {
                                                 break;
                                             }
                                             pb = *p1;
                                             nb = *(uint16_t *)(pb);
-                                            int offset = ((int)(count / 8)) * 8;
+                                            int offset = ((int)(count_suffix / 8)) * 8;
                                             ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
                                             if (ret == 0)
                                             {
                                                 final = (int)nb;
                                             }
-                                            if (p1 == res)
+                                            if (p1 == p_res)
                                             {
                                                 break;
                                             }
-                                            ++count;
+                                            ++count_suffix;
                                             p = p1 + 1;
                                             ++s1.n;
                                             s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
@@ -2894,14 +2942,14 @@ void UrlPFFilter::filter()
             {
                 start = pf_list_[0][0][https];
                 end = pf_list_[0][0][https] + pf_count_[0][0][https];
-                res = upper_bound(start, end, st, cmp_pf_large);
+                p_res = upper_bound(start, end, st, cmp_pf_large);
 #ifdef DEBUG
-                printf("start=%p,end=%p,res=%p\n", start, end, res);
+                printf("start=%p,end=%p,res=%p\n", start, end, p_res);
 #endif
-                if (res != end)
+                if (p_res != end)
                 {
-                    const char *pb = *res;
-                    uint16_t nb = *(uint16_t *)(pb);
+                    pb = *p_res;
+                    nb = *(uint16_t *)(pb);
                     if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                     {
                         output.len = nb;
@@ -2910,12 +2958,12 @@ void UrlPFFilter::filter()
                         break;
                     }
                 }
-                --res;
+                --p_res;
 
-                if (res >= start)
+                if (p_res >= start)
                 {
-                    const char *pb = *res;
-                    uint16_t nb = *(uint16_t *)(pb);
+                    pb = *p_res;
+                    nb = *(uint16_t *)(pb);
                     if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                     {
                         if (nb > output.len)
@@ -2927,16 +2975,16 @@ void UrlPFFilter::filter()
                     }
                     else
                     {
-                        --res;
-                        if (res >= start)
+                        --p_res;
+                        if (p_res >= start)
                         {
-                            int count = pf_range_[0][0][https][res - start];
+                            int count = pf_range_[0][0][https][p_res - start];
                             if (true)
                             // if (count < 3)
                             {
                                 while (count > 0)
                                 {
-                                    pb = *res;
+                                    pb = *p_res;
                                     nb = *(uint16_t *)(pb);
                                     if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                                     {
@@ -2948,13 +2996,13 @@ void UrlPFFilter::filter()
                                         }
                                         break;
                                     }
-                                    --res;
+                                    --p_res;
                                     --count;
                                 }
                             }
                             else
                             {
-                                char **p = res + 1 - count;
+                                char **p = p_res + 1 - count;
                                 pb = *p;
                                 nb = *(uint16_t *)(pb);
                                 if (na > nb)
@@ -2963,33 +3011,33 @@ void UrlPFFilter::filter()
                                     if (ret == 0)
                                     {
                                         int final = (int)nb;
-                                        uint16_t count = nb + 1;
+                                        uint16_t count_suffix = nb + 1;
                                         p += 1;
                                         stPF_CMP s1;
-                                        s1.n = count;
+                                        s1.n = count_suffix;
                                         s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;
                                         s1.l8 = s1.n % 8 == 0 ? 8 : s1.n % 8;
                                         s1.c = pa[com_locat(s1, na)];
-                                        while (count < na)
+                                        while (count_suffix < na)
                                         {
-                                            char **p1 = upper_bound(p, res + 1, s1, cmp_pf_loop_large);
-                                            if (p1 > res)
+                                            char **p1 = upper_bound(p, p_res + 1, s1, cmp_pf_loop_large);
+                                            if (p1 > p_res)
                                             {
                                                 break;
                                             }
                                             pb = *p1;
                                             nb = *(uint16_t *)(pb);
-                                            int offset = ((int)(count / 8)) * 8;
+                                            int offset = ((int)(count_suffix / 8)) * 8;
                                             ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
                                             if (ret == 0)
                                             {
                                                 final = (int)nb;
                                             }
-                                            if (p1 == res)
+                                            if (p1 == p_res)
                                             {
                                                 break;
                                             }
-                                            ++count;
+                                            ++count_suffix;
                                             p = p1 + 1;
                                             ++s1.n;
                                             s1.die_8 = ((int)ceil((double)s1.n / 8)) * 8;

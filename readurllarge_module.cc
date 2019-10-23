@@ -56,18 +56,18 @@ void ReadUrlLarge_Module::svc()
                 count_url = 0;
                 buf_size = 0;
                 memset(count_pf, 0, 3 * 2 * sizeof(int));
-                for (int k = 0; k < mid_file->prefixfile_list_.size(); ++k)
+                for (uint k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                 {
                     read_pf_size += mid_file->prefixfile_list_[k]->size2_[i][j];
                 }
-                for (int k = 0; k < mid_file->largefile_list_.size(); ++k)
+                for (uint k = 0; k < mid_file->largefile_list_.size(); ++k)
                 {
                     read_url_size += mid_file->largefile_list_[k]->size1_[i][j];
                 }
                 SP_DEBUG("[%d,%d]read_pf_size=%d,read_url_size=%d, send=%d,recv=%d\n", i, j, read_pf_size, read_url_size, data->size_split_buf, data->recv_split_);
                 if (read_url_size == 0)
                 {
-                    for (int k = 0; k < mid_file->prefixfile_list_.size(); ++k)
+                    for (uint k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                     {
                         fseek(mid_file->prefixfile_list_[k]->fp_, (long)(mid_file->prefixfile_list_[k]->size2_[i][j]), SEEK_CUR);
                     }
@@ -78,7 +78,7 @@ void ReadUrlLarge_Module::svc()
                     continue;
                 }
                 buf = (char *)malloc((read_pf_size + read_url_size) * sizeof(char));
-                for (int k = 0; k < mid_file->prefixfile_list_.size(); ++k)
+                for (uint k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                 {
                     FileElementPrefix *p = mid_file->prefixfile_list_[k];
                     if (p->size2_[i][j] == 0)
@@ -93,7 +93,7 @@ void ReadUrlLarge_Module::svc()
                         }
                     }
                 }
-                for (int k = 0; k < mid_file->largefile_list_.size(); ++k)
+                for (uint k = 0; k < mid_file->largefile_list_.size(); ++k)
                 {
                     if (mid_file->largefile_list_[k]->size1_[i][j] == 0)
                         continue;
@@ -108,7 +108,7 @@ void ReadUrlLarge_Module::svc()
                 filter->load_buf(buf, buf_size, read_pf_size, read_url_size, count_pf, count_url);
                 // SP_DEBUG("buf_size=%d,read_pf_size=%d, read_url_size=%d, count_url=%d\n", buf_size, read_pf_size, read_url_size, count_url);
                 filter->file_size_ = mid_file->prefixfile_list_.size();
-                for (int k = 0; k < mid_file->prefixfile_list_.size(); ++k)
+                for (uint k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                 {
                     FileElementPrefix *p = mid_file->prefixfile_list_[k];
                     memcpy(filter->rd_count_[k], p->count_[i][j], 3 * 2 * sizeof(int));

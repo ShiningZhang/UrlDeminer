@@ -267,6 +267,14 @@ void DomainFilter::load_(char *p, uint64_t size)
                     this->list_[hit][t][count[hit][t]] = s;
                     ++count[hit][t];
                 }
+                if ((len == 3 && memcmp(s, "com", 3) == 0) || (len == 2 && memcmp(s, "om", 2) == 0))
+                {
+                    ++list_sp_c_[0][hit];
+                }
+                else if (len == 2 && memcmp(s, "cn", 2) == 0)
+                {
+                    ++list_sp_c_[1][hit];
+                }
             }
 #ifdef DEBUG
             printf("DomainFilter::load_:hit=%d,n=%d,t=%d,%s\n", hit, len - 1, t, s);

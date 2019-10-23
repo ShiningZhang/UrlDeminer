@@ -105,11 +105,11 @@ public:
     size_t begin_;
     size_t end_;
     size_t size_;
-    int idx_;
     UrlFilter *url_filter_;
     DomainFilter *domain_filter_;
-    void *obj_;
     int idx_list_[3];
+    void *obj_;
+    int idx_;
 };
 
 #endif
