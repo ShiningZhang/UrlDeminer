@@ -274,6 +274,9 @@ void DomainFilter::load_(char *p, uint64_t size)
         }
         s = se + 1;
     }
+    memcpy(list_count_, count, 2 * 42 * sizeof(int));
+    memcpy(list_port_count_, count_port, 2 * sizeof(int));
+    memcpy(list_sp_count_, count_sp, 2 * 2 * DOMAIN_CHAR_COUNT * sizeof(int));
 }
 
 void prepare_range(char **list, int size, int *&range)

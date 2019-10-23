@@ -544,7 +544,7 @@ int filter_domainport_impl(const DomainPortBuf &in,
         --count;
     }
     // if (count < 3)
-    if (false)
+    if (true)
     {
         while (count > 0)
         {
