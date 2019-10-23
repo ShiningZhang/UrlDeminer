@@ -267,7 +267,7 @@ void DomainFilter::load_(char *p, uint64_t size)
                     this->list_[hit][t][count[hit][t]] = s;
                     ++count[hit][t];
                 }
-                if ((len == 3 && memcmp(s, "com", 3) == 0) || (len == 2 && memcmp(s, "om", 2) == 0))
+                if (len == 3 && memcmp(s, "com", 3) == 0)
                 {
                     ++list_sp_c_[0][hit];
                 }
@@ -375,7 +375,7 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
                 if (filter->list_count_[i][m] > 0)
                 {
                     pdqsort(filter->list_[i][m], filter->list_[i][m] + filter->list_count_[i][m], compare_dp_char);
-                    prepare_range(filter->list_[i][m], filter->list_count_[i][m], filter->list_range_[i][m]);
+                    // prepare_range(filter->list_[i][m], filter->list_count_[i][m], filter->list_range_[i][m]);
 #ifdef DEBUG
                     for (int k = 0; k < filter->list_count_[i][m]; ++k)
                     {
@@ -395,7 +395,7 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
                 if (filter->list_sp_count_[i][j][m] > 0)
                 {
                     pdqsort(filter->list_sp_[i][j][m], filter->list_sp_[i][j][m] + filter->list_sp_count_[i][j][m], compare_dp_char);
-                    prepare_range(filter->list_sp_[i][j][m], filter->list_sp_count_[i][j][m], filter->list_sp_range_[i][j][m]);
+                    // prepare_range(filter->list_sp_[i][j][m], filter->list_sp_count_[i][j][m], filter->list_sp_range_[i][j][m]);
 #ifdef DEBUG
                     for (int k = 0; k < filter->list_sp_count_[i][j][m]; ++k)
                     {
@@ -699,6 +699,7 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int i, i
             for (size_t k = 0; k < domain_filter_list.size(); ++k)
             {
                 size += domain_filter_list[k]->list_sp_count_[num1][num2][type];
+                list_sp_cc_[num1][num2][type] += domain_filter_list[k]->list_sp_cc_[num1][num2][type];
                 // SP_DEBUG("k=%d,size=%d,list=%p\n", k, domain_filter_list[k]->list_count_[i][type], domain_filter_list[k]->list_[i][type]);
             }
             if (size > 0)

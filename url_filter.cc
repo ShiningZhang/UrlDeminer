@@ -205,6 +205,8 @@ int UrlFilter::load_(char *p, uint64_t size)
 #endif
         s = se + 1;
     }
+    memcpy(list_count_, count, DOMAIN_CHAR_COUNT * sizeof(int));
+    memcpy(list_domain_sp_count_, count_sp, 2 * DOMAIN_CHAR_COUNT * sizeof(int));
     return 0;
 }
 
@@ -868,28 +870,28 @@ int filter_domainport_1_sp(DomainPortBuf in,
     {
         if (filter->list_sp_cc_[i][1][t] > 0)
         {
-            res.n = 4 + i;
+            res.n = 5 - i;
             res.ret = 1;
             res.port = 0;
             return res.ret;
         }
         else if (filter->list_sp_cc_[i][0][t] > 0)
         {
-            res.n = 4 + i;
+            res.n = 5 - i;
             res.ret = 0;
             res.port = 0;
             return res.ret;
         }
         else if (filter->list_sp_c_[i][1] > 0)
         {
-            res.n = 3 + i;
+            res.n = 4 - i;
             res.ret = 1;
             res.port = 0;
             return res.ret;
         }
         else if (filter->list_sp_c_[i][0] > 0)
         {
-            res.n = 3 + i;
+            res.n = 4 - i;
             res.ret = 0;
             res.port = 0;
             return res.ret;
@@ -936,16 +938,16 @@ int filter_domainport_1_sp(DomainPortBuf in,
     } */
     if (res.ret == -1)
     {
-        if (filter->list_sp_cc_[i][1][t] > 0)
+        if (filter->list_sp_cc_[i][1][t] > 0 && in.start[in.n - 1] == '.')
         {
-            res.n = 4 + i;
+            res.n = 5 - i;
             res.ret = 1;
             res.port = 0;
             return res.ret;
         }
-        else if (filter->list_sp_cc_[i][0][t] > 0)
+        else if (filter->list_sp_cc_[i][0][t] > 0 && in.start[in.n - 1] == '.')
         {
-            res.n = 4 + i;
+            res.n = 5 - i;
             res.ret = 0;
             res.port = 0;
             return res.ret;
@@ -2098,6 +2100,7 @@ void UrlPFFilter::release_buf()
     }
     memset(pf_count_, 0, 3 * 2 * 2 * sizeof(int));
     memset(count_, 0, 3 * 2 * sizeof(int));
+    url_count_ = 0;
     file_size_ = 0;
 }
 
@@ -2682,7 +2685,7 @@ void UrlPFFilter::filter()
                                             pb = *p1;
                                             nb = *(uint16_t *)(pb);
                                             int offset = ((int)(count_suffix / 8)) * 8;
-                                            ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
+                                            ret = cmpbuf_pf(pa, na, pb + 2, nb);
                                             if (ret == 0)
                                             {
                                                 final = (int)nb;
@@ -2788,7 +2791,7 @@ void UrlPFFilter::filter()
                                             pb = *p1;
                                             nb = *(uint16_t *)(pb);
                                             int offset = ((int)(count_suffix / 8)) * 8;
-                                            ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
+                                            ret = cmpbuf_pf(pa, na, pb + 2, nb);
                                             if (ret == 0)
                                             {
                                                 final = (int)nb;
@@ -2906,7 +2909,7 @@ void UrlPFFilter::filter()
                                             pb = *p1;
                                             nb = *(uint16_t *)(pb);
                                             int offset = ((int)(count_suffix / 8)) * 8;
-                                            ret = cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset);
+                                            ret = cmpbuf_pf(pa, na, pb + 2, nb);
                                             if (ret == 0)
                                             {
                                                 final = (int)nb;

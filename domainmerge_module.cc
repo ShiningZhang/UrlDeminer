@@ -29,6 +29,7 @@ void DomainMerge_Module::svc()
 {
     Request *data = NULL;
     CRequest *c_data = NULL;
+    int recv_idx = 0;
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;
@@ -70,8 +71,9 @@ void DomainMerge_Module::svc()
 
         lock_.lock();
         data->recv_split_++;
+        recv_idx = data->recv_split_;
         lock_.unlock();
-        if (data->recv_split_ == data->size_split_buf)
+        if (recv_idx == data->size_split_buf)
         {
             data->domain_filter_ = filter;
             ((DomainFilterMerge *)filter)->cpy_filter_list(data->domain_filter_list_);
