@@ -17,7 +17,7 @@ using namespace std;
 
 // #define FILESPLITSIZE 23000000
 // #define SMALLSIZE 110000
-#define FILESPLITSIZE 256 * 1024 * 1024
+#define FILESPLITSIZE 128 * 1024 * 1024
 #define SMALLSIZE 1100000000
 
 #define SMALLFILESIZE 10 * 1024 * 1024
@@ -108,6 +108,14 @@ struct FileElementPrefix
     size_t size2_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
     int idx_;
     int count_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT][3][2];
+};
+
+struct stPFCMPOFFSET
+{
+    int64_t *pa_;
+    int offset_;
+    uint16_t na_;
+    int64_t num_;
 };
 
 extern uint64_t temp[9];
@@ -267,6 +275,79 @@ inline int cmpbuf_pf(const char *pa, int na, const char *pb, int nb)
         return cmp64val(ia, ib);
     }
     return 0;
+}
+
+inline uint16_t pf_eq_len(const char *pa, int na, const char *pb, int nb)
+{
+    int64_t ret = 0;
+    uint16_t count = 0;
+    while (na >= 8 && nb >= 8)
+    {
+        int64_t ia = *(int64_t *)pa;
+        int64_t ib = *(int64_t *)pb;
+        ret = ia - ib;
+        if (ret != 0)
+        {
+            break;
+        }
+        na -= 8;
+        nb -= 8;
+        pa += 8;
+        pb += 8;
+        count += 8;
+    }
+    if (ret != 0 || nb == 0)
+    {
+        if ((ret & temp[1]) != 0)
+            return count;
+        int c1 = 7;
+        while (c1 > 0)
+        {
+            ret >>= 8;
+            if (ret == 0)
+                break;
+            --c1;
+        }
+        return count + c1;
+    }
+    if (na >= 8 && nb > 0)
+    {
+        int64_t ia = (*(int64_t *)pa) & temp[nb];
+        int64_t ib = to64le8h(pb, nb);
+        // printf("ia=%08x,na=%d,ib=%08x,nb=%d\n", ia, na, ib, nb);
+        ret = ia - ib;
+        if (ret == 0)
+            return count + nb;
+    }
+    else if (nb >= 8 && na > 0)
+    {
+        int64_t ia = to64le8h(pa, na);
+        int64_t ib = (*(int64_t *)pb) & temp[na];
+        // printf("ia=%08x,na=%d,ib=%08x,nb=%d\n", ia, na, ib, nb);
+        ret = ia - ib;
+        if (ret == 0)
+            return count + na;
+    }
+    else if (na > 0 && nb > 0)
+    {
+        int nc = min(na, nb);
+        int64_t ia = to64le8h(pa, nc);
+        int64_t ib = to64le8h(pb, nc);
+        ret = ia - ib;
+        if (ret == 0)
+            return count + nc;
+    }
+    if ((ret & temp[1]) != 0)
+        return count;
+    int c1 = 7;
+    while (c1 > 0)
+    {
+        ret >>= 8;
+        if (ret == 0)
+            break;
+        --c1;
+    }
+    return count + c1;
 }
 
 #endif
