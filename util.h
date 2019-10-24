@@ -36,12 +36,14 @@ using namespace std;
 
 #define MAX_USE_MEM_SIZE 7000000000
 
+#define MEM_SIZE_256 128 * 1024 * 1024
+
 #ifdef DEBUG
-#define LOG(format_string, ...)                                                                         \
-    {                                                                                                   \
-        struct timeval __val;                                                                           \
-        gettimeofday(&__val, NULL);                                                                     \
-        fprintf(stderr, "%ld.%03ld " format_string, __val.tv_sec, __val.tv_usec / 1000, ##__VA_ARGS__); \
+#define LOG(format_string, ...)                                                                \
+    {                                                                                          \
+        struct timeval __val;                                                                  \
+        gettimeofday(&__val, NULL);                                                            \
+        printf("%ld.%03ld " format_string, __val.tv_sec, __val.tv_usec / 1000, ##__VA_ARGS__); \
     }
 #else
 #define LOG(format_string, ...)
@@ -52,6 +54,7 @@ class PrefixFilter;
 class UrlFilter;
 class UrlPFFilter;
 class Request;
+class SPFFilter;
 
 struct GlobalST
 {
@@ -117,12 +120,9 @@ extern mutex gMutex;
 extern condition_variable gCV;
 extern bool gStart;
 extern queue<UrlPFFilter *> gQueueFilter;
-extern queue<UrlPFFilter *> gQUrlPfTask;
+extern queue<SPFFilter *> gQUrlPfTask;
 extern mutex gMutexUrlPfTask;
 extern condition_variable gCVUrlPfTask;
-extern queue<UrlPFFilter *> gQWriteUrlTask;
-extern mutex gMutexWriteUrlTask;
-extern condition_variable gCVWriteUrlTask;
 
 extern Request *gRequest;
 extern mutex gMCount;

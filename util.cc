@@ -9,7 +9,7 @@ condition_variable gCV;
 bool gStart;
 queue<UrlPFFilter *> gQueueFilter;
 
-queue<UrlPFFilter *> gQUrlPfTask;
+queue<SPFFilter *> gQUrlPfTask;
 mutex gMutexUrlPfTask;
 condition_variable gCVUrlPfTask;
 

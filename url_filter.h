@@ -130,4 +130,60 @@ public:
     int url_feature_; // 0:NULL 1:[][/] 2:[][:]
 };
 
+class SPFFilter : public SP_Data_Block
+{
+public:
+    SPFFilter();
+    virtual ~SPFFilter();
+    void load_buf(char *buf, uint64_t pf_size,  int count[3][2]);
+    void release_buf();
+    int load_pf();
+    int load_pf1();
+    int load_pf2();
+    void pre_pf();
+    void prepare_range(char **list, int size, int *&range);
+    bool is_ready(int count);
+
+public:
+    uint64_t pf_size_;
+    int count_[3][2];
+    int rd_count_[32][3][2];
+    int file_size_;
+    char **pf_list_[3][2][2];
+    int pf_count_[3][2][2];
+    int *pf_range_[3][2][2];
+    char *pf_buf_;
+    vector<char *> list_str_;
+    int url_feature_; // 0:NULL 1:[][/] 2:[][:]
+    int recv_size_;
+    int send_size_;
+    mutex lock_;
+};
+
+class SUrlFilter : public SP_Data_Block
+{
+public:
+    SUrlFilter();
+    virtual ~SUrlFilter();
+    void load_buf(char *buf, uint64_t buf_size, int count_url);
+    void release_buf();
+    int load_url();
+    void pre_url();
+    void filter();
+    int write_tag(FILE *fp);
+
+public:
+    uint64_t url_size_;
+    char *url_buf_;
+    vector<char *> list_str_;
+    char **url_list_;
+    int url_count_;
+    FilterCounters counters_;
+    char *out_;
+    uint64_t out_size_;
+    int out_offset_;
+    int file_size_;
+    SPFFilter *pf_;
+};
+
 #endif

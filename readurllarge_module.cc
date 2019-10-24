@@ -47,6 +47,8 @@ void ReadUrlLarge_Module::svc()
         uint64_t buf_size = 0;
         int count_pf[3][2] = {0};
         int count_url = 0;
+        SPFFilter *spffilter = NULL;
+        SUrlFilter *surlfilter = NULL;
         for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
         {
             for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
@@ -77,7 +79,7 @@ void ReadUrlLarge_Module::svc()
 
                     continue;
                 }
-                buf = (char *)malloc((read_pf_size + read_url_size) * sizeof(char));
+                buf = (char *)malloc((read_pf_size) * sizeof(char));
                 for (uint k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                 {
                     FileElementPrefix *p = mid_file->prefixfile_list_[k];
@@ -93,40 +95,81 @@ void ReadUrlLarge_Module::svc()
                         }
                     }
                 }
-                for (uint k = 0; k < mid_file->largefile_list_.size(); ++k)
                 {
-                    if (mid_file->largefile_list_[k]->size1_[i][j] == 0)
-                        continue;
-                    size_t size = fread_unlocked(buf + buf_size, 1, mid_file->largefile_list_[k]->size1_[i][j], mid_file->largefile_list_[k]->fp_[i]);
-                    buf_size += size;
-                    count_url += mid_file->largefile_list_[k]->count1_[i][j];
-                    // SP_DEBUG("[%d,%d][%d]count1_=%d\n", i, j, k, mid_file->largefile_list_[k]->count1_[i][j]);
+                    unique_lock<mutex> lock(gMutexUrlPfTask);
+                    while (gQUrlPfTask.empty())
+                    {
+                        gCVUrlPfTask.wait(lock);
+                    }
+                    spffilter = gQUrlPfTask.front();
+                    gQUrlPfTask.pop();
                 }
-                get(msg);
-                filter = reinterpret_cast<UrlPFFilter *>(msg->data());
-
-                filter->load_buf(buf, buf_size, read_pf_size, read_url_size, count_pf, count_url);
-                // SP_DEBUG("buf_size=%d,read_pf_size=%d, read_url_size=%d, count_url=%d\n", buf_size, read_pf_size, read_url_size, count_url);
-                filter->file_size_ = mid_file->prefixfile_list_.size();
                 for (uint k = 0; k < mid_file->prefixfile_list_.size(); ++k)
                 {
                     FileElementPrefix *p = mid_file->prefixfile_list_[k];
-                    memcpy(filter->rd_count_[k], p->count_[i][j], 3 * 2 * sizeof(int));
+                    memcpy(spffilter->rd_count_[k], p->count_[i][j], 3 * 2 * sizeof(int));
                 }
-                if (j == 2)
+                spffilter->load_buf(buf, read_pf_size, count_pf);
+                spffilter->file_size_ = mid_file->prefixfile_list_.size();
+                spffilter->send_size_ = mid_file->largefile_list_.size();
+                spffilter->load_pf();
+                spffilter->pre_pf();
+                count_url = 0;
+                buf_size = 0;
+                if (read_url_size < MEM_SIZE_256)
                 {
-                    filter->url_feature_ = 1;
-                }
-                else if (j == 13)
-                {
-                    filter->url_feature_ = 2;
+                    buf = (char *)malloc(read_url_size * sizeof(char));
+                    buf_size = 0;
+                    count_url = 0;
+                    for (uint k = 0; k < mid_file->largefile_list_.size(); ++k)
+                    {
+                        if (mid_file->largefile_list_[k]->size1_[i][j] == 0)
+                            continue;
+                        size_t size = fread_unlocked(buf + buf_size, 1, mid_file->largefile_list_[k]->size1_[i][j], mid_file->largefile_list_[k]->fp_[i]);
+                        buf_size += size;
+                        count_url += mid_file->largefile_list_[k]->count1_[i][j];
+                        // SP_DEBUG("[%d,%d][%d]count1_=%d\n", i, j, k, mid_file->largefile_list_[k]->count1_[i][j]);
+                    }
+                    get(msg);
+                    surlfilter = reinterpret_cast<SUrlFilter *>(msg->data());
+                    surlfilter->load_buf(buf, buf_size, count_url);
+                    surlfilter->file_size_ = mid_file->largefile_list_.size();
+                    surlfilter->pf_ = spffilter;
+                    put_next(msg);
                 }
                 else
                 {
-                    filter->url_feature_ = 0;
+                    uint start = 0;
+                    uint end = 0;
+                    uint file_count = mid_file->largefile_list_.size();
+                    while (start < file_count)
+                    {
+                        buf_size = 0;
+                        count_url = 0;
+                        while (buf_size < MEM_SIZE_256 && end < file_count)
+                        {
+                            buf_size += mid_file->largefile_list_[end++]->size1_[i][j];
+                        }
+                        buf = (char *)malloc(buf_size * sizeof(char));
+                        buf_size = 0;
+                        count_url = 0;
+                        for (uint k = start; k < end; ++k)
+                        {
+                            if (mid_file->largefile_list_[k]->size1_[i][j] == 0)
+                                continue;
+                            size_t size = fread_unlocked(buf + buf_size, 1, mid_file->largefile_list_[k]->size1_[i][j], mid_file->largefile_list_[k]->fp_[i]);
+                            buf_size += size;
+                            count_url += mid_file->largefile_list_[k]->count1_[i][j];
+                        }
+                        get(msg);
+                        surlfilter = reinterpret_cast<SUrlFilter *>(msg->data());
+                        surlfilter->load_buf(buf, buf_size, count_url);
+                        surlfilter->file_size_ = end - start;
+                        surlfilter->pf_ = spffilter;
+                        put_next(msg);
+                        start = end;
+                    }
                 }
-                SP_DEBUG("[%d,%d]feature=%d\n", i, j, filter->url_feature_);
-                put_next(msg);
             }
         }
         if (data->recv_split_ == data->size_split_buf)

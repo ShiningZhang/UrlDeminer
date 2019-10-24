@@ -33,9 +33,9 @@ void ReadFile_Module::svc()
         data = reinterpret_cast<Request *>(msg->data());
         SP_DES(msg);
         uint64_t length = data->length_;
-        uint32_t size = 0;
+        uint64_t size = 0;
         uint64_t begin = 0;
-        size_t line_size = length < 1024 * 8 ? length : ceil((double)length / 8) + 64;
+        uint64_t line_size = length < 1024 * 8 ? length : ceil((double)length / 8) + 64;
         SP_DEBUG("ReadFile_Module:length=%lld,line_size=%zu\n", length, line_size);
         data->size_split_buf = (int)ceil((double)length / line_size);
         int split = 0;
@@ -44,7 +44,7 @@ void ReadFile_Module::svc()
             if (begin + line_size > length)
                 line_size = length - begin;
             buf = NULL;
-            buf = (char *)malloc((int)(line_size + BUFHEADSIZE) * sizeof(char));
+            buf = (char *)malloc((line_size + BUFHEADSIZE) * sizeof(char));
             if (buf == NULL)
             {
                 fputs("Memory error", stderr);

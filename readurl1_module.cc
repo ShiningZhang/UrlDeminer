@@ -35,7 +35,7 @@ void ReadUrl1_Module::svc()
         data = reinterpret_cast<Request *>(msg->data());
         SP_DES(msg);
         uint64_t length = data->length_;
-        uint32_t size = 0;
+        uint64_t size = 0;
         uint64_t begin = 0;
         UrlFilter *filter = NULL;
         uint64_t line_size = data->split_size_;

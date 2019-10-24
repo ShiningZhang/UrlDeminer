@@ -585,6 +585,15 @@ int main(int argc, char **argv)
 
         //tmp url read and prefix filter
         SP_DEBUG(" prefix filter begin\n");
+        SPFFilter *spf_filter;
+        SPFFilter *list_spf_filter_[8];
+        for (int i = 0; i < 8; ++i)
+        {
+            spf_filter = new SPFFilter();
+            // gQueueFilter.push(url_pf_filter);
+            list_spf_filter_[i] = spf_filter;
+            gQUrlPfTask.push(spf_filter);
+        }
         data->reset_para();
         SP_NEW_RETURN(modules[0], ReadUrlLarge_Module(1), -1);
         SP_NEW_RETURN(modules[1], UrlPFLarge_Module(8), -1);
@@ -595,16 +604,17 @@ int main(int argc, char **argv)
         {
             s_instance_stream->push_module(modules[i]);
         }
-        UrlPFFilter *url_pf_filter;
+
+        SUrlFilter *surl_filter;
         data->fp_out_ = stdout;
 
-        UrlPFFilter *list_url_pf_filter_[8];
+        SUrlFilter *list_surl_filter_[8];
         for (int i = 0; i < 8; ++i)
         {
-            url_pf_filter = new UrlPFFilter();
+            surl_filter = new SUrlFilter();
             // gQueueFilter.push(url_pf_filter);
-            list_url_pf_filter_[i] = url_pf_filter;
-            SP_NEW_RETURN(msg, SP_Message_Block_Base((SP_Data_Block *)url_pf_filter), -1);
+            list_surl_filter_[i] = surl_filter;
+            SP_NEW_RETURN(msg, SP_Message_Block_Base((SP_Data_Block *)surl_filter), -1);
             s_instance_stream->put(msg);
         }
 
@@ -612,19 +622,18 @@ int main(int argc, char **argv)
         s_instance_stream->get(msg);
         for (int i = 0; i < 8; ++i)
         {
-            url_pf_filter = list_url_pf_filter_[i];
+            surl_filter = list_surl_filter_[i];
             // gQueueFilter.pop();
-            data->counter_.pass += url_pf_filter->counters_.pass;
-            data->counter_.hit += url_pf_filter->counters_.hit;
-            data->counter_.miss += url_pf_filter->counters_.miss;
-            data->counter_.passchecksum ^= url_pf_filter->counters_.passchecksum;
-            data->counter_.hitchecksum ^= url_pf_filter->counters_.hitchecksum;
-            delete url_pf_filter;
+            data->counter_.pass += surl_filter->counters_.pass;
+            data->counter_.hit += surl_filter->counters_.hit;
+            data->counter_.miss += surl_filter->counters_.miss;
+            data->counter_.passchecksum ^= surl_filter->counters_.passchecksum;
+            data->counter_.hitchecksum ^= surl_filter->counters_.hitchecksum;
+            delete surl_filter;
+            delete list_spf_filter_[i];
         }
         dumpCounters(stdout, &data->counter_);
         gEnd = true;
-        gCVUrlPfTask.notify_all();
-        gCVWriteUrlTask.notify_all();
         for (int i = 2; i >= 0; --i)
         {
             s_instance_stream->pop();

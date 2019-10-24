@@ -28,30 +28,14 @@ void UrlPFLarge_Module::svc()
 {
     Request *data = gRequest;
     CRequest *c_data = NULL;
-    UrlPFFilter *filter = NULL;
+    SUrlFilter *filter = NULL;
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;
         gettimeofday(&start, 0);
-        filter = reinterpret_cast<UrlPFFilter *>(msg->data());
+        filter = reinterpret_cast<SUrlFilter *>(msg->data());
         if (filter != NULL)
         {
-            if (filter->pf_size_ != 0)
-            {
-                if (filter->url_feature_ == 0)
-                {
-                    filter->load_pf();
-                }
-                else if (filter->url_feature_ == 1)
-                {
-                    filter->load_pf1();
-                }
-                else if (filter->url_feature_ == 2)
-                {
-                    filter->load_pf2();
-                }
-                filter->pre_pf();
-            }
             filter->load_url();
             filter->pre_url();
             filter->filter();

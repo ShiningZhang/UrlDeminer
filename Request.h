@@ -102,9 +102,9 @@ public:
     std::mutex lock_;
     Request *request_;
     char *buffer_;
-    size_t begin_;
-    size_t end_;
-    size_t size_;
+    uint64_t begin_;
+    uint64_t end_;
+    uint64_t size_;
     UrlFilter *url_filter_;
     DomainFilter *domain_filter_;
     int idx_list_[3];
