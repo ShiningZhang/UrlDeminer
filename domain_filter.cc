@@ -18,8 +18,8 @@ DomainFilter::DomainFilter()
     size_ = 0;
     memset(list_range_, 0, 2 * sizeof(int *) * DOMAIN_CHAR_COUNT);
 
-    memset(list_port_, 0, 2 * sizeof(DomainPortBuf *));
-    memset(list_port_count_, 0, 2 * sizeof(int));
+    list_port_ = NULL;
+    list_port_count_ = 0;
 
     memset(list_c, 0, 2 * sizeof(int) * DOMAIN_CHAR_COUNT);
 
@@ -56,12 +56,11 @@ DomainFilter::~DomainFilter()
             }
         }
     }
-    for (int i = 0; i < 2; ++i)
     {
-        if (list_port_[i] != NULL)
+        if (list_port_ != NULL)
         {
-            free(list_port_[i]);
-            list_port_[i] = NULL;
+            free(list_port_);
+            list_port_ = NULL;
         }
     }
     for (int i = 0; i < 2; ++i)
@@ -103,21 +102,8 @@ void DomainFilter::prepare_buf(char *p, uint64_t size)
         }
         if (*offset == ':')
         {
-            /* if (memcmp(offset - 4, ".com", 4) == 0)
-            {
-                if (offset - 4 > s)
-                    list_sp_count_[0][se[-1] == '-'][(unsigned char)(*(offset - 5))]++;
-            }
-            else if (memcmp(offset - 3, ".cn", 3) == 0)
-            {
-                if (offset - 3 > s)
-                    list_sp_count_[0][se[-1] == '-'][(unsigned char)(*(offset - 4))]++;
-            }
-            else */
-            {
-                t = domain_temp[(int)((unsigned char)(*(offset - 1)))];
-                ++this->list_port_count_[se[-1] == '-'];
-            }
+            t = domain_temp[(int)((unsigned char)(*(offset - 1)))];
+            ++this->list_port_count_;
         }
         else
         {
@@ -178,7 +164,7 @@ void DomainFilter::load_(char *p, uint64_t size)
     char *s = p;
     int count[2][DOMAIN_CHAR_COUNT] = {0};
     int count_sp[2][2][DOMAIN_CHAR_COUNT] = {0};
-    int count_port[2] = {0};
+    int count_port = 0;
     DomainPortBuf b;
     while (s < e)
     {
@@ -205,7 +191,7 @@ void DomainFilter::load_(char *p, uint64_t size)
             b.hit = hit;
             b.n = len;
             b.start = s;
-            this->list_port_[hit][count_port[hit]++] = b;
+            this->list_port_[count_port++] = b;
             *(uint16_t *)(s - 2) = (uint16_t)(len);
             assert(len);
 #ifdef DEBUG
@@ -283,7 +269,7 @@ void DomainFilter::load_(char *p, uint64_t size)
         s = se + 1;
     }
     memcpy(list_count_, count, 2 * 42 * sizeof(int));
-    memcpy(list_port_count_, count_port, 2 * sizeof(int));
+    list_port_count_ = count_port;
     memcpy(list_sp_count_, count_sp, 2 * 2 * DOMAIN_CHAR_COUNT * sizeof(int));
 }
 
@@ -337,13 +323,12 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
             }
         }
     }
-    for (int i = 0; i < 2; ++i)
     {
-        if (filter->list_port_count_[i] > 0)
+        if (filter->list_port_count_ > 0)
         {
-            filter->list_port_[i] = (DomainPortBuf *)malloc(filter->list_port_count_[i] * sizeof(DomainPortBuf));
+            filter->list_port_ = (DomainPortBuf *)malloc(filter->list_port_count_ * sizeof(DomainPortBuf));
 #ifdef DEBUG
-            printf("DomainFilter::load:[%d],count=%d\n", i, filter->list_port_count_[i]);
+            printf("DomainFilter::load:,count=%d\n", filter->list_port_count_);
 #endif
         }
     }
@@ -506,7 +491,7 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int type
 {
     if (type >= DOMAIN_CHAR_COUNT)
     {
-        return merge_port(domain_filter_list);
+        return merge_port(domain_filter_list, 0);
     }
     int count = 0;
     for (int i = 0; i < 2; ++i)
@@ -788,155 +773,92 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int i, i
     return count;
 }
 
-int DomainFilterMerge::merge_port(vector<DomainFilter *> domain_filter_list)
+bool unique_dp_port(const DomainPortBuf &e1, const DomainPortBuf &e2)
 {
-    int count = 0;
-    for (int i = 0; i < 2; ++i)
-    {
-        int size = 0;
-        for (size_t k = 0; k < domain_filter_list.size(); ++k)
-        {
-            size += domain_filter_list[k]->list_port_count_[i];
-        }
-        if (size > 0)
-        {
-            count += size;
-            list_port_[i] = (DomainPortBuf *)malloc(size * sizeof(DomainPortBuf));
-            list_port_count_[i] = size;
-            size = 0;
-            for (size_t k = 0; k < domain_filter_list.size(); ++k)
-            {
-                if (domain_filter_list[k]->list_port_count_[i] != 0)
-                {
-                    memcpy(list_port_[i] + size, domain_filter_list[k]->list_port_[i], domain_filter_list[k]->list_port_count_[i] * sizeof(DomainPortBuf));
-                    size += domain_filter_list[k]->list_port_count_[i];
-                }
-            }
-            pdqsort(list_port_[i], list_port_[i] + list_port_count_[i], compare_dp);
-            {
-                int port = 0;
-                DomainPortBuf *list = list_port_[i];
-                for (int m = 0; m < size; ++m)
-                {
-                    DomainPortBuf *p = list + m;
-                    if (port != p->port)
-                    {
-                        port = p->port;
-                        port_start_[i][port] = p;
-                        ++port_size_[i][port];
-                    }
-                    else
-                    {
-                        ++port_size_[i][port];
-                    }
-                }
-            }
-            for (int port = 0; port < 65536; ++port)
-            {
-                if (port_size_[i][port] > 0)
-                {
-                    port_range_[i][port] = (int *)malloc(port_size_[i][port] * sizeof(int));
-                    DomainPortBuf *pa = port_start_[i][port];
-                    port_range_[i][port][0] = 1;
-                    for (int m = 1; m < port_size_[i][port]; ++m)
-                    {
-                        DomainPortBuf *pb = port_start_[i][port] + m;
-                        if (compare_dp_eq(pa, pb) != 0)
-                        {
-                            pa = pb;
-                            port_range_[i][port][m] = 1;
-                        }
-                        else
-                        {
-                            port_range_[i][port][m] = port_range_[i][port][m - 1] + 1;
-                        }
-                    }
-                }
-            }
-        }
-#ifdef DEBUG
-        for (int tmp = 0; tmp < list_port_count_[i]; ++tmp)
-        {
-            printf("DomainFilterMerge::merge_port:hit=%d,port=%d,n=%d,%s\n", list_port_[i][tmp].hit, list_port_[i][tmp].port, list_port_[i][tmp].n, list_port_[i][tmp].start);
-        }
-#endif
-    }
-    return count;
+    if (e1.port != e2.port || e1.n != e2.n)
+        return false;
+    int ret = cmpbuf_dp(e1.start, e1.n, e2.start, e2.n);
+    return ret == 0;
 }
 
 int DomainFilterMerge::merge_port(vector<DomainFilter *> domain_filter_list, int i)
 {
+    if (i > 0)
+        return 0;
     int count = 0;
     // for (int i = 0; i < 2; ++i)
     {
         int size = 0;
         for (size_t k = 0; k < domain_filter_list.size(); ++k)
         {
-            size += domain_filter_list[k]->list_port_count_[i];
+            size += domain_filter_list[k]->list_port_count_;
         }
         if (size > 0)
         {
             count += size;
-            list_port_[i] = (DomainPortBuf *)malloc(size * sizeof(DomainPortBuf));
-            list_port_count_[i] = size;
+            list_port_ = (DomainPortBuf *)malloc(size * sizeof(DomainPortBuf));
+            list_port_count_ = size;
             size = 0;
             for (size_t k = 0; k < domain_filter_list.size(); ++k)
             {
-                if (domain_filter_list[k]->list_port_count_[i] != 0)
+                if (domain_filter_list[k]->list_port_count_ != 0)
                 {
-                    memcpy(list_port_[i] + size, domain_filter_list[k]->list_port_[i], domain_filter_list[k]->list_port_count_[i] * sizeof(DomainPortBuf));
-                    size += domain_filter_list[k]->list_port_count_[i];
+                    memcpy(list_port_ + size, domain_filter_list[k]->list_port_, domain_filter_list[k]->list_port_count_ * sizeof(DomainPortBuf));
+                    size += domain_filter_list[k]->list_port_count_;
                     /* free(domain_filter_list[k]->list_port_[i]);
                     domain_filter_list[k]->list_port_[i] = NULL;
                     domain_filter_list[k]->list_port_count_[i] = 0; */
                 }
             }
-            pdqsort(list_port_[i], list_port_[i] + list_port_count_[i], compare_dp);
+            pdqsort(list_port_, list_port_ + list_port_count_, compare_dp);
+            DomainPortBuf *last = unique(list_port_, list_port_ + list_port_count_, unique_dp_port);
+            size = last - list_port_;
+            list_port_count_ = size;
             {
                 int port = 0;
-                DomainPortBuf *list = list_port_[i];
+                DomainPortBuf *list = list_port_;
                 for (int m = 0; m < size; ++m)
                 {
                     DomainPortBuf *p = list + m;
                     if (port != p->port)
                     {
                         port = p->port;
-                        port_start_[i][port] = p;
-                        ++port_size_[i][port];
+                        port_start_[port] = p;
+                        ++port_size_[port];
                     }
                     else
                     {
-                        ++port_size_[i][port];
+                        ++port_size_[port];
                     }
                 }
             }
             for (int port = 0; port < 65536; ++port)
             {
-                if (port_size_[i][port] > 0)
+                if (port_size_[port] > 0)
                 {
-                    port_range_[i][port] = (int *)malloc(port_size_[i][port] * sizeof(int));
-                    DomainPortBuf *pa = port_start_[i][port];
-                    port_range_[i][port][0] = 1;
-                    for (int m = 1; m < port_size_[i][port]; ++m)
+                    port_range_[port] = (int *)malloc(port_size_[port] * sizeof(int));
+                    DomainPortBuf *pa = port_start_[port];
+                    port_range_[port][0] = 1;
+                    for (int m = 1; m < port_size_[port]; ++m)
                     {
-                        DomainPortBuf *pb = port_start_[i][port] + m;
+                        DomainPortBuf *pb = port_start_[port] + m;
                         if (compare_dp_eq(pa, pb) != 0)
                         {
                             pa = pb;
-                            port_range_[i][port][m] = 1;
+                            port_range_[port][m] = 1;
                         }
                         else
                         {
-                            port_range_[i][port][m] = port_range_[i][port][m - 1] + 1;
+                            port_range_[port][m] = port_range_[port][m - 1] + 1;
                         }
                     }
                 }
             }
         }
 #ifdef DEBUG
-        for (int tmp = 0; tmp < list_port_count_[i]; ++tmp)
+        for (int tmp = 0; tmp < list_port_count_; ++tmp)
         {
-            printf("DomainFilterMerge::merge_port:hit=%d,port=%d,n=%d,%s\n", list_port_[i][tmp].hit, list_port_[i][tmp].port, list_port_[i][tmp].n, list_port_[i][tmp].start);
+            printf("DomainFilterMerge::merge_port:hit=%d,port=%d,n=%d,%s\n", list_port_[tmp].hit, list_port_[tmp].port, list_port_[tmp].n, list_port_[tmp].start);
         }
 #endif
     }
@@ -945,9 +867,9 @@ int DomainFilterMerge::merge_port(vector<DomainFilter *> domain_filter_list, int
 
 DomainFilterMerge::DomainFilterMerge()
 {
-    memset(port_start_, 0, 2 * 65536 * sizeof(DomainPortBuf *));
-    memset(port_size_, 0, 2 * 65536 * sizeof(int));
-    memset(port_range_, 0, 2 * 65536 * sizeof(int *));
+    memset(port_start_, 0, 65536 * sizeof(DomainPortBuf *));
+    memset(port_size_, 0, 65536 * sizeof(int));
+    memset(port_range_, 0, 65536 * sizeof(int *));
 }
 
 DomainFilterMerge::~DomainFilterMerge()
@@ -961,13 +883,12 @@ DomainFilterMerge::~DomainFilterMerge()
     }
     p_list_.clear();
     buf_size_list_.clear();
-    for (int i = 0; i < 2; ++i)
     {
         for (int j = 0; j < 65536; ++j)
         {
-            if (port_range_[i][j] != NULL)
+            if (port_range_[j] != NULL)
             {
-                free(port_range_[i][j]);
+                free(port_range_[j]);
             }
         }
     }

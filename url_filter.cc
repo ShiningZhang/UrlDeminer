@@ -760,36 +760,121 @@ int filter_port_impl(DomainPortBuf in,
     return -1;
 }
 
+DomainPortBuf *filter_port_impl1(DomainPortBuf in,
+                                 DomainPortBuf *start,
+                                 const int size,
+                                 const int *range)
+{
+    if (size == 0)
+        return NULL;
+    in.n += 1;
+    DomainPortBuf *iter = upper_bound(start, start + size, in, cmp_dp_port);
+    if (iter == start)
+    {
+        return NULL;
+    }
+    --iter;
+    char *pa = in.start;
+    uint16_t na = in.n;
+    int count = range[iter - start];
+    const char *pb = iter->start;
+    uint16_t nb = iter->n;
+    int ret = cmpbuf_dp(pa, na, pb, nb);
+
+    if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
+    {
+        return iter;
+    }
+    else
+    {
+        --iter;
+        --count;
+    }
+    if (count < 8)
+    {
+        while (count > 0)
+        {
+            pb = iter->start;
+            nb = iter->n;
+            if (na < nb)
+            {
+                --iter;
+                --count;
+                continue;
+            }
+            ret = cmpbuf_dp(pa, na, pb, nb);
+
+            if (ret == 0 && cmp_dp_len(pa, na, pb, nb))
+            {
+                return iter;
+            }
+            else
+            {
+                --iter;
+                --count;
+            }
+        }
+    }
+    else
+    {
+        DomainPortBuf *p = iter + 1 - count;
+        pb = p->start;
+        nb = p->n;
+        if (na >= nb && cmpbuf_dp(pa, na, pb, nb) == 0)
+        {
+            DomainPortBuf *final = NULL;
+            if (cmp_dp_len(pa, na, pb, nb))
+            {
+                final = p;
+            }
+            uint16_t min = nb;
+            stDP_Port_CMP s1 = {na, pa};
+            uint16_t count_suffix = next_domain_suffix(s1);
+            while (s1.n > min && iter > p)
+            {
+                DomainPortBuf *p1 = upper_bound(p, iter + 1, s1, cmp_dp_port_loop);
+                if (p1 == p)
+                {
+                    break;
+                }
+                if (p1 > iter)
+                {
+                    next_domain_suffix(s1);
+                    continue;
+                }
+                pb = p1->start;
+                nb = p1->n;
+                if (s1.n == nb && cmpbuf_dp(s1.c, s1.n, pb, nb) == 0)
+                {
+                    final = p1;
+                    break;
+                }
+                iter = p1 - 1;
+                next_domain_suffix(s1);
+            }
+            return final;
+        }
+    }
+    return NULL;
+}
+
 int filter_domainport_1(const DomainPortBuf &in,
                         const DomainFilterMerge *filter,
                         int t,
                         stDPRES &res)
 {
     res = {0, 0, -1};
-    DomainPortBuf *port_start = filter->port_start_[1][in.port];
-    int size = filter->port_size_[1][in.port];
-    int n = filter_port_impl(in, port_start, size, filter->port_range_[1][in.port]);
-    if (n > 0)
+    DomainPortBuf *port_start = filter->port_start_[in.port];
+    int size = filter->port_size_[in.port];
+    DomainPortBuf *d_res = filter_port_impl1(in, port_start, size, filter->port_range_[in.port]);
+    if (d_res != NULL)
     {
-        res.n = n;
-        res.ret = 1;
-        res.port = in.port;
-        if (n == in.n + 1)
-            return res.ret;
-    }
-    port_start = filter->port_start_[0][in.port];
-    size = filter->port_size_[0][in.port];
-    n = filter_port_impl(in, port_start, size, filter->port_range_[0][in.port]);
-    if (n > 0 && n > res.n)
-    {
-        res.n = n;
-        res.ret = 0;
-        res.port = in.port;
-        if (n == in.n + 1)
-            return res.ret;
-    }
-    if (res.n != 0)
+        res.n = d_res->n;
+        res.ret = d_res->hit;
+        res.port = d_res->port;
         return res.ret;
+    }
+    int n = 0;
     char **start = filter->list_[1][t];
     size = filter->list_count_[1][t];
     n = filter_domainport_impl(in, start, size, filter->list_range_[1][t]);
@@ -839,35 +924,25 @@ int filter_domainport_1_sp(DomainPortBuf in,
                            int t,
                            stDPRES &res)
 {
+    LOG("filter_domainport_1_sp:%d,%s,[%d,%d]\n", in.n, in.start, i, t);
     res = {0, 0, -1};
-    DomainPortBuf *port_start = filter->port_start_[1][in.port];
-    int size = filter->port_size_[1][in.port];
+    DomainPortBuf *port_start = filter->port_start_[in.port];
+    int size = filter->port_size_[in.port];
     in.n += 4 - i;
-    int n = filter_port_impl(in, port_start, size, filter->port_range_[1][in.port]);
-    if (n > 0)
+    DomainPortBuf *d_res = filter_port_impl1(in, port_start, size, filter->port_range_[in.port]);
+    if (d_res != NULL)
     {
-        res.n = n;
-        res.ret = 1;
-        res.port = in.port;
-        if (n == in.n)
-            return res.ret;
-    }
-    port_start = filter->port_start_[0][in.port];
-    size = filter->port_size_[0][in.port];
-    n = filter_port_impl(in, port_start, size, filter->port_range_[0][in.port]);
-    if (n > 0 && n > res.n)
-    {
-        res.n = n;
-        res.ret = 0;
-        res.port = in.port;
-        if (n == in.n)
-            return res.ret;
-    }
-    if (res.n != 0)
+        res.n = d_res->n;
+        res.ret = d_res->hit;
+        res.port = d_res->port;
         return res.ret;
+    }
+    int n = 0;
     in.n -= 4 - i;
+    LOG("filter_domainport_1_sp1:%d,%s,[%d,%d]\n", in.n, in.start, i, t);
     if (in.n == 0)
     {
+        LOG("filter_domainport_1_sp1:%d,%s,[%d,%d] [%d,%d,%d,%d]\n", in.n, in.start, i, t, filter->list_sp_cc_[i][1][t], filter->list_sp_cc_[i][0][t], filter->list_sp_c_[i][1], filter->list_sp_c_[i][0]);
         if (filter->list_sp_cc_[i][1][t] > 0)
         {
             res.n = 5 - i;
@@ -3389,7 +3464,6 @@ void SPFFilter::release_buf()
 
 int SPFFilter::load_pf()
 {
-    SP_DEBUG("load_pf\n");
     if (pf_size_ == 0)
     {
         return -1;
@@ -4699,7 +4773,6 @@ void SUrlFilter::filter()
 
 int SUrlFilter::write_tag(FILE *fp)
 {
-    SP_DEBUG("write_tag:out_offset_=%d,out_=%p\n", out_offset_, out_);
     int ret = 0;
     if (out_offset_ > 0)
         ret = fwrite(out_, out_offset_, 1, fp);

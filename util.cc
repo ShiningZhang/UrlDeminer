@@ -221,9 +221,9 @@ bool compare_dp(const DomainPortBuf &e1, const DomainPortBuf &e2)
     else if (na > nb)
         return false;
     if (e1.hit < e2.hit)
-        return true;
-    else if (e1.hit > e2.hit)
         return false;
+    else if (e1.hit > e2.hit)
+        return true;
     return pa < pb;
 }
 

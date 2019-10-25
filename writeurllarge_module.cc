@@ -45,7 +45,7 @@ void WriteUrlLarge_Module::svc()
             spffilter = filter->pf_;
             filter->write_tag(stdout);
             filter->release_buf();
-            SP_DEBUG("WriteUrlLarge_Module:send=%d,recv=%d\n", data->size_split_buf, data->recv_split_);
+            // SP_DEBUG("WriteUrlLarge_Module:send=%d,recv=%d\n", data->size_split_buf, data->recv_split_);
             s_instance_stream->put(msg);
             if (spffilter->is_ready(count))
             {

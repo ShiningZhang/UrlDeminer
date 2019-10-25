@@ -66,7 +66,7 @@ void ReadUrlLarge_Module::svc()
                 {
                     read_url_size += mid_file->largefile_list_[k]->size1_[i][j];
                 }
-                SP_DEBUG("[%d,%d]read_pf_size=%d,read_url_size=%d, send=%d,recv=%d\n", i, j, read_pf_size, read_url_size, data->size_split_buf, data->recv_split_);
+                // SP_DEBUG("[%d,%d]read_pf_size=%d,read_url_size=%d, send=%d,recv=%d\n", i, j, read_pf_size, read_url_size, data->size_split_buf, data->recv_split_);
                 if (read_url_size == 0)
                 {
                     for (uint k = 0; k < mid_file->prefixfile_list_.size(); ++k)
