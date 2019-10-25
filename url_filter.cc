@@ -545,6 +545,21 @@ inline uint16_t next_domain_suffix(stDP_Port_CMP &e1)
     return count;
 }
 
+bool cmp_dp_port_loop(const stDP_Port_CMP &e1, const DomainPortBuf &e2)
+{
+    const char *pa = e1.c;
+    const char *pb = e2.start;
+    uint16_t na = e1.n;
+    uint16_t nb = e2.n;
+    int ret = cmpbuf_dp(pa, na, pb, nb);
+#ifdef DEBUG
+    printf("cmp_dp_port_loop:ret=%d,e1:%s,%d,e2:%s,%d,port=%d\n", ret, pa, na, e2.start, nb, e2.port);
+#endif
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    return na <= nb;
+}
+
 int filter_domainport_impl(const DomainPortBuf &in,
                            char **start,
                            const int size,
@@ -647,19 +662,107 @@ int filter_domainport_impl(const DomainPortBuf &in,
     return -1;
 }
 
-bool cmp_dp_port_loop(const stDP_Port_CMP &e1, const DomainPortBuf &e2)
+DomainPortBuf *filter_domainport_impl1(const DomainPortBuf &in,
+                                       DomainPortBuf *start,
+                                       const int size,
+                                       const int *range)
 {
-    const char *pa = e1.c;
-    const char *pb = e2.start;
-    uint16_t na = e1.n;
-    uint16_t nb = e2.n;
+    if (size == 0)
+        return NULL;
+    DomainPortBuf *iter = upper_bound(start, start + size, in, cmp_dp_port);
+    if (iter == start)
+    {
+        return NULL;
+    }
+    --iter;
+    char *pa = in.start;
+    uint16_t na = in.n;
+    int count = range[iter - start];
+    //cmp the last one
+    const char *pb = iter->start;
+    uint16_t nb = iter->n;
     int ret = cmpbuf_dp(pa, na, pb, nb);
-#ifdef DEBUG
-    printf("cmp_dp_port_loop:ret=%d,e1:%s,%d,e2:%s,%d,port=%d\n", ret, pa, na, e2.start, nb, e2.port);
-#endif
-    if (ret != 0)
-        return ret == -1 ? true : false;
-    return na <= nb;
+
+    if (ret == 0 && (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.'))))
+    {
+        return iter;
+    }
+    else
+    {
+        --iter;
+        --count;
+    }
+    if (count < 7)
+    {
+        while (count > 0)
+        {
+            pb = iter->start;
+            nb = iter->n;
+            if (na < nb)
+            {
+                --iter;
+                --count;
+                continue;
+            }
+            ret = cmpbuf_dp(pa, na, pb, nb);
+
+            if (ret == 0 && (na == nb || (na > nb && (pa[na - nb - 1] == '.' || pb[0] == '.'))))
+            {
+                return iter;
+            }
+            else
+            {
+                --iter;
+                --count;
+            }
+        }
+    }
+    else
+    {
+        //cmp the first one
+        DomainPortBuf *p = iter + 1 - count;
+        pb = p->start;
+        nb = p->n;
+        LOG("filter_domainport_impl:begin while: na=%d,%s;nb=%d,%s\n", na, pa, nb, pb);
+        if (na >= nb && cmpbuf_dp(pa, na, pb, nb) == 0)
+        {
+            LOG("filter_domainport_impl:begin while1: na=%d,%s;nb=%d,%s\n", na, pa, nb, pb);
+            DomainPortBuf *final = NULL;
+            if (cmp_dp_len(pa, na, pb, nb))
+            {
+                final = p;
+            }
+            LOG("filter_domainport_impl:begin while2 final=%d: na=%d,%s;nb=%d,%s\n", final, na, pa, nb, pb);
+            uint16_t min = nb;
+            stDP_Port_CMP s1 = {na, pa};
+            uint16_t count_suffix = next_domain_suffix(s1);
+            while (s1.n > min && iter > p)
+            {
+                DomainPortBuf *p1 = upper_bound(p, iter + 1, s1, cmp_dp_port_loop);
+
+                if (p1 == p)
+                {
+                    break;
+                }
+                if (p1 > iter)
+                {
+                    next_domain_suffix(s1);
+                    continue;
+                }
+                pb = p1->start;
+                nb = p1->n;
+                if (s1.n == nb && cmpbuf_dp(s1.c, s1.n, pb, nb) == 0)
+                {
+                    final = p1;
+                    break;
+                }
+                iter = p1 - 1;
+                next_domain_suffix(s1);
+            }
+            return final;
+        }
+    }
+    return NULL;
 }
 
 int filter_port_impl(DomainPortBuf in,
@@ -874,46 +977,16 @@ int filter_domainport_1(const DomainPortBuf &in,
         res.port = d_res->port;
         return res.ret;
     }
-    int n = 0;
-    char **start = filter->list_[1][t];
-    size = filter->list_count_[1][t];
-    n = filter_domainport_impl(in, start, size, filter->list_range_[1][t]);
-    if (n > 0)
+    port_start = filter->list_[t];
+    size = filter->list_count_[t];
+    d_res = filter_domainport_impl1(in, port_start, size, filter->list_range_[t]);
+    if (d_res != NULL)
     {
-        res.n = n;
-        res.ret = 1;
-        res.port = 0;
-        if (n == in.n)
-            return res.ret;
+        res.n = d_res->n;
+        res.ret = d_res->hit;
+        res.port = d_res->port;
+        return res.ret;
     }
-    start = filter->list_[0][t];
-    size = filter->list_count_[0][t];
-    n = filter_domainport_impl(in, start, size, filter->list_range_[0][t]);
-    if (n > 0 && n > res.n)
-    {
-        res.n = n;
-        res.ret = 0;
-        res.port = 0;
-        if (n == in.n)
-            return res.ret;
-    }
-    /* if (res.ret == -1)
-    {
-        if (filter->list_c[1][t] > 0)
-        {
-            res.n = 1;
-            res.ret = 1;
-            res.port = 0;
-            return res.ret;
-        }
-        else if (filter->list_c[0][t] > 0)
-        {
-            res.n = 1;
-            res.ret = 0;
-            res.port = 0;
-            return res.ret;
-        }
-    } */
 
     return res.ret;
 }
@@ -972,27 +1045,15 @@ int filter_domainport_1_sp(DomainPortBuf in,
             return res.ret;
         }
     }
-    char **start = filter->list_sp_[i][1][t];
-    size = filter->list_sp_count_[i][1][t];
-    n = filter_domainport_impl(in, start, size, filter->list_sp_range_[i][1][t]);
-    if (n > 0)
+    port_start = filter->list_sp_[i][t];
+    size = filter->list_sp_count_[i][t];
+    d_res = filter_domainport_impl1(in, port_start, size, filter->list_sp_range_[i][t]);
+    if (d_res != NULL)
     {
-        res.n = n;
-        res.ret = 1;
-        res.port = 0;
-        if (n == in.n)
-            return res.ret;
-    }
-    start = filter->list_sp_[i][0][t];
-    size = filter->list_sp_count_[i][0][t];
-    n = filter_domainport_impl(in, start, size, filter->list_sp_range_[i][0][t]);
-    if (n > 0 && n > res.n)
-    {
-        res.n = n;
-        res.ret = 0;
-        res.port = 0;
-        if (n == in.n)
-            return res.ret;
+        res.n = d_res->n;
+        res.ret = d_res->hit;
+        res.port = d_res->port;
+        return res.ret;
     }
     /* if (res.ret == -1)
     {

@@ -24,17 +24,17 @@ public:
 
 public:
 	// std::vector<DomainPortBuf> list_;
-	char **list_[2][DOMAIN_CHAR_COUNT];
-	int list_count_[2][DOMAIN_CHAR_COUNT];
+	DomainPortBuf *list_[DOMAIN_CHAR_COUNT];
+	int list_count_[DOMAIN_CHAR_COUNT];
 	char *p_;
 	uint32_t size_;
-	int *list_range_[2][DOMAIN_CHAR_COUNT];
+	int *list_range_[DOMAIN_CHAR_COUNT];
 	DomainPortBuf *list_port_;
 	int list_port_count_;
 	int list_c[2][DOMAIN_CHAR_COUNT];
-	char **list_sp_[2][2][DOMAIN_CHAR_COUNT]; //.com 0 .cn 1
-	int list_sp_count_[2][2][DOMAIN_CHAR_COUNT];
-	int *list_sp_range_[2][2][DOMAIN_CHAR_COUNT];
+	DomainPortBuf *list_sp_[2][DOMAIN_CHAR_COUNT]; //.com 0 .cn 1
+	int list_sp_count_[2][DOMAIN_CHAR_COUNT];
+	int *list_sp_range_[2][DOMAIN_CHAR_COUNT];
 	int list_sp_cc_[2][2][DOMAIN_CHAR_COUNT];
 	int list_sp_c_[2][2];
 };
@@ -44,11 +44,9 @@ class DomainFilterMerge : public DomainFilter
 public:
 	DomainFilterMerge();
 	virtual ~DomainFilterMerge();
-	int merge(vector<DomainFilter *> domain_filter_list, int type);
 	int merge(vector<DomainFilter *> domain_filter_list, int i, int type);
 
 	int merge_port(vector<DomainFilter *> list);
-	int merge_port(vector<DomainFilter *> list, int i);
 
 	void cpy_filter_list(vector<DomainFilter *> &list);
 	DomainPortBuf *port_start_[65536];
