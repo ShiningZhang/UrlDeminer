@@ -487,7 +487,8 @@ int main(int argc, char **argv)
         }
         else
         {
-            split_mem = ceil((MAX_USE_MEM_SIZE - max_file_size) / 8 + SMALLFILESIZE);
+            // split_mem = ceil((MAX_USE_MEM_SIZE - max_file_size) / 8 + SMALLFILESIZE);
+            split_mem = FILESPLITSIZE;
         }
         //prepare urlfilter
         {

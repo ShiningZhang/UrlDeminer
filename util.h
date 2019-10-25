@@ -162,6 +162,8 @@ uint64_t readcontent(FILE *handle, char *&p, uint64_t isize);
 
 bool compare_dp_char_eq(const char *pa, const char *pb);
 
+bool cmp_pf_loop1(const stPFCMPOFFSET &e1, const char *e2);
+
 inline int cmp64val(int64_t ia, int64_t ib)
 {
     int64_t sub = ia - ib;
@@ -277,6 +279,20 @@ inline int cmpbuf_pf(const char *pa, int na, const char *pb, int nb)
     return 0;
 }
 
+inline uint16_t eqlen64(int64_t r)
+{
+    uint16_t c = 7;
+    if ((r & temp[1]) != 0)
+        return (uint16_t)0;
+    while (c > 0)
+    {
+        r >>= 8;
+        if (r == 0)
+            break;
+        --c;
+    }
+    return c;
+}
 inline uint16_t pf_eq_len(const char *pa, int na, const char *pb, int nb)
 {
     int64_t ret = 0;
@@ -288,27 +304,13 @@ inline uint16_t pf_eq_len(const char *pa, int na, const char *pb, int nb)
         ret = ia - ib;
         if (ret != 0)
         {
-            break;
+            return count + eqlen64(ret);
         }
         na -= 8;
         nb -= 8;
         pa += 8;
         pb += 8;
         count += 8;
-    }
-    if (ret != 0 || nb == 0)
-    {
-        if ((ret & temp[1]) != 0)
-            return count;
-        int c1 = 7;
-        while (c1 > 0)
-        {
-            ret >>= 8;
-            if (ret == 0)
-                break;
-            --c1;
-        }
-        return count + c1;
     }
     if (na >= 8 && nb > 0)
     {
@@ -318,6 +320,8 @@ inline uint16_t pf_eq_len(const char *pa, int na, const char *pb, int nb)
         ret = ia - ib;
         if (ret == 0)
             return count + nb;
+        else
+            return count + eqlen64(ret);
     }
     else if (nb >= 8 && na > 0)
     {
@@ -327,6 +331,8 @@ inline uint16_t pf_eq_len(const char *pa, int na, const char *pb, int nb)
         ret = ia - ib;
         if (ret == 0)
             return count + na;
+        else
+            return count + eqlen64(ret);
     }
     else if (na > 0 && nb > 0)
     {
@@ -336,18 +342,11 @@ inline uint16_t pf_eq_len(const char *pa, int na, const char *pb, int nb)
         ret = ia - ib;
         if (ret == 0)
             return count + nc;
+        else
+            return count + eqlen64(ret);
     }
-    if ((ret & temp[1]) != 0)
-        return count;
-    int c1 = 7;
-    while (c1 > 0)
-    {
-        ret >>= 8;
-        if (ret == 0)
-            break;
-        --c1;
-    }
-    return count + c1;
+
+    return count;
 }
 
 #endif

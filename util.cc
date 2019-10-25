@@ -344,3 +344,54 @@ bool compare_prefix_eq(const char *e1, const char *e2)
     int ret = cmpbuf_pf(pa, na, pb, nb);
     return ret;
 }
+
+bool cmp_pf_loop1(const stPFCMPOFFSET &e1, const char *e2)
+{
+    const int64_t *pa = e1.pa_;
+    uint16_t na = e1.na_;
+    uint16_t nb = *(uint16_t *)(e2)-e1.offset_;
+    const char *pb = e2 + 2 + e1.offset_;
+    int ret = 0;
+    while (na >= 8 && nb >= 8)
+    {
+        int64_t ia = *pa;
+        int64_t ib = *(int64_t *)pb;
+        ret = cmp64val(ia, ib);
+        if (ret != 0)
+        {
+            return ret;
+        }
+        na -= 8;
+        nb -= 8;
+        pa += 1;
+        pb += 8;
+    }
+    if (na >= 8 && nb > 0)
+    {
+        int64_t ia = (*pa) & temp[nb];
+        int64_t ib = to64le8h(pb, nb);
+        // printf("ia=%08x,na=%d,ib=%08x,nb=%d\n", ia, na, ib, nb);
+        ret = cmp64val(ia, ib);
+        if (ret != 0)
+            return ret;
+    }
+    if (nb >= 8 && na > 0)
+    {
+        int64_t ia = e1.num_;
+        int64_t ib = (*(int64_t *)pb) & temp[na];
+        // printf("ia=%08x,na=%d,ib=%08x,nb=%d\n", ia, na, ib, nb);
+        ret = cmp64val(ia, ib);
+        if (ret != 0)
+            return ret;
+    }
+    if (na > 0 && nb > 0)
+    {
+        int nc = min(na, nb);
+        int64_t ia = e1.num_;
+        int64_t ib = to64le8h(pb, nc);
+        ret = cmp64val(ia, ib);
+        if (ret != 0)
+            return ret;
+    }
+    return na <= nb;
+}
