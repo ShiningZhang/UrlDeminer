@@ -19,6 +19,7 @@ public:
 	void load_(char *p, uint64_t size);
 	void prepare_buf(char *p, uint64_t size);
 	void init_list();
+	void compress();
 
 public:
 	static DomainFilter *load(char *p, uint64_t size);

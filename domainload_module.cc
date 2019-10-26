@@ -107,6 +107,7 @@ void DomainLoad_Module_v1::svc()
         DomainFilter *filter = DomainFilter::load(buf, size);
         if (filter != NULL)
         {
+            // filter->compress();
             lock_.lock();
             data->domain_filter_list_.push_back(filter);
             lock_.unlock();

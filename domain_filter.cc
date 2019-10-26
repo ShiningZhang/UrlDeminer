@@ -831,3 +831,68 @@ void DomainFilterMerge::cpy_filter_list(vector<DomainFilter *> &list)
     }
     list.clear();
 }
+
+void DomainFilter::compress()
+{
+    if (size_ == 0)
+        return;
+    uint64_t size = 0;
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        for (int j = 0; j < list_count_[i]; ++j)
+        {
+            size += list_[i][j].n;
+        }
+    }
+    for (int i = 0; i < list_port_count_; ++i)
+    {
+        size += list_port_[i].n;
+    }
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
+        {
+            for (int k = 0; k < list_sp_count_[i][j]; ++k)
+            {
+                size += list_sp_[i][j][k].n;
+            }
+        }
+    }
+    char *p = (char *)malloc(size * sizeof(char));
+    size = 0;
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        for (int j = 0; j < list_count_[i]; ++j)
+        {
+            memcpy(p + size, list_[i][j].start, list_[i][j].n);
+            list_[i][j].start = p + size;
+            size += list_[i][j].n;
+        }
+    }
+    for (int i = 0; i < list_port_count_; ++i)
+    {
+        memcpy(p + size, list_port_[i].start, list_port_[i].n);
+        list_port_[i].start = p + size;
+        size += list_port_[i].n;
+    }
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
+        {
+            for (int k = 0; k < list_sp_count_[i][j]; ++k)
+            {
+                memcpy(p + size, list_sp_[i][j][k].start, list_sp_[i][j][k].n);
+                list_sp_[i][j][k].start = p + size;
+                size += list_sp_[i][j][k].n;
+            }
+        }
+    }
+    if (p_ != NULL)
+    {
+        p_ = p_ - BUFHEADSIZE;
+        free(p_);
+        p_ = NULL;
+    }
+    p_ = p + BUFHEADSIZE;
+    size_ = size;
+}

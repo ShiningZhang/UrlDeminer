@@ -158,6 +158,10 @@ int main(int argc, char **argv)
     {
         case_type = 0;
     }
+    else if (urlid_size < SMALLSIZE)
+    {
+        case_type = 1;
+    }
 #if (SP_DEBUG_SWITCH == 1)
     case_type = 2;
 #endif
@@ -592,8 +596,8 @@ int main(int argc, char **argv)
         //tmp url read and prefix filter
         SP_DEBUG(" prefix filter begin\n");
         SPFFilter *spf_filter;
-        SPFFilter *list_spf_filter_[8];
-        for (int i = 0; i < 8; ++i)
+        SPFFilter *list_spf_filter_[9];
+        for (int i = 0; i < 9; ++i)
         {
             spf_filter = new SPFFilter();
             // gQueueFilter.push(url_pf_filter);
@@ -636,7 +640,7 @@ int main(int argc, char **argv)
             data->counter_.passchecksum ^= surl_filter->counters_.passchecksum;
             data->counter_.hitchecksum ^= surl_filter->counters_.hitchecksum;
             delete surl_filter;
-            if (i < 8)
+            if (i < 9)
                 delete list_spf_filter_[i];
         }
         dumpCounters(stdout, &data->counter_);
