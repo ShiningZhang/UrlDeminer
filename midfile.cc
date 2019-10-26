@@ -136,9 +136,9 @@ inline int write_large_(char **p, int &begin, int end, int buf_size, char *&buf)
     {
         pa = p[begin];
         na = (int)*((uint16_t *)pa);
-        *(uint16_t *)(pa + 2) = na - 1;
+        *(uint16_t *)(pa + 2) = na;
         pa[1] = pa[-1];
-        na += 12; //3+(len+1)+1+8+1-2
+        na += 13; //3+(len+2)+1+8+1-2
         memcpy(buf + offset, pa + 1, na);
         offset += na;
         ++begin;
