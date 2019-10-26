@@ -116,7 +116,7 @@ void ReadFile_Module_v1::svc()
         uint64_t length = data->length_;
         uint64_t size = 0;
         uint64_t begin = 0;
-        uint64_t line_size = length < 1024 * 8 ? length : ceil((double)length / 32) + 64;
+        uint64_t line_size = length < 1024 * 8 ? length : ceil((double)length / 8) + 64;
         SP_DEBUG("ReadFile_Module_v1:length=%lld,line_size=%zu\n", length, line_size);
         data->size_split_buf = (int)ceil((double)length / line_size);
         int split = 0;

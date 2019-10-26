@@ -18,6 +18,7 @@ public:
 	void add(char *domainPortBuffer, char allow);
 	void load_(char *p, uint64_t size);
 	void prepare_buf(char *p, uint64_t size);
+	void init_list();
 
 public:
 	static DomainFilter *load(char *p, uint64_t size);

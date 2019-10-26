@@ -34,6 +34,7 @@ DomainFilter::DomainFilter()
 
 DomainFilter::~DomainFilter()
 {
+    SP_DEBUG("~DomainFilter");
     if (p_ != NULL)
     {
         p_ = p_ - BUFHEADSIZE;
@@ -296,6 +297,40 @@ void prepare_range(DomainPortBuf *list, int size, int *&range)
     }
 }
 
+void DomainFilter::init_list()
+{
+    for (int k = 0; k < DOMAIN_CHAR_COUNT; ++k)
+    {
+        if (list_count_[k] > 0)
+        {
+            list_[k] = (DomainPortBuf *)malloc(list_count_[k] * sizeof(DomainPortBuf));
+#ifdef DEBUG
+            printf("DomainFilter::load:[%d,%d],count=%d\n", i, k, list_count_[i][k]);
+#endif
+        }
+    }
+    if (list_port_count_ > 0)
+    {
+        list_port_ = (DomainPortBuf *)malloc(list_port_count_ * sizeof(DomainPortBuf));
+#ifdef DEBUG
+        printf("DomainFilter::load:,count=%d\n", list_port_count_);
+#endif
+    }
+    for (int j = 0; j < 2; ++j)
+    {
+        for (int k = 0; k < DOMAIN_CHAR_COUNT; ++k)
+        {
+            if (list_sp_count_[j][k] > 0)
+            {
+                list_sp_[j][k] = (DomainPortBuf *)malloc(list_sp_count_[j][k] * sizeof(DomainPortBuf));
+#ifdef DEBUG
+                printf("DomainFilter::load:[%d,%d],count=%d\n", j, k, list_sp_count_[j][k]);
+#endif
+            }
+        }
+    }
+}
+
 DomainFilter *DomainFilter::load(char *p, uint64_t size)
 {
     if (size == 0)
@@ -309,36 +344,7 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
     }
     DomainFilter *filter = new DomainFilter();
     filter->prepare_buf(p, size);
-    for (int k = 0; k < DOMAIN_CHAR_COUNT; ++k)
-    {
-        if (filter->list_count_[k] > 0)
-        {
-            filter->list_[k] = (DomainPortBuf *)malloc(filter->list_count_[k] * sizeof(DomainPortBuf));
-#ifdef DEBUG
-            printf("DomainFilter::load:[%d,%d],count=%d\n", i, k, filter->list_count_[i][k]);
-#endif
-        }
-    }
-    if (filter->list_port_count_ > 0)
-    {
-        filter->list_port_ = (DomainPortBuf *)malloc(filter->list_port_count_ * sizeof(DomainPortBuf));
-#ifdef DEBUG
-        printf("DomainFilter::load:,count=%d\n", filter->list_port_count_);
-#endif
-    }
-    for (int j = 0; j < 2; ++j)
-    {
-        for (int k = 0; k < DOMAIN_CHAR_COUNT; ++k)
-        {
-            if (filter->list_sp_count_[j][k] > 0)
-            {
-                filter->list_sp_[j][k] = (DomainPortBuf *)malloc(filter->list_sp_count_[j][k] * sizeof(DomainPortBuf));
-#ifdef DEBUG
-                printf("DomainFilter::load:[%d,%d],count=%d\n", j, k, filter->list_sp_count_[j][k]);
-#endif
-            }
-        }
-    }
+    filter->init_list();
 
     filter->load_(p, size);
     filter->p_ = p;

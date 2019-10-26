@@ -2315,7 +2315,16 @@ void UrlFilterLarge::clear_para()
             free(list_[i]);
             list_[i] = NULL;
         }
+        for (int j = 0; j < 2; ++j)
+        {
+            if (list_domain_sp_[j][i] != NULL)
+            {
+                free(list_domain_sp_[j][i]);
+                list_domain_sp_[j][i] = NULL;
+            }
+        }
     }
+    memset(list_domain_sp_count_, 0, 2 * DOMAIN_CHAR_COUNT * sizeof(int));
 }
 
 UrlPFFilter::UrlPFFilter()

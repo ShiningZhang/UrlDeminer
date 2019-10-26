@@ -43,7 +43,6 @@
 #include "midlarge_module.h"
 
 #include "prefixloadlarge_module.h"
-#include "prefixmergelarge_module.h"
 #include "prefixwrite_module.h"
 
 #include "readurllarge_module.h"
@@ -474,6 +473,12 @@ int main(int argc, char **argv)
         {
             s_instance_stream->pop();
         }
+        for (uint i = 0; i < data->domain_filter_list_.size(); ++i)
+        {
+            DomainFilter *filter = data->domain_filter_list_[i];
+            delete (filter);
+        }
+        data->domain_filter_list_.clear();
         SP_DEBUG("read doamin end\n");
 
         //url file read and domain filter
@@ -492,7 +497,7 @@ int main(int argc, char **argv)
         }
         //prepare urlfilter
         {
-            for (int i = 0; i < 8; ++i)
+            for (int i = 0; i < 16; ++i)
             {
                 UrlFilter *filter = new UrlFilterLarge();
                 filter->buf_size_ = split_mem;
