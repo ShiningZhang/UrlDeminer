@@ -305,7 +305,7 @@ void DomainFilter::init_list()
         {
             list_[k] = (DomainPortBuf *)malloc(list_count_[k] * sizeof(DomainPortBuf));
 #ifdef DEBUG
-            printf("DomainFilter::load:[%d],count=%d\n",  k, list_count_[k]);
+            printf("DomainFilter::load:[%d],count=%d\n", k, list_count_[k]);
 #endif
         }
     }
@@ -368,6 +368,58 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
         for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
         {
             if (filter->list_sp_count_[j][m] > 0)
+            {
+                pdqsort(filter->list_sp_[j][m], filter->list_sp_[j][m] + filter->list_sp_count_[j][m], compare_dp);
+                // prepare_range(filter->list_sp_[i][j][m], filter->list_sp_count_[i][j][m], filter->list_sp_range_[i][j][m]);
+#ifdef DEBUG
+                for (int k = 0; k < filter->list_sp_count_[j][m]; ++k)
+                {
+                    printf("domain:%s,hit:%d\n", filter->list_sp_[j][m][k], filter->list_sp_[j][m][k].hit);
+                }
+#endif
+            }
+        }
+    }
+    return filter;
+}
+
+DomainFilter *DomainFilter::load_case2(char *p, uint64_t size)
+{
+    if (size == 0)
+    {
+        if (p != NULL)
+        {
+            p = p - BUFHEADSIZE;
+            free(p);
+        }
+        return NULL;
+    }
+    DomainFilter *filter = new DomainFilter();
+    filter->prepare_buf(p, size);
+    filter->init_list();
+
+    filter->load_(p, size);
+    filter->p_ = p;
+    filter->size_ = size;
+    for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
+    {
+        if (dp_need[m] && filter->list_count_[m] > 0)
+        {
+            pdqsort(filter->list_[m], filter->list_[m] + filter->list_count_[m], compare_dp);
+            // prepare_range(filter->list_[i][m], filter->list_count_[i][m], filter->list_range_[i][m]);
+#ifdef DEBUG
+            for (int k = 0; k < filter->list_count_[m]; ++k)
+            {
+                printf("domain:%s,hit:%d\n", filter->list_[m][k].start, filter->list_[m][k].hit);
+            }
+#endif
+        }
+    }
+    for (int j = 0; j < 2; ++j)
+    {
+        for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
+        {
+            if (dp_sp_need[j][m] && filter->list_sp_count_[j][m] > 0)
             {
                 pdqsort(filter->list_sp_[j][m], filter->list_sp_[j][m] + filter->list_sp_count_[j][m], compare_dp);
                 // prepare_range(filter->list_sp_[i][j][m], filter->list_sp_count_[i][j][m], filter->list_sp_range_[i][j][m]);

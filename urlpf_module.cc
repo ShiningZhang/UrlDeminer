@@ -25,23 +25,32 @@ int UrlPF_Module::open()
 
 void UrlPF_Module::svc()
 {
-    CRequest *c_data = NULL;
+    Request *data = gRequest;
+    int recv_idx = 0;
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;
         gettimeofday(&start, 0);
-        c_data = reinterpret_cast<CRequest *>(msg->data());
         {
-            UrlFilter *filter = c_data->url_filter_;
+            UrlFilter *filter = data->url_filter_list_[msg->idx()];
             if (filter != NULL)
             {
-                filter->prefixfilter_ = c_data->request_->prefix_filter_;
                 filter->prepare_prefix();
                 filter->filter_prefix();
             }
         }
 
-        put_next(msg);
+        lock_.lock();
+        data->recv_split_++;
+        recv_idx = data->recv_split_;
+        lock_.unlock();
+        if (recv_idx == data->size_split_buf)
+        {
+            data->reset_para();
+
+            SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));
+            put_next(msg);
+        }
 
         gettimeofday(&t2, 0);
         SP_DEBUG("UrlPF_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);

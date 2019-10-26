@@ -23,6 +23,7 @@ public:
 
 public:
 	static DomainFilter *load(char *p, uint64_t size);
+	static DomainFilter *load_case2(char *p, uint64_t size);
 
 public:
 	// std::vector<DomainPortBuf> list_;

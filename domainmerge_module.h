@@ -42,4 +42,22 @@ private:
     std::mutex lock_;
 };
 
+class DomainMerge_Module_case2 : public SP_Module
+{
+public:
+    static DomainMerge_Module_case2 *instance()
+    {
+        return SP_Singleton<DomainMerge_Module_case2>::instance();
+    }
+    DomainMerge_Module_case2(int threads = 1);
+    virtual ~DomainMerge_Module_case2();
+    virtual int open();
+    virtual void svc();
+    virtual int init();
+
+private:
+    int threads_num_;
+    std::mutex lock_;
+};
+
 #endif

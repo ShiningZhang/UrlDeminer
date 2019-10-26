@@ -23,6 +23,7 @@ public:
 
 public:
     static PrefixFilter *load(char *p, uint64_t size);
+    static PrefixFilter *load_case2(char *p, uint64_t size);
     // static PrefixFilter *merge(std::vector<PrefixFilter *> prefix_filter_list);
 
 public:

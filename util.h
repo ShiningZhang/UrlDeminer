@@ -136,6 +136,9 @@ extern Request *gRequest;
 extern mutex gMCount;
 
 extern bool gEnd;
+extern bool dp_need[DOMAIN_CHAR_COUNT];
+extern bool dp_sp_need[2][DOMAIN_CHAR_COUNT];
+extern bool pf_need[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
 
 size_t readcontent_unlocked(FILE *handle, char *p, uint64_t isize, int *end);
 uint64_t sizeoffile(FILE *handle);

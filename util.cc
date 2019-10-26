@@ -22,6 +22,10 @@ Request *gRequest;
 
 bool gEnd;
 
+bool dp_need[DOMAIN_CHAR_COUNT];
+bool dp_sp_need[2][DOMAIN_CHAR_COUNT];
+bool pf_need[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+
 int domain_temp[256];
 int domain_temp2[256];
 

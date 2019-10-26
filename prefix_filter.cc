@@ -468,6 +468,75 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
     return filter;
 }
 
+PrefixFilter *PrefixFilter::load_case2(char *p, uint64_t size)
+{
+    if (size == 0)
+    {
+        if (p != NULL)
+        {
+            p = p - BUFHEADSIZE;
+            free(p);
+        }
+        return NULL;
+    }
+    PrefixFilter *filter = new PrefixFilter();
+    filter->prepare_buf(p, size);
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
+                {
+                    for (int n = 0; n < DOMAIN_CHAR_COUNT; ++n)
+                    {
+                        if (filter->list_count_[i][j][k][m][n] > 0)
+                        {
+                            LOG("before:[%d,%d,%d,%d,%d]:%d\n", i, j, k, m, n, filter->list_count_[i][j][k][m][n]);
+                            filter->list_https_[i][j][k][m][n] = (char **)malloc(filter->list_count_[i][j][k][m][n] * sizeof(char *));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    filter->load_(p, size);
+    filter->p_ = p;
+    filter->buf_size_ = size;
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
+                {
+                    for (int n = 0; n < DOMAIN_CHAR_COUNT; ++n)
+                    {
+                        if (pf_need[m][n] && filter->list_count_[i][j][k][m][n] > 0)
+                        {
+                            LOG("after:[%d,%d,%d,%d,%d]:%d\n", i, j, k, m, n, filter->list_count_[i][j][k][m][n]);
+                            pdqsort(filter->list_https_[i][j][k][m][n], filter->list_https_[i][j][k][m][n] + filter->list_count_[i][j][k][m][n], compare_prefix);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    /*for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                filter->prepare_range(filter->list_https_[i][j][k], filter->list_count_[i][j][k], filter->list_range_[i][j][k]);
+            }
+        }
+    } */
+    return filter;
+}
+
 void PrefixFilter::prepare_range(char **list, int size, int *&range)
 {
     if (size == 0)
