@@ -456,9 +456,9 @@ int main(int argc, char **argv)
         data->length_ = size;
 
         SP_NEW_RETURN(s_instance_stream, SP_Stream, -1);
-        SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
-        SP_NEW_RETURN(modules[1], DomainLoad_Module(8), -1);
-        SP_NEW_RETURN(modules[2], DomainMerge_Module(8), -1);
+        SP_NEW_RETURN(modules[0], ReadFile_Module_v1(1), -1);
+        SP_NEW_RETURN(modules[1], DomainLoad_Module_v1(8), -1);
+        SP_NEW_RETURN(modules[2], DomainMerge_Module_v1(8), -1);
 
         for (int i = 2; i >= 0; --i)
         {
@@ -609,8 +609,8 @@ int main(int argc, char **argv)
         SUrlFilter *surl_filter;
         data->fp_out_ = stdout;
 
-        SUrlFilter *list_surl_filter_[8];
-        for (int i = 0; i < 8; ++i)
+        SUrlFilter *list_surl_filter_[16];
+        for (int i = 0; i < 16; ++i)
         {
             surl_filter = new SUrlFilter();
             // gQueueFilter.push(url_pf_filter);
@@ -621,7 +621,7 @@ int main(int argc, char **argv)
 
         // s_instance_stream->put(msg);
         s_instance_stream->get(msg);
-        for (int i = 0; i < 8; ++i)
+        for (int i = 0; i < 16; ++i)
         {
             surl_filter = list_surl_filter_[i];
             // gQueueFilter.pop();
@@ -631,7 +631,8 @@ int main(int argc, char **argv)
             data->counter_.passchecksum ^= surl_filter->counters_.passchecksum;
             data->counter_.hitchecksum ^= surl_filter->counters_.hitchecksum;
             delete surl_filter;
-            delete list_spf_filter_[i];
+            if (i < 8)
+                delete list_spf_filter_[i];
         }
         dumpCounters(stdout, &data->counter_);
         gEnd = true;

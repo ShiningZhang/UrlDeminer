@@ -9,7 +9,7 @@
 class DomainMerge_Module : public SP_Module
 {
 public:
-    static DomainMerge_Module * instance()
+    static DomainMerge_Module *instance()
     {
         return SP_Singleton<DomainMerge_Module>::instance();
     }
@@ -18,6 +18,25 @@ public:
     virtual int open();
     virtual void svc();
     virtual int init();
+
+private:
+    int threads_num_;
+    std::mutex lock_;
+};
+
+class DomainMerge_Module_v1 : public SP_Module
+{
+public:
+    static DomainMerge_Module_v1 *instance()
+    {
+        return SP_Singleton<DomainMerge_Module_v1>::instance();
+    }
+    DomainMerge_Module_v1(int threads = 1);
+    virtual ~DomainMerge_Module_v1();
+    virtual int open();
+    virtual void svc();
+    virtual int init();
+
 private:
     int threads_num_;
     std::mutex lock_;

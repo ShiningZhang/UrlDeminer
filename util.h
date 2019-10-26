@@ -36,7 +36,7 @@ using namespace std;
 
 #define MAX_USE_MEM_SIZE 7000000000
 
-#define MEM_SIZE_256 128 * 1024 * 1024
+#define MEM_SIZE_256 64 * 1024 * 1024
 
 #ifdef DEBUG
 #define LOG(format_string, ...)                                                                \

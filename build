@@ -4,7 +4,7 @@ set -x
 set -v
 
 CXXFLAGS="-g -pipe -Wextra -Wno-missing-field-initializers -Wmissing-include-dirs -Wfloat-equal -Wpointer-arith -Wwrite-strings -Wshadow -O2 \
-		-march=corei7-avx -std=c++11 -lpthread"
+		-march=corei7-avx -std=c++11 -lpthread -ltcmalloc"
 
 g++ ${CXXFLAGS} *.cc SP/*.cpp -o filter -ISP
 

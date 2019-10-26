@@ -30,7 +30,10 @@ public:
           mid_file_(NULL),
           domain_filter_(NULL),
           prefix_filter_(NULL),
-          split_size_(0){};
+          split_size_(0)
+    {
+        domain_filter_list_.reserve(32);
+    };
     virtual ~Request()
     {
         for (size_t i = 0; i < domain_filter_list_.size(); ++i)
