@@ -39,7 +39,10 @@ void PrefixMerge_Module::svc()
         PrefixFilterMerge *filter = (PrefixFilterMerge *)data->prefix_filter_;
         if (filter != NULL)
         {
-            filter->merge(data->prefix_filter_list_, c_data->idx_);
+            for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+            {
+                filter->merge(data->prefix_filter_list_, c_data->idx_, i);
+            }
         }
         SP_DES(c_data);
 

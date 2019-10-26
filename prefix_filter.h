@@ -30,13 +30,13 @@ public:
     // *:0 +:1 =:2
     // +:0 -:1
     // http:0 https:1
-    char **list_https_[3][2][2][DOMAIN_CHAR_COUNT];
+    char **list_https_[3][2][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
     // std::vector<char*> list_https_[3][2];
-    uint64_t size_[3][2][2][DOMAIN_CHAR_COUNT];
+    uint64_t size_[3][2][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
     char *p_;
     uint64_t buf_size_;
-    int *list_range_[3][2][2][DOMAIN_CHAR_COUNT];
-    int list_count_[3][2][2][DOMAIN_CHAR_COUNT];
+    int *list_range_[3][2][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    int list_count_[3][2][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
 };
 
 class PrefixFilterMerge : public PrefixFilter
@@ -44,7 +44,7 @@ class PrefixFilterMerge : public PrefixFilter
 public:
     PrefixFilterMerge();
     virtual ~PrefixFilterMerge();
-    int merge(std::vector<PrefixFilter *> list, int idx);
+    int merge(std::vector<PrefixFilter *> list, int idx, int idx1);
     int merge_large(std::vector<PrefixFilter *> list, int idx);
     void cpy_filter_list(std::vector<PrefixFilter *> &list);
     std::vector<char *> p_list_;

@@ -163,10 +163,10 @@ int MidFile::write_mid_large(UrlFilterLarge *filter, int size[DOMAIN_CHAR_COUNT]
         FILE *fp = fopen(tmp_char, "wb+");
         for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
         {
-            int count = filter->list_write_count_[i][j];
+            int count = filter->list_count_[i][j];
             if (count == 0)
                 continue;
-            char **p = filter->list_write_[i][j];
+            char **p = filter->list_[i][j];
             size_t file_size = 0;
             int begin = 0;
             int end = count;

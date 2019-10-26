@@ -305,7 +305,7 @@ void DomainFilter::init_list()
         {
             list_[k] = (DomainPortBuf *)malloc(list_count_[k] * sizeof(DomainPortBuf));
 #ifdef DEBUG
-            printf("DomainFilter::load:[%d,%d],count=%d\n", i, k, list_count_[i][k]);
+            printf("DomainFilter::load:[%d],count=%d\n",  k, list_count_[k]);
 #endif
         }
     }
@@ -677,7 +677,7 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int i, i
 #ifdef DEBUG
         for (int tmp = 0; tmp < list_sp_count_[num1][type]; ++tmp)
         {
-            printf("DomainFilterMerge::mergehit=%d,port=0,type=%d,%s\n", list_sp_[num1][tmp].hit, type, list_sp_[num1][tmp]);
+            printf("DomainFilterMerge::mergehit=%d,port=0,type=%d,%s\n", list_sp_[num1][type][tmp].hit, type, list_sp_[num1][type][tmp].start);
         }
 #endif
     }

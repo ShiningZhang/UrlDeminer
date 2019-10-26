@@ -65,8 +65,8 @@ public:
     uint64_t out_size_;
     int out_offset_;
 
-    char **list_[DOMAIN_CHAR_COUNT];
-    int list_count_[DOMAIN_CHAR_COUNT];
+    char **list_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    int list_count_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
     int max_list_count_[DOMAIN_CHAR_COUNT];
     DomainPortBuf *list_domainport_[DOMAIN_CHAR_COUNT];
     int list_domainport_count_[DOMAIN_CHAR_COUNT];
@@ -84,8 +84,6 @@ public:
     void prepare_write();
     virtual void clear_para();
 
-    char **list_write_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
-    int list_write_count_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
 };
 
 #include "SP_Data_Block.h"
