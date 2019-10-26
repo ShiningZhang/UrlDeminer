@@ -7,7 +7,6 @@
 
 #include "domain_filter.h"
 #include "util.h"
-#include "SP_Data_Block.h"
 
 class DomainFilter;
 class PrefixFilter;
@@ -19,7 +18,7 @@ struct stDPRES
     int ret;
 };
 
-class UrlFilter : public SP_Data_Block
+class UrlFilter
 {
 public:
     UrlFilter();
@@ -50,7 +49,6 @@ public:
     virtual void clear_para();
     void clear_counter();
     void clear_domain_list();
-    void init_list();
 
 public:
     char *p_;
@@ -75,24 +73,22 @@ public:
     int max_list_domainport_count_[DOMAIN_CHAR_COUNT];
     DomainPortBuf *list_domain_sp_[2][DOMAIN_CHAR_COUNT]; //.com 0 .cn 1
     int list_domain_sp_count_[2][DOMAIN_CHAR_COUNT];
-    DomainPortBuf *list_dp_buf_;
-    char **list_buf_;
 };
 
 class UrlFilterLarge : public UrlFilter
 {
 public:
     UrlFilterLarge();
-    virtual ~UrlFilterLarge();
+    ~UrlFilterLarge();
     void filter_domainport_large();
     void prepare_write();
-    void clear_para_large();
+    virtual void clear_para();
 
     char **list_write_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
     int list_write_count_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
-    int idx_;
-    char **list_write_buf_;
 };
+
+#include "SP_Data_Block.h"
 
 class UrlPFFilter : public SP_Data_Block
 {
@@ -139,7 +135,7 @@ class SPFFilter : public SP_Data_Block
 public:
     SPFFilter();
     virtual ~SPFFilter();
-    void load_buf(char *buf, uint64_t pf_size, int count[3][2]);
+    void load_buf(char *buf, uint64_t pf_size,  int count[3][2]);
     void release_buf();
     int load_pf();
     int load_pf1();

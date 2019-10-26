@@ -25,21 +25,30 @@ UrlFilter::UrlFilter() : p_(NULL), size_(0), buf_size_(0), out_(NULL), out_size_
     memset(max_list_domainport_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     memset(list_domain_sp_, 0, 2 * DOMAIN_CHAR_COUNT * sizeof(DomainPortBuf *));
     memset(list_domain_sp_count_, 0, 2 * DOMAIN_CHAR_COUNT * sizeof(int));
-    list_dp_buf_ = NULL;
-    list_buf_ = NULL;
 }
 
 UrlFilter::~UrlFilter()
 {
-    if (list_dp_buf_ != NULL)
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
     {
-        free(list_dp_buf_);
-        list_dp_buf_ = NULL;
-    }
-    if (list_buf_ != NULL)
-    {
-        free(list_buf_);
-        list_buf_ = NULL;
+        if (list_[i] != NULL)
+        {
+            free(list_[i]);
+            list_[i] = NULL;
+        }
+        if (list_domainport_[i] != NULL)
+        {
+            free(list_domainport_[i]);
+            list_domainport_[i] = NULL;
+        }
+        for (int j = 0; j < 2; ++j)
+        {
+            if (list_domain_sp_[j][i] != NULL)
+            {
+                free(list_domain_sp_[j][i]);
+                list_domain_sp_[j][i] = NULL;
+            }
+        }
     }
     if (p_ != NULL)
     {
@@ -100,8 +109,11 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
         ++prefix_count[t];
         s = se + 1;
     }
-    memcpy(this->list_domainport_count_, domain_count, sizeof(int) * DOMAIN_CHAR_COUNT);
-    memcpy(this->list_count_, prefix_count, sizeof(int) * DOMAIN_CHAR_COUNT);
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        this->list_domainport_count_[i] = domain_count[i];
+        this->list_count_[i] = prefix_count[i];
+    }
     memcpy(this->list_domain_sp_count_, domain_sp_count, 2 * DOMAIN_CHAR_COUNT * sizeof(int));
     return count;
 }
@@ -164,7 +176,6 @@ int UrlFilter::load_(char *p, uint64_t size)
         }
         b.start = s;
         b.n = domain_len - 1;
-        assert(domain_len != 1);
         uint16_t len = se - s - 9; // -9 +2  [-1]type:len[2]:start->end
         *(uint16_t *)(s - 2) = len - 1;
         assert(len != 2);
@@ -199,65 +210,6 @@ int UrlFilter::load_(char *p, uint64_t size)
     return 0;
 }
 
-void UrlFilter::init_list()
-{
-    uint64_t list_count = 0;
-    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
-        list_count += list_domainport_count_[i];
-    for (int j = 0; j < 2; ++j)
-    {
-        for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
-        {
-            list_count += list_domain_sp_count_[j][i];
-        }
-    }
-    list_dp_buf_ = (DomainPortBuf *)malloc(list_count * sizeof(DomainPortBuf));
-    list_count = 0;
-    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
-    {
-        if (list_domainport_count_[i] > 0)
-        {
-            list_domainport_[i] = list_dp_buf_ + list_count;
-            list_count += list_domainport_count_[i];
-        }
-        else
-            list_domainport_[i] = NULL;
-    }
-    for (int j = 0; j < 2; ++j)
-    {
-        for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
-        {
-            if (list_domain_sp_count_[j][i] > 0)
-            {
-                list_domain_sp_[j][i] = list_dp_buf_ + list_count;
-                list_count += list_domain_sp_count_[j][i];
-            }
-            else
-                list_domain_sp_[j][i] = NULL;
-        }
-    }
-
-    list_count = 0;
-    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
-    {
-        list_count += list_count_[i];
-    }
-    list_buf_ = (char **)malloc(list_count * sizeof(char *));
-    list_count = 0;
-
-    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
-    {
-
-        if (list_count_[i] > 0)
-        {
-            list_[i] = list_buf_ + list_count;
-            list_count += list_count_[i];
-        }
-        else
-            list_[i] = NULL;
-    }
-}
-
 UrlFilter *UrlFilter::load(char *p, uint64_t size)
 {
     if (size == 0)
@@ -271,7 +223,24 @@ UrlFilter *UrlFilter::load(char *p, uint64_t size)
     }
     UrlFilter *filter = new UrlFilter();
     filter->prepare_buf(p, size);
-    filter->init_list();
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        if (filter->list_domainport_count_[i] > 0)
+            filter->list_domainport_[i] = (DomainPortBuf *)malloc(filter->list_domainport_count_[i] * sizeof(DomainPortBuf));
+    }
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        if (filter->list_count_[i] > 0)
+            filter->list_[i] = (char **)malloc(filter->list_count_[i] * sizeof(char *));
+    }
+    for (int j = 0; j < 2; ++j)
+    {
+        for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+        {
+            if (filter->list_domain_sp_count_[j][i] > 0)
+                filter->list_domain_sp_[j][i] = (DomainPortBuf *)malloc(filter->list_domain_sp_count_[j][i] * sizeof(DomainPortBuf));
+        }
+    }
     filter->load_(p, size);
     filter->p_ = p;
     filter->size_ = size;
@@ -281,7 +250,51 @@ UrlFilter *UrlFilter::load(char *p, uint64_t size)
 int UrlFilter::load1()
 {
     int count = prepare_buf(p_, size_);
-    init_list();
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        if (list_domainport_count_[i] > 0)
+        {
+            // if (max_list_domainport_count_[i] == 0)
+            {
+                list_domainport_[i] = (DomainPortBuf *)malloc(list_domainport_count_[i] * sizeof(DomainPortBuf));
+                max_list_domainport_count_[i] = list_domainport_count_[i];
+            }
+            /* else if (list_domainport_count_[i] > max_list_domainport_count_[i])
+            {
+                if (list_domainport_[i] != NULL)
+                {
+                    free(list_domainport_[i]);
+                    list_domainport_[i] = NULL;
+                }
+                list_domainport_[i] = (DomainPortBuf *)malloc(list_domainport_count_[i] * sizeof(DomainPortBuf));
+                max_list_domainport_count_[i] = list_domainport_count_[i];
+            } */
+        }
+    }
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        if (list_count_[i] > 0)
+        {
+            // if (list_count_[i] > max_list_count_[i])
+            {
+                /* if (list_[i] != NULL)
+                {
+                    free(list_[i]);
+                    list_[i] = NULL;
+                } */
+                list_[i] = (char **)malloc(list_count_[i] * sizeof(char *));
+                max_list_count_[i] = list_count_[i];
+            }
+        }
+    }
+    for (int j = 0; j < 2; ++j)
+    {
+        for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+        {
+            if (list_domain_sp_count_[j][i] > 0)
+                list_domain_sp_[j][i] = (DomainPortBuf *)malloc(list_domain_sp_count_[j][i] * sizeof(DomainPortBuf));
+        }
+    }
 
     load_(p_, size_);
     return count;
@@ -2120,16 +2133,19 @@ UrlFilterLarge::UrlFilterLarge()
 {
     memset(list_write_, 0, DOMAIN_CHAR_COUNT * sizeof(char **) * DOMAIN_CHAR_COUNT);
     memset(list_write_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int) * DOMAIN_CHAR_COUNT);
-    idx_ = 0;
-    list_write_buf_ = NULL;
 }
 
 UrlFilterLarge::~UrlFilterLarge()
 {
-    if (list_write_buf_ != NULL)
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
     {
-        free(list_write_buf_);
-        list_write_buf_ = NULL;
+        for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
+        {
+            if (list_write_[i][j] != NULL)
+            {
+                free(list_write_[i][j]);
+            }
+        }
     }
 }
 void UrlFilterLarge::filter_domainport_large()
@@ -2224,6 +2240,7 @@ void UrlFilterLarge::filter_domainport_large()
                     {
                         in.start[-3] |= 0x40;
                     }
+                    // arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
                     int t1 = domain_temp[(unsigned char)*in.start];
                     list_[t1][count[t1]++] = (in.start - 2);
                     // assert((in.start - 2) != NULL);
@@ -2235,12 +2252,12 @@ void UrlFilterLarge::filter_domainport_large()
             }
         }
     }
-    memcpy(list_count_, count, DOMAIN_CHAR_COUNT * sizeof(int));
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+        list_count_[i] = count[i];
 }
 
 void UrlFilterLarge::prepare_write()
 {
-    uint64_t list_count = 0;
     for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
     {
         for (int j = 0; j < list_count_[i]; ++j)
@@ -2253,21 +2270,8 @@ void UrlFilterLarge::prepare_write()
     {
         for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
         {
-            list_count += list_write_count_[i][j];
-        }
-    }
-    list_write_buf_ = (char **)malloc(list_count * sizeof(char *));
-    list_count = 0;
-
-    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
-    {
-        for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
-        {
             if (list_write_count_[i][j] > 0)
-                list_write_[i][j] = list_write_buf_ + list_count;
-            else
-                list_write_[i][j] = NULL;
-            list_count += list_write_count_[i][j];
+                list_write_[i][j] = (char **)malloc(list_write_count_[i][j] * sizeof(char *));
         }
     }
     int count[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT] = {0};
@@ -2282,34 +2286,36 @@ void UrlFilterLarge::prepare_write()
     }
 }
 
-void UrlFilterLarge::clear_para_large()
+void UrlFilterLarge::clear_para()
 {
     memset(list_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     memset(list_domainport_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     size_ = 0;
-    if (list_buf_ != NULL)
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
     {
-        free(list_buf_);
-        list_buf_ = NULL;
+        for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
+        {
+            if (list_write_[i][j] != NULL)
+            {
+                free(list_write_[i][j]);
+                list_write_[i][j] = NULL;
+            }
+        }
     }
-    if (list_dp_buf_ != NULL)
-    {
-        free(list_dp_buf_);
-        list_dp_buf_ = NULL;
-    }
-    memset(list_, 0, DOMAIN_CHAR_COUNT * sizeof(char **));
-    memset(list_domainport_, 0, DOMAIN_CHAR_COUNT * sizeof(DomainPortBuf *));
-    memset(list_domain_sp_, 0, 2 * DOMAIN_CHAR_COUNT * sizeof(DomainPortBuf *));
-
-    if (list_write_buf_ != NULL)
-    {
-        free(list_write_buf_);
-        list_write_buf_ = NULL;
-    }
-
     memset(list_write_count_, 0, sizeof(int) * DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT);
-    idx_ = 0;
-    memset(list_write_, 0, DOMAIN_CHAR_COUNT * sizeof(char **) * DOMAIN_CHAR_COUNT);
+    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    {
+        if (list_domainport_[i] != NULL)
+        {
+            free(list_domainport_[i]);
+            list_domainport_[i] = NULL;
+        }
+        if (list_[i] != NULL)
+        {
+            free(list_[i]);
+            list_[i] = NULL;
+        }
+    }
 }
 
 UrlPFFilter::UrlPFFilter()

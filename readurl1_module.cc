@@ -7,7 +7,6 @@
 #include <math.h>
 
 #include "url_filter.h"
-#include "midlarge_module.h"
 
 ReadUrl1_Module::ReadUrl1_Module(int threads)
     : threads_num_(threads)
@@ -28,18 +27,17 @@ void ReadUrl1_Module::svc()
 {
     char *buf;
     Request *data = NULL;
-    SP_Message_Block_Base *msg = 0;
-    // for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
+    CRequest *c_data = NULL;
+    for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
-        get(msg);
-        data = reinterpret_cast<Request *>(msg->data());
-        SP_DES(msg);
         timeval t2, start;
         gettimeofday(&start, 0);
+        data = reinterpret_cast<Request *>(msg->data());
+        SP_DES(msg);
         uint64_t length = data->length_;
         uint64_t size = 0;
         uint64_t begin = 0;
-        UrlFilterLarge *filter = NULL;
+        UrlFilter *filter = NULL;
         uint64_t line_size = data->split_size_;
         data->size_split_buf = (int)ceil((double)length / line_size);
         int split = 0;
@@ -49,23 +47,38 @@ void ReadUrl1_Module::svc()
             if (begin + line_size > length)
                 line_size = length - begin;
             {
-                get(msg);
-                filter = reinterpret_cast<UrlFilterLarge *>(msg->data());
+                unique_lock<mutex> lock(gMutex);
+                while (gQueue.empty())
+                {
+                    gCV.wait(lock);
+                }
+                filter = gQueue.front();
+                gQueue.pop();
             }
             buf = filter->p_;
 
             size = readcontent_unlocked1(data->fp_in_, buf, line_size);
             begin += size;
             filter->size_ = size;
-            filter->idx_ = split++;
 
+            SP_NEW(c_data, CRequest(data));
+            c_data->buffer_ = buf;
+            c_data->size_ = size;
+            c_data->url_filter_ = (filter);
+            c_data->idx_ = split;
+
+            SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
+            ++split;
+            if (data->size_split_buf - split <= (int)gQueue.size())
+                data->is_read_end_ = true;
             put_next(msg);
         }
         data->is_read_end_ = true;
-        if (data->recv_split_ == data->size_split_buf)
+        for (int i = split; i < data->size_split_buf; ++i)
         {
-            SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)data));
-            MidLarge_Module::instance()->put_next(msg);
+            SP_NEW(c_data, CRequest(data));
+            SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
+            put_next(msg);
         }
         SP_DEBUG("ReadUrl1_Module:size_split_buf=%d,end\n", data->size_split_buf);
         gettimeofday(&t2, 0);

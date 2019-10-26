@@ -188,7 +188,6 @@ void DomainFilter::load_(char *p, uint64_t size)
             // assert(len);
             // assert(len != 1);
 #ifdef DEBUG
-            *se = '\0';
             printf("DomainFilter::load_:hit=%d,port=%d,n=%d,%s\n", b.hit, b.port, b.n, s);
 #endif
         }
@@ -265,7 +264,6 @@ void DomainFilter::load_(char *p, uint64_t size)
                 }
             }
 #ifdef DEBUG
-            *se = '\0';
             printf("DomainFilter::load_:hit=%d,n=%d,t=%d,%s\n", hit, len - 1, t, s);
 #endif
         }
@@ -317,7 +315,7 @@ DomainFilter *DomainFilter::load(char *p, uint64_t size)
         {
             filter->list_[k] = (DomainPortBuf *)malloc(filter->list_count_[k] * sizeof(DomainPortBuf));
 #ifdef DEBUG
-            printf("DomainFilter::load:[%d],count=%d\n", k, filter->list_count_[k]);
+            printf("DomainFilter::load:[%d,%d],count=%d\n", i, k, filter->list_count_[i][k]);
 #endif
         }
     }
@@ -673,7 +671,7 @@ int DomainFilterMerge::merge(vector<DomainFilter *> domain_filter_list, int i, i
 #ifdef DEBUG
         for (int tmp = 0; tmp < list_sp_count_[num1][type]; ++tmp)
         {
-            printf("DomainFilterMerge::mergehit=%d,port=0,type=%d,%s\n", list_sp_[num1][type][tmp].hit, type, list_sp_[num1][type][tmp].start);
+            printf("DomainFilterMerge::mergehit=%d,port=0,type=%d,%s\n", list_sp_[num1][tmp].hit, type, list_sp_[num1][tmp]);
         }
 #endif
     }
