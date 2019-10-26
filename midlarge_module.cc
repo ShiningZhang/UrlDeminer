@@ -26,20 +26,16 @@ int MidLarge_Module::open()
 
 void MidLarge_Module::svc()
 {
-    Request *data = NULL;
-    CRequest *c_data = NULL;
+    Request *data = gRequest;
     MidFile *mid_file = NULL;
     UrlFilterLarge *filter = NULL;
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;
         gettimeofday(&start, 0);
-        c_data = reinterpret_cast<CRequest *>(msg->data());
-        SP_DES(msg);
-        data = c_data->request_;
         ++data->recv_split_;
         mid_file = data->mid_file_;
-        filter = (UrlFilterLarge *)c_data->url_filter_;
+        filter = reinterpret_cast<UrlFilterLarge *>(msg->data());
 
         if (filter != NULL)
         {
@@ -51,7 +47,7 @@ void MidLarge_Module::svc()
             filter->clear_counter();
         }
 
-        SP_DEBUG("MidLarge_Module:is_read_end_=%d,recv_split_=%d,size_split_buf=%d,filter=%p,idx=%d\n", data->is_read_end_, data->recv_split_, data->size_split_buf, filter, c_data->idx_);
+        SP_DEBUG("MidLarge_Module:is_read_end_=%d,recv_split_=%d,size_split_buf=%d,filter=%p\n", data->is_read_end_, data->recv_split_, data->size_split_buf, filter);
 
         {
             if (filter != NULL)
@@ -59,14 +55,10 @@ void MidLarge_Module::svc()
                 if (filter->size_ > 0)
                 {
                     filter->prepare_write();
-                    mid_file->write_mid_large(filter, filter->list_write_count_, c_data->idx_);
+                    mid_file->write_mid_large(filter, filter->list_write_count_, filter->idx_);
                 }
-                {
-                    filter->clear_para();
-                    unique_lock<mutex> lock(gMutex);
-                    gQueue.push(filter);
-                    gCV.notify_one();
-                }
+                filter->clear_para_large();
+                put_next(msg);
             }
             if (data->recv_split_ == data->size_split_buf && data->is_read_end_)
             {
@@ -76,7 +68,6 @@ void MidLarge_Module::svc()
                 put_next(msg);
             }
         }
-        SP_DES(c_data);
         gettimeofday(&t2, 0);
         SP_DEBUG("MidLarge_Module=%ldms.\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000);
         //SP_LOGI("MidLarge_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);

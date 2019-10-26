@@ -17,7 +17,7 @@ using namespace std;
 
 // #define FILESPLITSIZE 23000000
 // #define SMALLSIZE 110000
-#define FILESPLITSIZE 128 * 1024 * 1024
+#define FILESPLITSIZE 64 * 1024 * 1024
 #define SMALLSIZE 1100000000
 
 #define SMALLFILESIZE 10 * 1024 * 1024
@@ -26,7 +26,7 @@ using namespace std;
 
 #define BUFHEADSIZE 10
 
-#define INITURLCOUNT 6000000
+#define INITURLCOUNT 1024 * 1024
 
 #define DOMAIN_CHAR_COUNT 41 //- . / 0-9 : a-z _
 // #define DOMAIN_CHAR_COUNT 38 //26 + 10 + 2

@@ -43,7 +43,6 @@
 #include "midlarge_module.h"
 
 #include "prefixloadlarge_module.h"
-#include "prefixmergelarge_module.h"
 #include "prefixwrite_module.h"
 
 #include "readurllarge_module.h"
@@ -163,7 +162,6 @@ int main(int argc, char **argv)
     case_type = 2;
 #endif
 
-    // if (size < SMALLSIZE)
     if (case_type == 0)
     {
         fp = fopen(domainFilterPath, "r");
@@ -492,25 +490,13 @@ int main(int argc, char **argv)
         }
         //prepare urlfilter
         {
-            for (int i = 0; i < 8; ++i)
-            {
-                UrlFilter *filter = new UrlFilterLarge();
-                filter->buf_size_ = split_mem;
-                filter->p_ = (char *)malloc(filter->buf_size_ + BUFHEADSIZE);
-                filter->p_ = filter->p_ + BUFHEADSIZE;
-                // filter->max_list_domainport_count_ = INITURLCOUNT;
-                // filter->list_domainport_ = (DomainPortBuf *)malloc(filter->max_list_domainport_count_ * sizeof(DomainPortBuf));
-                // filter->max_list_count_ = INITURLCOUNT;
-                // filter->list_ = (char **)malloc(filter->max_list_count_ * sizeof(char *));
-                gQueue.push(filter);
-            }
         }
         SP_DEBUG("init urlfilter end\n");
 
         SP_DEBUG("url1 begin\n");
         SP_NEW_RETURN(modules[0], ReadUrl1_Module(1), -1);
         SP_NEW_RETURN(modules[1], UrlDP1_Module(8), -1);
-        SP_NEW_RETURN(modules[2], MidLarge_Module(1), -1);
+        modules[2] = MidLarge_Module::instance();
 
         for (int i = 2; i >= 0; --i)
         {
@@ -528,22 +514,33 @@ int main(int argc, char **argv)
         data->mid_file_->init();
         data->split_size_ = split_mem;
         s_instance_stream->put(msg);
+
+        SP_DEBUG("split_mem=%d\n", split_mem);
+        UrlFilterLarge *list_UrlFilterLarge[16] = {0};
+        {
+            for (int i = 0; i < 16; ++i)
+            {
+                UrlFilterLarge *filter = new UrlFilterLarge();
+                filter->buf_size_ = split_mem;
+                filter->p_ = (char *)malloc(filter->buf_size_ + BUFHEADSIZE);
+                filter->p_ = filter->p_ + BUFHEADSIZE;
+                filter->domainfilter_ = data->domain_filter_;
+                // filter->max_list_domainport_count_ = INITURLCOUNT;
+                // filter->list_domainport_ = (DomainPortBuf *)malloc(filter->max_list_domainport_count_ * sizeof(DomainPortBuf));
+                // filter->max_list_count_ = INITURLCOUNT;
+                // filter->list_ = (char **)malloc(filter->max_list_count_ * sizeof(char *));
+                list_UrlFilterLarge[i] = filter;
+                SP_NEW_RETURN(msg, SP_Message_Block_Base((SP_Data_Block *)filter), -1);
+                s_instance_stream->put(msg);
+            }
+        }
         s_instance_stream->get(msg);
         fclose(fp);
         delete (DomainFilterMerge *)(data->domain_filter_);
         data->domain_filter_ = NULL;
-        int count = (int)gQueue.size();
-        SP_DEBUG("count=%d\n", count);
-        UrlFilterLarge *f = NULL;
-        while (!gQueue.empty())
+        for (int i = 0; i < 16; ++i)
         {
-            f = (UrlFilterLarge *)(gQueue.front());
-            gQueue.pop();
-            // f->clear_domain_list();
-            delete f;
-            // gQueue.push(f);
-            count--;
-            SP_DEBUG("gQueue->clear_domain_list\n");
+            delete list_UrlFilterLarge[i];
         }
 
         for (int i = 2; i >= 0; --i)
