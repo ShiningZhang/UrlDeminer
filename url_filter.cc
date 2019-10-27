@@ -1415,11 +1415,29 @@ char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 2, 1);
 #endif
-
-    if (filter->list_count_[https][idx1][idx2] > 0)
+    if (filter->list_count_[1][https][idx1][idx2] > 0)
     {
-        start = filter->list_https_[https][idx1][idx2];
-        end = filter->list_https_[https][idx1][idx2] + filter->list_count_[https][idx1][idx2];
+        start = filter->list_https_[1][https][idx1][idx2];
+        end = filter->list_https_[1][https][idx1][idx2] + filter->list_count_[1][https][idx1][idx2];
+        res = upper_bound(start, end, in, cmp_pf);
+        if (res != end)
+        {
+            const char *pb = *res;
+            uint16_t nb = *(uint16_t *)(pb);
+            if (na == nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0 )
+            {
+                output.len = nb;
+                output.type = 2;
+                output.hit = pf_hit(pb, output.type);
+                return res;
+            }
+        }
+    }
+
+    if (filter->list_count_[0][https][idx1][idx2] > 0)
+    {
+        start = filter->list_https_[0][https][idx1][idx2];
+        end = filter->list_https_[0][https][idx1][idx2] + filter->list_count_[0][https][idx1][idx2];
         res = upper_bound(start, end, in, cmp_pf);
         if (res != end)
         {
@@ -1429,7 +1447,7 @@ char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1
             if (na == nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0 && type != 2) //only na==nb&&'+'
             {
                 output.len = nb;
-                output.type = type > 3 ? 2 : 0;
+                output.type = 0;
                 output.hit = pf_hit(pb, output.type);
                 return res;
             }
@@ -1440,7 +1458,7 @@ char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1
             const char *pb = *res;
             uint16_t nb = *(uint16_t *)(pb);
             unsigned char type = pf_type(pb);
-            if (na > nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0 && type != 4)
+            if (na > nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0)
             {
                 output.len = nb;
                 output.type = ((type & 0x03) > 1 ? 1 : 0);
@@ -1453,7 +1471,7 @@ char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1
                 --res;
                 if (res >= start)
                 {
-                    int count = filter->list_range_[https][idx1][idx2][res - start];
+                    int count = filter->list_range_[0][https][idx1][idx2][res - start];
                     if (true)
                     {
                         while (count > 0)
@@ -1461,7 +1479,7 @@ char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1
                             pb = *res;
                             nb = *(uint16_t *)(pb);
                             unsigned char type = pf_type(pb);
-                            if (na > nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0 && type != 4)
+                            if (na > nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0)
                             {
                                 output.len = nb;
                                 output.type = ((type & 0x03) > 1 ? 1 : 0);
