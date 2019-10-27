@@ -189,6 +189,7 @@ void DomainFilter::load_(char *p, uint64_t size)
             // assert(len);
             // assert(len != 1);
 #ifdef DEBUG
+            *se = '\0';
             printf("DomainFilter::load_:hit=%d,port=%d,n=%d,%s\n", b.hit, b.port, b.n, s);
 #endif
         }
@@ -265,6 +266,7 @@ void DomainFilter::load_(char *p, uint64_t size)
                 }
             }
 #ifdef DEBUG
+            *se = '\0';
             printf("DomainFilter::load_:hit=%d,n=%d,t=%d,%s\n", hit, len - 1, t, s);
 #endif
         }

@@ -334,6 +334,12 @@ bool compare_prefix(const char *e1, const char *e2)
         return true;
     else if (na > nb)
         return false;
+    ret = (int)(pa[-1] & 0x07) - (int)(pb[-1] & 0x07);
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    ret = (int)(pa[-1] >> 3) - (int)(pb[-1] >> 3);
+    if (ret != 0)
+        return ret == -1 ? true : false;
     return e1 < e2;
 }
 
@@ -398,4 +404,38 @@ bool cmp_pf_loop1(const stPFCMPOFFSET &e1, const char *e2)
             return ret;
     }
     return na <= nb;
+}
+
+inline bool unique_pf_eq(const char *e1, const char *e2)
+{
+    const char *pa = e1;
+    const char *pb = e2;
+    int na = (int)*((uint16_t *)pa);
+    int nb = (int)*((uint16_t *)pb);
+    if (na != nb)
+        return false;
+    pa += 4;
+    pb += 4;
+    int ret = cmpbuf_pf(pa, na, pb, nb);
+    return ret == 0;
+}
+
+char **unique_pf(char **first, char **last)
+{
+    if (first == last)
+        return last;
+
+    char **result = first;
+    while (++first != last)
+    {
+        if (unique_pf_eq(*result, *first))
+        {
+            *((*result) - 1) |= *((*first) - 1);
+        }
+        else if (++result != first)
+        {
+            *result = std::move(*first);
+        }
+    }
+    return ++result;
 }

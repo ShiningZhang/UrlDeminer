@@ -1386,13 +1386,24 @@ bool cmp_pf_loop(const stPFCMPOFFSET &e1, const char *e2)
     return na <= nb;
 }
 
-int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, int idx2, stPFRES &output)
+inline unsigned char pf_type(const char *p)
+{
+    unsigned char type = p[-1] & 0x07;
+    return type;
+}
+
+inline int pf_hit(const char *p, int type)
+{
+    return (int)((p[-1] >> (3 + type)) & 0x1);
+}
+
+char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, int idx2, stPFRES &output)
 {
     // vector<char *>::iterator start, end;
     // vector<char *>::iterator res;
     char **start;
     char **end;
-    char **res;
+    char **res = NULL;
     output = {0, -1, 0};
     const char *pa = in;
     uint16_t na = *(uint16_t *)(pa);
@@ -1404,6 +1415,68 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, i
 #ifdef DEBUG
     printf("filter_prefix_:https:[%d,%d]\n", 2, 1);
 #endif
+
+    if (filter->list_count_[https][idx1][idx2] > 0)
+    {
+        start = filter->list_https_[https][idx1][idx2];
+        end = filter->list_https_[https][idx1][idx2] + filter->list_count_[https][idx1][idx2];
+        res = upper_bound(start, end, in, cmp_pf);
+        if (res != end)
+        {
+            const char *pb = *res;
+            uint16_t nb = *(uint16_t *)(pb);
+            unsigned char type = pf_type(pb);
+            if (na == nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0 && type != 2) //only na==nb&&'+'
+            {
+                output.len = nb;
+                output.type = type > 3 ? 2 : 0;
+                output.hit = pf_hit(pb, output.type);
+                return res;
+            }
+        }
+        --res;
+        if (res >= start)
+        {
+            const char *pb = *res;
+            uint16_t nb = *(uint16_t *)(pb);
+            unsigned char type = pf_type(pb);
+            if (na > nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0 && type != 4)
+            {
+                output.len = nb;
+                output.type = ((type & 0x03) > 1 ? 1 : 0);
+                output.hit = pf_hit(pb, output.type);
+                LOG("%02x:type=%d,outtype=%d,hit=%d\n", pb[-1], type, output.type, output.hit);
+                return res;
+            }
+            else
+            {
+                --res;
+                if (res >= start)
+                {
+                    int count = filter->list_range_[https][idx1][idx2][res - start];
+                    if (true)
+                    {
+                        while (count > 0)
+                        {
+                            pb = *res;
+                            nb = *(uint16_t *)(pb);
+                            unsigned char type = pf_type(pb);
+                            if (na > nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0 && type != 4)
+                            {
+                                output.len = nb;
+                                output.type = ((type & 0x03) > 1 ? 1 : 0);
+                                output.hit = pf_hit(pb, output.type);
+                                return res;
+                            }
+                            --res;
+                            --count;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    /*
     if (filter->list_count_[2][1][https][idx1][idx2] > 0)
     {
         start = filter->list_https_[2][1][https][idx1][idx2];
@@ -2037,7 +2110,8 @@ int filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, i
             }
         }
     }
-    return output.hit;
+    */
+    return res;
 }
 
 void UrlFilter::filter_prefix()
