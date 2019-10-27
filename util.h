@@ -285,11 +285,11 @@ inline int cmpbuf_pf(const char *pa, int na, const char *pb, int nb)
     return 0;
 }
 
-inline uint16_t eqlen64(int64_t r)
+inline int eqlen64(int64_t r)
 {
-    uint16_t c = 7;
+    int c = 7;
     if ((r & temp[1]) != 0)
-        return (uint16_t)0;
+        return 0;
     while (c > 0)
     {
         r >>= 8;
@@ -297,12 +297,12 @@ inline uint16_t eqlen64(int64_t r)
             break;
         --c;
     }
-    return c;
+    return c < 0 ? 0 : c;
 }
-inline uint16_t pf_eq_len(const char *pa, int na, const char *pb, int nb)
+inline int pf_eq_len(const char *pa, int na, const char *pb, int nb)
 {
     int64_t ret = 0;
-    uint16_t count = 0;
+    int count = 0;
     while (na >= 8 && nb >= 8)
     {
         int64_t ia = *(int64_t *)pa;

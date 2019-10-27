@@ -3547,7 +3547,7 @@ SPFFilter::SPFFilter()
     memset(count_, 0, 3 * 2 * sizeof(int));
     memset(rd_count_, 0, 32 * 3 * 2 * sizeof(int));
     memset(pf_range_, 0, 2 * 2 * sizeof(int *));
-    memset(pf_list_, 0, 2 * 2 * sizeof(char *));
+    memset(pf_list_, 0, 2 * 2 * sizeof(char **));
     memset(pf_count_, 0, 2 * 2 * sizeof(int));
     file_size_ = 0;
     url_feature_ = 0;
@@ -3633,16 +3633,21 @@ int SPFFilter::load_pf()
     int count = 0;
     count += count_[2][0];
     count += count_[2][1];
-    pf_list_[1][1] = (char **)malloc(count * sizeof(char *)); //https:=
-    pf_list_[1][0] = (char **)malloc(count * sizeof(char *)); //http:=
+    if (count > 0)
+    {
+        pf_list_[1][1] = (char **)malloc(count * sizeof(char *)); //https:=
+        pf_list_[1][0] = (char **)malloc(count * sizeof(char *)); //http:=
+    }
     count = 0;
     count += count_[1][0];
     count += count_[1][1];
     count += count_[0][0];
     count += count_[0][1];
-    pf_list_[0][1] = (char **)malloc(count * sizeof(char *)); //https:+*
-    pf_list_[0][0] = (char **)malloc(count * sizeof(char *)); //http:+*
-
+    if (count > 0)
+    {
+        pf_list_[0][1] = (char **)malloc(count * sizeof(char *)); //https:+*
+        pf_list_[0][0] = (char **)malloc(count * sizeof(char *)); //http:+*
+    }
     int idx = 0;
     count = 0;
     int begin = 0;
@@ -4102,14 +4107,14 @@ void SUrlFilter::filter()
         res = {0, -1, 0};
         const char *in = url_list_[i];
         const char *pa = in;
-        uint16_t na = *(uint16_t *)(pa);
+        int na = *(uint16_t *)(pa);
         bool https = (pa[-1] & 0x0f) == 1;
         pa += 2;
         do
         {
             output = res;
             const char *pb = NULL;
-            uint16_t nb = 0;
+            int nb = 0;
             char **start;
             char **end;
             char **p_res;
@@ -4156,7 +4161,7 @@ void SUrlFilter::filter()
                 if (p_res >= start)
                 {
                     int count = pf_->pf_range_[0][https][p_res - start];
-                    if (true)
+                    if (count < pf_->pf_count_[0][https])
                     {
                         char **p = p_res + 1 - count;
                         pb = *p;
