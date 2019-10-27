@@ -1397,7 +1397,7 @@ inline int pf_hit(const char *p, int type)
     return (int)((p[-1] >> (3 + type)) & 0x1);
 }
 
-char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, int idx2, stPFRES &output)
+inline char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, int idx1, int idx2, stPFRES &output)
 {
     // vector<char *>::iterator start, end;
     // vector<char *>::iterator res;

@@ -326,24 +326,24 @@ void PrefixFilter::load_(char *p, uint64_t size)
         }
         if (port_type == 1)
         {
-            list_https_[type==2][0][t][t1][count[type==2][0][t][t1]] = (s - 2);
-            size_[type==2][0][t][t1] += len + 3;
-            ++count[type==2][0][t][t1];
+            list_https_[type == 2][0][t][t1][count[type == 2][0][t][t1]] = (s - 2);
+            size_[type == 2][0][t][t1] += len + 3;
+            ++count[type == 2][0][t][t1];
         }
         else if (port_type == 2)
         {
-            list_https_[type==2][1][t][t1][count[type==2][1][t][t1]] = (s - 2);
-            size_[type==2][1][t][t1] += len + 3;
-            ++count[type==2][1][t][t1];
+            list_https_[type == 2][1][t][t1][count[type == 2][1][t][t1]] = (s - 2);
+            size_[type == 2][1][t][t1] += len + 3;
+            ++count[type == 2][1][t][t1];
         }
         else if (port_type == 0)
         {
-            list_https_[type==2][0][t][t1][count[type==2][0][t][t1]] = (s - 2);
-            size_[type==2][0][t][t1] += len + 3;
-            ++count[type==2][0][t][t1];
-            list_https_[type==2][1][t][t1][count[type==2][1][t][t1]] = (s - 2);
-            size_[type==2][1][t][t1] += len + 3;
-            ++count[type==2][1][t][t1];
+            list_https_[type == 2][0][t][t1][count[type == 2][0][t][t1]] = (s - 2);
+            size_[type == 2][0][t][t1] += len + 3;
+            ++count[type == 2][0][t][t1];
+            list_https_[type == 2][1][t][t1][count[type == 2][1][t][t1]] = (s - 2);
+            size_[type == 2][1][t][t1] += len + 3;
+            ++count[type == 2][1][t][t1];
         }
         /* else if (port_type == 4)
         {
@@ -533,6 +533,8 @@ PrefixFilter *PrefixFilter::load_case2(char *p, uint64_t size)
                         {
                             LOG("after:[%d,%d,%d]:%d\n", k, m, n, filter->list_count_[j][k][m][n]);
                             pdqsort(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n], compare_prefix);
+                            char **last = unique_pf(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n]);
+                            filter->list_count_[j][k][m][n] = last - filter->list_https_[j][k][m][n];
                         }
                     }
                 }
