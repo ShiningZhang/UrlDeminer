@@ -1424,7 +1424,7 @@ inline char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, i
         {
             const char *pb = *res;
             uint16_t nb = *(uint16_t *)(pb);
-            if (na == nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0 )
+            if (na == nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0)
             {
                 output.len = nb;
                 output.type = 2;
@@ -4074,6 +4074,7 @@ int SUrlFilter::load_url()
     }
     if (url_count_ != count)
         SP_DEBUG("url_count_=%d,count=%d\n", url_count_, count);
+    pdqsort(url_list_, url_list_ + url_count_, compare_prefix_large);
     return 0;
 }
 
@@ -4089,6 +4090,18 @@ void SUrlFilter::pre_url()
 void SUrlFilter::filter()
 {
     stPFRES output, res;
+    char **last_start[3][2][2] = {0};
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            for (int k = 0; k < 2; ++k)
+            {
+                last_start[i][j][k] = pf_->pf_list_[i][j][k];
+            }
+        }
+    }
+    char **q_start = NULL;
     for (int i = 0; i < url_count_; ++i)
     {
         res = {0, -1, 0};
@@ -4109,8 +4122,9 @@ void SUrlFilter::filter()
             if (pf_->pf_count_[2][1][https] > 0)
             {
                 start = pf_->pf_list_[2][1][https];
+                q_start = last_start[2][1][https];
                 end = pf_->pf_list_[2][1][https] + pf_->pf_count_[2][1][https];
-                p_res = upper_bound(start, end, st, cmp_pf_large);
+                p_res = upper_bound(q_start, end, st, cmp_pf_large);
                 if (p_res != end)
                 {
                     pb = *p_res;
@@ -4120,6 +4134,7 @@ void SUrlFilter::filter()
                         output.len = 10000;
                         output.type = 2;
                         output.hit = 1;
+                        last_start[2][1][https] = p_res;
                         break;
                     }
                 }
@@ -4130,8 +4145,9 @@ void SUrlFilter::filter()
             if (pf_->pf_count_[2][0][https] > 0)
             {
                 start = pf_->pf_list_[2][0][https];
+                q_start = last_start[2][0][https];
                 end = pf_->pf_list_[2][0][https] + pf_->pf_count_[2][0][https];
-                p_res = upper_bound(start, end, st, cmp_pf_large);
+                p_res = upper_bound(q_start, end, st, cmp_pf_large);
                 if (p_res != end)
                 {
                     pb = *p_res;
@@ -4141,6 +4157,7 @@ void SUrlFilter::filter()
                         output.len = 10000;
                         output.type = 2;
                         output.hit = 0;
+                        last_start[2][0][https] = p_res;
                         break;
                     }
                 }
@@ -4151,13 +4168,14 @@ void SUrlFilter::filter()
             if (pf_->pf_count_[1][1][https] > 0)
             {
                 start = pf_->pf_list_[1][1][https];
+                q_start = last_start[1][1][https];
                 end = pf_->pf_list_[1][1][https] + pf_->pf_count_[1][1][https];
-                p_res = upper_bound(start, end, st, cmp_pf_large);
+                p_res = upper_bound(q_start, end, st, cmp_pf_large);
 #ifdef DEBUG
                 printf("start=%p,end=%p,p_res=%p\n", start, end, p_res);
 #endif
                 --p_res;
-                if (p_res >= start)
+                if (p_res >= q_start)
                 {
                     pb = *p_res;
                     nb = *(uint16_t *)(pb);
@@ -4185,6 +4203,7 @@ void SUrlFilter::filter()
                                     output.len = final;
                                     output.type = 1;
                                     output.hit = 1;
+                                    last_start[1][1][https] = p;
                                     pb = *p_res;
                                     nb = *(uint16_t *)(pb);
                                     int eq_len = pf_eq_len(pa, na, pb + 2, nb);
@@ -4199,6 +4218,7 @@ void SUrlFilter::filter()
                                         output.len = eq_len;
                                         output.type = 1;
                                         output.hit = 1;
+                                        last_start[1][1][https] = p_res;
                                     }
                                     else
                                     {
@@ -4214,6 +4234,7 @@ void SUrlFilter::filter()
                                                 output.len = nb;
                                                 output.type = 1;
                                                 output.hit = 1;
+                                                last_start[1][1][https] = p_res;
                                                 break;
                                             }
                                             --p_res;
@@ -4318,13 +4339,14 @@ void SUrlFilter::filter()
             if (pf_->pf_count_[1][0][https] > 0)
             {
                 start = pf_->pf_list_[1][0][https];
+                q_start = last_start[1][0][https];
                 end = pf_->pf_list_[1][0][https] + pf_->pf_count_[1][0][https];
 #ifdef DEBUG
                 printf("start=%p,end=%p,res=%p\n", start, end, p_res);
 #endif
-                p_res = upper_bound(start, end, st, cmp_pf_large);
+                p_res = upper_bound(q_start, end, st, cmp_pf_large);
                 --p_res;
-                if (p_res >= start)
+                if (p_res >= q_start)
                 {
                     /* pb = *p_res;
                     nb = *(uint16_t *)(pb);
@@ -4369,6 +4391,7 @@ void SUrlFilter::filter()
                                 if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                                 {
                                     int final = (int)nb;
+                                    last_start[1][0][https] = p;
                                     pb = *p_res;
                                     nb = *(uint16_t *)(pb);
                                     int eq_len = pf_eq_len(pa, na, pb + 2, nb);
@@ -4378,6 +4401,7 @@ void SUrlFilter::filter()
                                     else if (eq_len == nb && na > nb)
                                     {
                                         final = eq_len;
+                                        last_start[1][0][https] = p_res;
                                     }
                                     else
                                     {
@@ -4391,6 +4415,7 @@ void SUrlFilter::filter()
                                             if (na > nb && cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset) == 0)
                                             {
                                                 final = nb;
+                                                last_start[1][0][https] = p_res;
                                                 break;
                                             }
                                             --p_res;
@@ -4507,8 +4532,9 @@ void SUrlFilter::filter()
             if (pf_->pf_count_[0][1][https] > 0)
             {
                 start = pf_->pf_list_[0][1][https];
+                q_start = last_start[0][1][https];
                 end = pf_->pf_list_[0][1][https] + pf_->pf_count_[0][1][https];
-                p_res = upper_bound(start, end, st, cmp_pf_large);
+                p_res = upper_bound(q_start, end, st, cmp_pf_large);
                 if (p_res != end)
                 {
                     pb = *p_res;
@@ -4518,11 +4544,12 @@ void SUrlFilter::filter()
                         output.len = nb;
                         output.type = 0;
                         output.hit = 1;
+                        last_start[0][1][https] = p_res;
                         break;
                     }
                 }
                 --p_res;
-                if (p_res >= start)
+                if (p_res >= q_start)
                 {
                     /* pb = *p_res;
                     nb = *(uint16_t *)(pb);
@@ -4567,6 +4594,7 @@ void SUrlFilter::filter()
                                 if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                                 {
                                     int final = (int)nb;
+                                    last_start[0][1][https] = p;
                                     pb = *p_res;
                                     nb = *(uint16_t *)(pb);
                                     int eq_len = pf_eq_len(pa, na, pb + 2, nb);
@@ -4576,6 +4604,7 @@ void SUrlFilter::filter()
                                     else if (eq_len == nb && na > nb)
                                     {
                                         final = eq_len;
+                                        last_start[0][1][https] = p_res;
                                     }
                                     else
                                     {
@@ -4589,6 +4618,7 @@ void SUrlFilter::filter()
                                             if (na > nb && cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset) == 0)
                                             {
                                                 final = nb;
+                                                last_start[0][1][https] = p_res;
                                                 break;
                                             }
                                             --p_res;
@@ -4705,8 +4735,9 @@ void SUrlFilter::filter()
             if (pf_->pf_count_[0][0][https] > 0)
             {
                 start = pf_->pf_list_[0][0][https];
+                q_start = last_start[0][0][https];
                 end = pf_->pf_list_[0][0][https] + pf_->pf_count_[0][0][https];
-                p_res = upper_bound(start, end, st, cmp_pf_large);
+                p_res = upper_bound(q_start, end, st, cmp_pf_large);
 #ifdef DEBUG
                 printf("start=%p,end=%p,res=%p\n", start, end, p_res);
 #endif
@@ -4719,12 +4750,13 @@ void SUrlFilter::filter()
                         output.len = nb;
                         output.type = 0;
                         output.hit = 0;
+                        last_start[0][0][https] = p_res;
                         break;
                     }
                 }
                 --p_res;
 
-                if (p_res >= start)
+                if (p_res >= q_start)
                 {
                     /* pb = *p_res;
                     nb = *(uint16_t *)(pb);
@@ -4769,6 +4801,7 @@ void SUrlFilter::filter()
                                 if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                                 {
                                     int final = (int)nb;
+                                    last_start[0][0][https] = p;
                                     pb = *p_res;
                                     nb = *(uint16_t *)(pb);
                                     int eq_len = pf_eq_len(pa, na, pb + 2, nb);
@@ -4778,6 +4811,7 @@ void SUrlFilter::filter()
                                     else if (eq_len == nb && na > nb)
                                     {
                                         final = eq_len;
+                                        last_start[0][0][https] = p_res;
                                     }
                                     else
                                     {
@@ -4791,6 +4825,7 @@ void SUrlFilter::filter()
                                             if (na > nb && cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset) == 0)
                                             {
                                                 final = nb;
+                                                last_start[0][0][https] = p_res;
                                                 break;
                                             }
                                             --p_res;

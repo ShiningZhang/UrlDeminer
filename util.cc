@@ -21,6 +21,7 @@ mutex gMCount;
 Request *gRequest;
 
 bool gEnd;
+bool is_sorted;
 
 bool dp_need[DOMAIN_CHAR_COUNT];
 bool dp_sp_need[2][DOMAIN_CHAR_COUNT];
