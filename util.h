@@ -168,6 +168,7 @@ bool compare_dp_char_eq(const char *pa, const char *pb);
 bool cmp_pf_loop1(const stPFCMPOFFSET &e1, const char *e2);
 
 char **unique_pf(char **first, char **last);
+char **unique_pf_large(char **first, char **last);
 
 inline int cmp64val(int64_t ia, int64_t ib)
 {

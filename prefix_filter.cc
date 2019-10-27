@@ -781,7 +781,8 @@ int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx, int idx1)
                     }
                     char **last = unique_pf(list_https_[j][k][idx][idx1], list_https_[j][k][idx][idx1] + list_count_[j][k][idx][idx1]);
                     list_count_[j][k][idx][idx1] = last - list_https_[j][k][idx][idx1];
-                    prepare_range(list_https_[j][k][idx][idx1], list_count_[j][k][idx][idx1], list_range_[j][k][idx][idx1]);
+                    if (j < 1)
+                        prepare_range(list_https_[j][k][idx][idx1], list_count_[j][k][idx][idx1], list_range_[j][k][idx][idx1]);
                 }
             }
         }

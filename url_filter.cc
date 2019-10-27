@@ -1424,7 +1424,7 @@ inline char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, i
         {
             const char *pb = *res;
             uint16_t nb = *(uint16_t *)(pb);
-            if (na == nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0 )
+            if (na == nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0)
             {
                 output.len = nb;
                 output.type = 2;
@@ -3546,9 +3546,9 @@ SPFFilter::SPFFilter()
     pf_size_ = 0;
     memset(count_, 0, 3 * 2 * sizeof(int));
     memset(rd_count_, 0, 32 * 3 * 2 * sizeof(int));
-    memset(pf_range_, 0, 3 * 2 * 2 * sizeof(int *));
-    memset(pf_list_, 0, 3 * 2 * 2 * sizeof(char *));
-    memset(pf_count_, 0, 3 * 2 * 2 * sizeof(int));
+    memset(pf_range_, 0, 2 * 2 * sizeof(int *));
+    memset(pf_list_, 0, 2 * 2 * sizeof(char *));
+    memset(pf_count_, 0, 2 * 2 * sizeof(int));
     file_size_ = 0;
     url_feature_ = 0;
     recv_size_ = 0;
@@ -3562,21 +3562,21 @@ SPFFilter::~SPFFilter()
         free(pf_buf_);
         pf_buf_ = NULL;
     }
-    for (int i = 0; i < 3; ++i)
+    // for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 2; ++j)
         {
             for (int k = 0; k < 2; ++k)
             {
-                if (pf_list_[i][j][k] != NULL)
+                if (pf_list_[j][k] != NULL)
                 {
-                    free(pf_list_[i][j][k]);
-                    pf_list_[i][j][k] = NULL;
+                    free(pf_list_[j][k]);
+                    pf_list_[j][k] = NULL;
                 }
-                if (pf_range_[i][j][k] != NULL)
+                if (pf_range_[j][k] != NULL)
                 {
-                    free(pf_range_[i][j][k]);
-                    pf_range_[i][j][k] = NULL;
+                    free(pf_range_[j][k]);
+                    pf_range_[j][k] = NULL;
                 }
             }
         }
@@ -3598,26 +3598,26 @@ void SPFFilter::release_buf()
         pf_buf_ = NULL;
     }
     pf_size_ = 0;
-    for (int i = 0; i < 3; ++i)
+    // for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 2; ++j)
         {
             for (int k = 0; k < 2; ++k)
             {
-                if (pf_list_[i][j][k] != NULL)
+                if (pf_list_[j][k] != NULL)
                 {
-                    free(pf_list_[i][j][k]);
-                    pf_list_[i][j][k] = NULL;
+                    free(pf_list_[j][k]);
+                    pf_list_[j][k] = NULL;
                 }
-                if (pf_range_[i][j][k] != NULL)
+                if (pf_range_[j][k] != NULL)
                 {
-                    free(pf_range_[i][j][k]);
-                    pf_range_[i][j][k] = NULL;
+                    free(pf_range_[j][k]);
+                    pf_range_[j][k] = NULL;
                 }
             }
         }
     }
-    memset(pf_count_, 0, 3 * 2 * 2 * sizeof(int));
+    memset(pf_count_, 0, 2 * 2 * sizeof(int));
     memset(count_, 0, 3 * 2 * sizeof(int));
     file_size_ = 0;
     recv_size_ = 0;
@@ -3630,24 +3630,26 @@ int SPFFilter::load_pf()
     {
         return -1;
     }
-    for (int i = 0; i < 3; ++i)
-    {
-        for (int j = 0; j < 2; ++j)
-        {
-            for (int k = 0; k < 2; ++k)
-            {
-                if (count_[i][j] > 0)
-                    pf_list_[i][j][k] = (char **)malloc(count_[i][j] * sizeof(char *));
-            }
-        }
-    }
-    int idx = 0;
     int count = 0;
+    count += count_[2][0];
+    count += count_[2][1];
+    pf_list_[1][1] = (char **)malloc(count * sizeof(char *)); //https:=
+    pf_list_[1][0] = (char **)malloc(count * sizeof(char *)); //http:=
+    count = 0;
+    count += count_[1][0];
+    count += count_[1][1];
+    count += count_[0][0];
+    count += count_[0][1];
+    pf_list_[0][1] = (char **)malloc(count * sizeof(char *)); //https:+*
+    pf_list_[0][0] = (char **)malloc(count * sizeof(char *)); //http:+*
+
+    int idx = 0;
+    count = 0;
     int begin = 0;
     char *s = pf_buf_;
     char *se = pf_buf_ + pf_size_;
     s += 1;
-    int count_list[3][2][2] = {0};
+    int count_list[2][2] = {0};
     for (int c = 0; c < file_size_; ++c)
     {
         for (int i = 0; i < 3; ++i)
@@ -3715,18 +3717,19 @@ int SPFFilter::load_pf()
                         na = nb;
                         *(uint16_t *)(s - 2) = na;
                     }
+                    s[-3] = (0x07 & (1 << i)) | (0x38 & (j << (3 + i)));
                     if (port_type == 1)
                     {
-                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                        pf_list_[i == 2][0][count_list[i == 2][0]++] = s - 2;
                     }
                     else if (port_type == 2)
                     {
-                        pf_list_[i][j][1][count_list[i][j][1]++] = s - 2;
+                        pf_list_[i == 2][1][count_list[i == 2][1]++] = s - 2;
                     }
                     else if (port_type == 0)
                     {
-                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
-                        pf_list_[i][j][1][count_list[i][j][1]++] = s - 2;
+                        pf_list_[i == 2][0][count_list[i == 2][0]++] = s - 2;
+                        pf_list_[i == 2][1][count_list[i == 2][1]++] = s - 2;
                     }
                     /* else if (port_type == 4)
                     {
@@ -3745,10 +3748,10 @@ int SPFFilter::load_pf()
             }
         }
     }
-    memcpy(pf_count_, count_list, 3 * 2 * 2 * sizeof(int));
+    memcpy(pf_count_, count_list, 2 * 2 * sizeof(int));
     return 0;
 }
-
+#if 0
 int SPFFilter::load_pf1()
 {
     SP_DEBUG("load_pf1\n");
@@ -3938,20 +3941,24 @@ int SPFFilter::load_pf2()
     memcpy(pf_count_, count_list, 3 * 2 * 2 * sizeof(int));
     return 0;
 }
+#endif
 
 void SPFFilter::pre_pf()
 {
-    for (int i = 0; i < 3; ++i)
+    // for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 2; ++j)
         {
             for (int k = 0; k < 2; ++k)
             {
-                if (pf_count_[i][j][k] > 0)
+                if (pf_count_[j][k] > 0)
                 {
-                    // SP_DEBUG("pre_pf:[%d,%d,%d]pf_count=%d\n", i, j, k, pf_count_[i][j][k]);
-                    pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large);
-                    prepare_range(pf_list_[i][j][k], pf_count_[i][j][k], pf_range_[i][j][k]);
+                    // SP_DEBUG("pre_pf:[%d,%d,%d]pf_count=%d\n", i, j, k, pf_count_[j][k]);
+                    pdqsort(pf_list_[j][k], pf_list_[j][k] + pf_count_[j][k], compare_prefix_large);
+                    char **last = unique_pf_large(pf_list_[j][k], pf_list_[j][k] + pf_count_[j][k]);
+                    pf_count_[j][k] = last - pf_list_[j][k];
+                    if (j < 1)
+                        prepare_range(pf_list_[j][k], pf_count_[j][k], pf_range_[j][k]);
                 }
             }
         }
@@ -4089,6 +4096,7 @@ void SUrlFilter::pre_url()
 void SUrlFilter::filter()
 {
     stPFRES output, res;
+    char **iter;
     for (int i = 0; i < url_count_; ++i)
     {
         res = {0, -1, 0};
@@ -4106,10 +4114,10 @@ void SUrlFilter::filter()
             char **end;
             char **p_res;
             stUrlPfL st = {pa, na};
-            if (pf_->pf_count_[2][1][https] > 0)
+            if (pf_->pf_count_[1][https] > 0)
             {
-                start = pf_->pf_list_[2][1][https];
-                end = pf_->pf_list_[2][1][https] + pf_->pf_count_[2][1][https];
+                start = pf_->pf_list_[1][https];
+                end = pf_->pf_list_[1][https] + pf_->pf_count_[1][https];
                 p_res = upper_bound(start, end, st, cmp_pf_large);
                 if (p_res != end)
                 {
@@ -4119,783 +4127,79 @@ void SUrlFilter::filter()
                     {
                         output.len = 10000;
                         output.type = 2;
-                        output.hit = 1;
+                        output.hit = pf_hit(pb, output.type);
+                        iter = p_res;
                         break;
                     }
                 }
             }
-#ifdef DEBUG
-            printf("filter_prefix_:https:[%d,%d]\n", 2, 0);
-#endif
-            if (pf_->pf_count_[2][0][https] > 0)
+            if (pf_->pf_count_[0][https] > 0)
             {
-                start = pf_->pf_list_[2][0][https];
-                end = pf_->pf_list_[2][0][https] + pf_->pf_count_[2][0][https];
-                p_res = upper_bound(start, end, st, cmp_pf_large);
-                if (p_res != end)
-                {
-                    pb = *p_res;
-                    nb = *(uint16_t *)pb;
-                    if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                    {
-                        output.len = 10000;
-                        output.type = 2;
-                        output.hit = 0;
-                        break;
-                    }
-                }
-            }
-#ifdef DEBUG
-            printf("filter_prefix_:https:[%d,%d]\n", 1, 1);
-#endif
-            if (pf_->pf_count_[1][1][https] > 0)
-            {
-                start = pf_->pf_list_[1][1][https];
-                end = pf_->pf_list_[1][1][https] + pf_->pf_count_[1][1][https];
-                p_res = upper_bound(start, end, st, cmp_pf_large);
-#ifdef DEBUG
-                printf("start=%p,end=%p,p_res=%p\n", start, end, p_res);
-#endif
-                --p_res;
-                if (p_res >= start)
-                {
-                    pb = *p_res;
-                    nb = *(uint16_t *)(pb);
-                    /* if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                    {
-                        output.len = nb;
-                        output.type = 1;
-                        output.hit = 1;
-                    }
-                    else */
-                    {
-                        // --p_res;
-                        // if (p_res >= start)
-                        {
-                            int count = pf_->pf_range_[1][1][https][p_res - start];
-                            // if (count < 3)
-                            if (true)
-                            {
-                                char **p = p_res + 1 - count;
-                                pb = *p;
-                                nb = *(uint16_t *)(pb);
-                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                {
-                                    int final = (int)nb;
-                                    output.len = final;
-                                    output.type = 1;
-                                    output.hit = 1;
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    int eq_len = pf_eq_len(pa, na, pb + 2, nb);
-                                    if (eq_len == final)
-                                    {
-                                        output.len = final;
-                                        output.type = 1;
-                                        output.hit = 1;
-                                    }
-                                    else if (eq_len == nb && na > nb)
-                                    {
-                                        output.len = eq_len;
-                                        output.type = 1;
-                                        output.hit = 1;
-                                    }
-                                    else
-                                    {
-                                        --p_res;
-                                        --count;
-                                        int offset = final / 8 * 8;
-                                        while (count > 0)
-                                        {
-                                            pb = *p_res;
-                                            nb = *(uint16_t *)(pb);
-                                            if (na > nb && cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset) == 0)
-                                            {
-                                                output.len = nb;
-                                                output.type = 1;
-                                                output.hit = 1;
-                                                break;
-                                            }
-                                            --p_res;
-                                            --count;
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                char **p = p_res + 1 - count;
-                                pb = *p;
-                                nb = *(uint16_t *)(pb);
-                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                {
-                                    int final = (int)nb;
-                                    output.len = final;
-                                    output.type = 1;
-                                    output.hit = 1;
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    int eq_len = pf_eq_len(pa, na, pb + 2, nb);
-                                    if (eq_len == final)
-                                    {
-                                        output.len = final;
-                                        output.type = 1;
-                                        output.hit = 1;
-                                    }
-                                    else if (eq_len == nb && na > nb)
-                                    {
-                                        output.len = eq_len;
-                                        output.type = 1;
-                                        output.hit = 1;
-                                    }
-                                    else
-                                    {
-                                        eq_len = eq_len == na ? eq_len - 1 : eq_len;
-                                        int offset = ((int)(final / 8)) * 8;
-                                        p += 1;
-                                        stPFCMPOFFSET st_pf;
-                                        st_pf.na_ = eq_len - offset;
-                                        st_pf.offset_ = offset;
-                                        st_pf.pa_ = (int64_t *)(pa + offset);
-                                        offset = eq_len / 8 * 8;
-                                        int sub_len = eq_len - offset;
-                                        if (sub_len == 0)
-                                        {
-                                            st_pf.num_ = 0;
-                                        }
-                                        else if (na - offset >= 8)
-                                        {
-                                            st_pf.num_ = (*(int64_t *)(pa + offset)) & temp[sub_len];
-                                        }
-                                        else
-                                        {
-                                            st_pf.num_ = to64le8h(pa + offset, sub_len);
-                                        }
-                                        --p_res;
-                                        while (eq_len > final)
-                                        {
-                                            char **p1 = upper_bound(p, p_res + 1, st_pf, cmp_pf_loop1);
-                                            if (p1 <= p_res)
-                                            {
-                                                pb = *p1;
-                                                nb = *(uint16_t *)(pb);
-                                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                                {
-                                                    output.len = nb;
-                                                    output.type = 1;
-                                                    output.hit = 1;
-                                                    break;
-                                                }
-                                                p_res = p1 - 1;
-                                            }
-                                            --eq_len;
-                                            --st_pf.na_;
-                                            offset = eq_len / 8 * 8;
-                                            int sub_len = eq_len - offset;
-                                            if (sub_len == 0)
-                                            {
-                                                st_pf.num_ = 0;
-                                            }
-                                            else if (na - offset >= 8)
-                                            {
-                                                st_pf.num_ = (*(int64_t *)(pa + offset)) & temp[sub_len];
-                                            }
-                                            else
-                                            {
-                                                st_pf.num_ = to64le8h(pa + offset, sub_len);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-#ifdef DEBUG
-            printf("filter_prefix_:https:[%d,%d]\n", 1, 0);
-#endif
-            if (pf_->pf_count_[1][0][https] > 0)
-            {
-                start = pf_->pf_list_[1][0][https];
-                end = pf_->pf_list_[1][0][https] + pf_->pf_count_[1][0][https];
-#ifdef DEBUG
-                printf("start=%p,end=%p,res=%p\n", start, end, p_res);
-#endif
-                p_res = upper_bound(start, end, st, cmp_pf_large);
-                --p_res;
-                if (p_res >= start)
-                {
-                    /* pb = *p_res;
-                    nb = *(uint16_t *)(pb);
-                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                    {
-                        if (nb > output.len)
-                        {
-                            output.len = nb;
-                            output.type = 1;
-                            output.hit = 0;
-                        }
-                    }
-                    else */
-                    {
-                        /* --p_res;
-                        if (p_res >= start) */
-                        {
-                            int count = pf_->pf_range_[1][0][https][p_res - start];
-                            // if (count < 3)
-                            if (true)
-                            {
-                                /* while (count > 0)
-                                {
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                    {
-                                        if (nb > output.len)
-                                        {
-                                            output.len = nb;
-                                            output.type = 1;
-                                            output.hit = 0;
-                                        }
-                                        break;
-                                    }
-                                    --p_res;
-                                    --count;
-                                } */
-                                char **p = p_res + 1 - count;
-                                pb = *p;
-                                nb = *(uint16_t *)(pb);
-                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                {
-                                    int final = (int)nb;
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    int eq_len = pf_eq_len(pa, na, pb + 2, nb);
-                                    if (eq_len == final)
-                                    {
-                                    }
-                                    else if (eq_len == nb && na > nb)
-                                    {
-                                        final = eq_len;
-                                    }
-                                    else
-                                    {
-                                        --p_res;
-                                        --count;
-                                        int offset = final / 8 * 8;
-                                        while (count > 0)
-                                        {
-                                            pb = *p_res;
-                                            nb = *(uint16_t *)(pb);
-                                            if (na > nb && cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset) == 0)
-                                            {
-                                                final = nb;
-                                                break;
-                                            }
-                                            --p_res;
-                                            --count;
-                                        }
-                                    }
-                                    if (final > output.len)
-                                    {
-                                        output.len = final;
-                                        output.type = 1;
-                                        output.hit = 0;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                char **p = p_res + 1 - count;
-                                pb = *p;
-                                nb = *(uint16_t *)(pb);
-                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                {
-                                    int final = (int)nb;
-                                    if (final > output.len)
-                                    {
-                                        output.len = final;
-                                        output.type = 1;
-                                        output.hit = 0;
-                                    }
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    int eq_len = pf_eq_len(pa, na, pb + 2, nb);
-                                    if (eq_len == final)
-                                    {
-                                    }
-                                    else if (eq_len == nb && na > nb)
-                                    {
-                                        if (eq_len > output.len)
-                                        {
-                                            output.len = eq_len;
-                                            output.type = 1;
-                                            output.hit = 0;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        eq_len = eq_len == na ? eq_len - 1 : eq_len;
-                                        int offset = ((int)(final / 8)) * 8;
-                                        p += 1;
-                                        stPFCMPOFFSET st_pf;
-                                        st_pf.na_ = eq_len - offset;
-                                        st_pf.offset_ = offset;
-                                        st_pf.pa_ = (int64_t *)(pa + offset);
-                                        offset = eq_len / 8 * 8;
-                                        int sub_len = eq_len - offset;
-                                        if (sub_len == 0)
-                                        {
-                                            st_pf.num_ = 0;
-                                        }
-                                        else if (na - offset >= 8)
-                                        {
-                                            st_pf.num_ = (*(int64_t *)(pa + offset)) & temp[sub_len];
-                                        }
-                                        else
-                                        {
-                                            st_pf.num_ = to64le8h(pa + offset, sub_len);
-                                        }
-                                        --p_res;
-                                        while (eq_len > final)
-                                        {
-                                            char **p1 = upper_bound(p, p_res + 1, st_pf, cmp_pf_loop1);
-                                            if (p1 <= p_res)
-                                            {
-                                                pb = *p1;
-                                                nb = *(uint16_t *)(pb);
-                                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                                {
-                                                    if (nb > output.len)
-                                                    {
-                                                        output.len = nb;
-                                                        output.type = 1;
-                                                        output.hit = 0;
-                                                    }
-                                                    break;
-                                                }
-                                                p_res = p1 - 1;
-                                            }
-                                            --eq_len;
-                                            --st_pf.na_;
-                                            offset = eq_len / 8 * 8;
-                                            int sub_len = eq_len - offset;
-                                            if (sub_len == 0)
-                                            {
-                                                st_pf.num_ = 0;
-                                            }
-                                            else if (na - offset >= 8)
-                                            {
-                                                st_pf.num_ = (*(int64_t *)(pa + offset)) & temp[sub_len];
-                                            }
-                                            else
-                                            {
-                                                st_pf.num_ = to64le8h(pa + offset, sub_len);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-#ifdef DEBUG
-            printf("filter_prefix_:https:[%d,%d]\n", 0, 1);
-#endif
-            if (pf_->pf_count_[0][1][https] > 0)
-            {
-                start = pf_->pf_list_[0][1][https];
-                end = pf_->pf_list_[0][1][https] + pf_->pf_count_[0][1][https];
+                start = pf_->pf_list_[0][https];
+                end = pf_->pf_list_[0][https] + pf_->pf_count_[0][https];
                 p_res = upper_bound(start, end, st, cmp_pf_large);
                 if (p_res != end)
                 {
                     pb = *p_res;
                     nb = *(uint16_t *)(pb);
-                    if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                    unsigned char type = pf_type(pb);
+                    if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0 && type != 2)
                     {
                         output.len = nb;
                         output.type = 0;
-                        output.hit = 1;
+                        output.hit = pf_hit(pb, output.type);
+                        iter = p_res;
                         break;
                     }
                 }
                 --p_res;
                 if (p_res >= start)
                 {
-                    /* pb = *p_res;
-                    nb = *(uint16_t *)(pb);
-                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                    int count = pf_->pf_range_[0][https][p_res - start];
+                    if (true)
                     {
-                        if (nb > output.len)
+                        char **p = p_res + 1 - count;
+                        pb = *p;
+                        nb = *(uint16_t *)(pb);
+                        if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                         {
-                            output.len = nb;
-                            output.type = 0;
-                            output.hit = 1;
-                        }
-                    }
-                    else */
-                    {
-                        /*  --p_res;
-                        if (p_res >= start) */
-                        {
-                            int count = pf_->pf_range_[0][1][https][p_res - start];
-                            // if (count < 3)
-                            if (true)
+                            iter = p;
+                            int final = (int)nb;
+                            pb = *p_res;
+                            nb = *(uint16_t *)(pb);
+                            int eq_len = pf_eq_len(pa, na, pb + 2, nb);
+                            if (eq_len == final)
                             {
-                                /* while (count > 0)
+                            }
+                            else if (eq_len == nb && na > nb)
+                            {
+                                iter = p_res;
+                                final = eq_len;
+                            }
+                            else
+                            {
+                                --p_res;
+                                --count;
+                                int offset = final / 8 * 8;
+                                while (count > 0)
                                 {
                                     pb = *p_res;
                                     nb = *(uint16_t *)(pb);
-                                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
+                                    if (na > nb && cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset) == 0)
                                     {
-                                        if (nb > output.len)
-                                        {
-                                            output.len = nb;
-                                            output.type = 0;
-                                            output.hit = 1;
-                                        }
+                                        final = nb;
+                                        iter = p_res;
                                         break;
                                     }
                                     --p_res;
                                     --count;
-                                } */
-                                char **p = p_res + 1 - count;
-                                pb = *p;
-                                nb = *(uint16_t *)(pb);
-                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                {
-                                    int final = (int)nb;
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    int eq_len = pf_eq_len(pa, na, pb + 2, nb);
-                                    if (eq_len == final)
-                                    {
-                                    }
-                                    else if (eq_len == nb && na > nb)
-                                    {
-                                        final = eq_len;
-                                    }
-                                    else
-                                    {
-                                        --p_res;
-                                        --count;
-                                        int offset = final / 8 * 8;
-                                        while (count > 0)
-                                        {
-                                            pb = *p_res;
-                                            nb = *(uint16_t *)(pb);
-                                            if (na > nb && cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset) == 0)
-                                            {
-                                                final = nb;
-                                                break;
-                                            }
-                                            --p_res;
-                                            --count;
-                                        }
-                                    }
-                                    if (final > output.len)
-                                    {
-                                        output.len = final;
-                                        output.type = 0;
-                                        output.hit = 1;
-                                    }
                                 }
                             }
-                            else
+                            if (final > output.len)
                             {
-                                char **p = p_res + 1 - count;
-                                pb = *p;
-                                nb = *(uint16_t *)(pb);
-                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                {
-                                    int final = (int)nb;
-                                    if (final > output.len)
-                                    {
-                                        output.len = final;
-                                        output.type = 0;
-                                        output.hit = 1;
-                                    }
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    int eq_len = pf_eq_len(pa, na, pb + 2, nb);
-                                    if (eq_len == final)
-                                    {
-                                    }
-                                    else if (eq_len == nb && na > nb)
-                                    {
-                                        if (eq_len > output.len)
-                                        {
-                                            output.len = eq_len;
-                                            output.type = 0;
-                                            output.hit = 1;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        eq_len = eq_len == na ? eq_len - 1 : eq_len;
-                                        int offset = ((int)(final / 8)) * 8;
-                                        p += 1;
-                                        stPFCMPOFFSET st_pf;
-                                        st_pf.na_ = eq_len - offset;
-                                        st_pf.offset_ = offset;
-                                        st_pf.pa_ = (int64_t *)(pa + offset);
-                                        offset = eq_len / 8 * 8;
-                                        int sub_len = eq_len - offset;
-                                        if (sub_len == 0)
-                                        {
-                                            st_pf.num_ = 0;
-                                        }
-                                        else if (na - offset >= 8)
-                                        {
-                                            st_pf.num_ = (*(int64_t *)(pa + offset)) & temp[sub_len];
-                                        }
-                                        else
-                                        {
-                                            st_pf.num_ = to64le8h(pa + offset, sub_len);
-                                        }
-                                        --p_res;
-                                        while (eq_len > final)
-                                        {
-                                            char **p1 = upper_bound(p, p_res + 1, st_pf, cmp_pf_loop1);
-                                            if (p1 <= p_res)
-                                            {
-                                                pb = *p1;
-                                                nb = *(uint16_t *)(pb);
-                                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                                {
-                                                    if (nb > output.len)
-                                                    {
-                                                        output.len = nb;
-                                                        output.type = 0;
-                                                        output.hit = 1;
-                                                    }
-                                                    break;
-                                                }
-                                                p_res = p1 - 1;
-                                            }
-                                            --eq_len;
-                                            --st_pf.na_;
-                                            offset = eq_len / 8 * 8;
-                                            int sub_len = eq_len - offset;
-                                            if (sub_len == 0)
-                                            {
-                                                st_pf.num_ = 0;
-                                            }
-                                            else if (na - offset >= 8)
-                                            {
-                                                st_pf.num_ = (*(int64_t *)(pa + offset)) & temp[sub_len];
-                                            }
-                                            else
-                                            {
-                                                st_pf.num_ = to64le8h(pa + offset, sub_len);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-#ifdef DEBUG
-            printf("filter_prefix_:https:[%d,%d]\n", 0, 0);
-#endif
-            if (pf_->pf_count_[0][0][https] > 0)
-            {
-                start = pf_->pf_list_[0][0][https];
-                end = pf_->pf_list_[0][0][https] + pf_->pf_count_[0][0][https];
-                p_res = upper_bound(start, end, st, cmp_pf_large);
-#ifdef DEBUG
-                printf("start=%p,end=%p,res=%p\n", start, end, p_res);
-#endif
-                if (p_res != end)
-                {
-                    pb = *p_res;
-                    nb = *(uint16_t *)(pb);
-                    if (na == nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                    {
-                        output.len = nb;
-                        output.type = 0;
-                        output.hit = 0;
-                        break;
-                    }
-                }
-                --p_res;
-
-                if (p_res >= start)
-                {
-                    /* pb = *p_res;
-                    nb = *(uint16_t *)(pb);
-                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                    {
-                        if (nb > output.len)
-                        {
-                            output.len = nb;
-                            output.type = 0;
-                            output.hit = 0;
-                        }
-                    }
-                    else */
-                    {
-                        /*  --p_res;
-                        if (p_res >= start) */
-                        {
-                            int count = pf_->pf_range_[0][0][https][p_res - start];
-                            // if (count < 3)
-                            if (true)
-                            {
-                                /* while (count > 0)
-                                {
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                    {
-                                        if (nb > output.len)
-                                        {
-                                            output.len = nb;
-                                            output.type = 0;
-                                            output.hit = 0;
-                                        }
-                                        break;
-                                    }
-                                    --p_res;
-                                    --count;
-                                } */
-                                char **p = p_res + 1 - count;
-                                pb = *p;
-                                nb = *(uint16_t *)(pb);
-                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                {
-                                    int final = (int)nb;
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    int eq_len = pf_eq_len(pa, na, pb + 2, nb);
-                                    if (eq_len == final)
-                                    {
-                                    }
-                                    else if (eq_len == nb && na > nb)
-                                    {
-                                        final = eq_len;
-                                    }
-                                    else
-                                    {
-                                        --p_res;
-                                        --count;
-                                        int offset = final / 8 * 8;
-                                        while (count > 0)
-                                        {
-                                            pb = *p_res;
-                                            nb = *(uint16_t *)(pb);
-                                            if (na > nb && cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset) == 0)
-                                            {
-                                                final = nb;
-                                                break;
-                                            }
-                                            --p_res;
-                                            --count;
-                                        }
-                                    }
-                                    if (final > output.len)
-                                    {
-                                        output.len = final;
-                                        output.type = 0;
-                                        output.hit = 0;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                char **p = p_res + 1 - count;
-                                pb = *p;
-                                nb = *(uint16_t *)(pb);
-                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                {
-                                    int final = (int)nb;
-                                    if (final > output.len)
-                                    {
-                                        output.len = final;
-                                        output.type = 0;
-                                        output.hit = 0;
-                                    }
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    int eq_len = pf_eq_len(pa, na, pb + 2, nb);
-                                    if (eq_len == final)
-                                    {
-                                    }
-                                    else if (eq_len == nb && na > nb)
-                                    {
-                                        if (eq_len > output.len)
-                                        {
-                                            output.len = eq_len;
-                                            output.type = 0;
-                                            output.hit = 0;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        eq_len = eq_len == na ? eq_len - 1 : eq_len;
-                                        int offset = ((int)(final / 8)) * 8;
-                                        p += 1;
-                                        stPFCMPOFFSET st_pf;
-                                        st_pf.na_ = eq_len - offset;
-                                        st_pf.offset_ = offset;
-                                        st_pf.pa_ = (int64_t *)(pa + offset);
-                                        offset = eq_len / 8 * 8;
-                                        int sub_len = eq_len - offset;
-                                        if (sub_len == 0)
-                                        {
-                                            st_pf.num_ = 0;
-                                        }
-                                        else if (na - offset >= 8)
-                                        {
-                                            st_pf.num_ = (*(int64_t *)(pa + offset)) & temp[sub_len];
-                                        }
-                                        else
-                                        {
-                                            st_pf.num_ = to64le8h(pa + offset, sub_len);
-                                        }
-                                        --p_res;
-                                        while (eq_len > final)
-                                        {
-                                            char **p1 = upper_bound(p, p_res + 1, st_pf, cmp_pf_loop1);
-                                            if (p1 <= p_res)
-                                            {
-                                                pb = *p1;
-                                                nb = *(uint16_t *)(pb);
-                                                if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
-                                                {
-                                                    if (nb > output.len)
-                                                    {
-                                                        output.len = nb;
-                                                        output.type = 0;
-                                                        output.hit = 0;
-                                                    }
-                                                    break;
-                                                }
-                                                p_res = p1 - 1;
-                                            }
-                                            --eq_len;
-                                            --st_pf.na_;
-                                            offset = eq_len / 8 * 8;
-                                            int sub_len = eq_len - offset;
-                                            if (sub_len == 0)
-                                            {
-                                                st_pf.num_ = 0;
-                                            }
-                                            else if (na - offset >= 8)
-                                            {
-                                                st_pf.num_ = (*(int64_t *)(pa + offset)) & temp[sub_len];
-                                            }
-                                            else
-                                            {
-                                                st_pf.num_ = to64le8h(pa + offset, sub_len);
-                                            }
-                                        }
-                                    }
-                                }
+                                output.len = final;
+                                output.type = ((pf_type(*iter) & 0x03) > 1 ? 1 : 0);
+                                output.hit = pf_hit((*iter), output.type);
                             }
                         }
                     }
