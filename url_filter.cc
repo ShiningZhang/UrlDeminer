@@ -113,7 +113,7 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
         {
             t = domain_temp[(unsigned char)*s];
             t1 = domain_temp[(unsigned char)*(s + 1)];
-            if (*(int32_t *)(s) == INT32_WWW)
+            if (memcmp(s, "www.", 4) == 0)
             {
                 t = DOMAIN_CHAR_COUNT;
                 t1 = domain_temp[(unsigned char)*(s + 4)];
@@ -123,7 +123,7 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
         {
             t = domain_temp[(unsigned char)s[-1]];
             t1 = domain_temp[(unsigned char)s[0]];
-            if (*(int32_t *)(s - 1) == INT32_WWW)
+            if (memcmp(s - 1, "www.", 4) == 0)
             {
                 t = DOMAIN_CHAR_COUNT;
                 t1 = domain_temp[(unsigned char)*(s + 3)];
@@ -1202,7 +1202,7 @@ void UrlFilter::filter_domainport()
                 }
                 int t1 = domain_temp[(unsigned char)*in.start];
                 int t2 = domain_temp[(unsigned char)*(in.start + 1)];
-                if (*(int32_t *)(in.start) == INT32_WWW)
+                if (memcmp(in.start, "www.", 4) == 0)
                 {
                     t1 = DOMAIN_CHAR_COUNT;
                     t2 = domain_temp[(unsigned char)*(in.start + 4)];
@@ -1259,7 +1259,7 @@ void UrlFilter::filter_domainport()
                     }
                     int t1 = domain_temp[(unsigned char)*in.start];
                     int t2 = domain_temp[(unsigned char)*(in.start + 1)];
-                    if (*(int32_t *)(in.start) == INT32_WWW)
+                    if (memcmp(in.start, "www.", 4) == 0)
                     {
                         t1 = DOMAIN_CHAR_COUNT;
                         t2 = domain_temp[(unsigned char)*(in.start + 4)];
@@ -2218,7 +2218,7 @@ void UrlFilter::filter_prefix()
 
 void UrlFilter::prepare_prefix()
 {
-    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    for (int i = 0; i < DOMAIN_CHAR_COUNT + 1; ++i)
         for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
             out_size_ += list_count_[i][j] * 9;
     if (out_size_ > 0)

@@ -87,7 +87,7 @@ void PrefixFilter::prepare_buf(char *p, uint64_t size)
         // bool hit = se[-1] == '-' ? true : false;
         if (s[0] == '/')
         {
-            if (*(int32_t *)(s + 2) == INT32_WWW)
+            if (memcmp(s + 2, "www.", 4) == 0)
             {
                 int t1 = domain_temp[((unsigned char)*(s + 6))];
                 ++this->list_count_[type == 2][0][DOMAIN_CHAR_COUNT][t1];
@@ -103,7 +103,7 @@ void PrefixFilter::prepare_buf(char *p, uint64_t size)
         }
         else if (s[7] == '/')
         {
-            if (*(int32_t *)(s + 8) == INT32_WWW)
+            if (memcmp(s + 8, "www.", 4) == 0)
             {
                 int t1 = domain_temp[((unsigned char)*(s + 12))];
                 ++this->list_count_[type == 2][1][DOMAIN_CHAR_COUNT][t1];
@@ -117,7 +117,7 @@ void PrefixFilter::prepare_buf(char *p, uint64_t size)
         }
         else
         {
-            if (*(int32_t *)(s + 7) == INT32_WWW)
+            if (memcmp(s + 7, "www.", 4) == 0)
             {
                 int t1 = domain_temp[((unsigned char)*(s + 11))];
                 ++this->list_count_[type == 2][0][DOMAIN_CHAR_COUNT][t1];
@@ -299,7 +299,7 @@ void PrefixFilter::load_(char *p, uint64_t size)
         }
         int t = domain_temp[((unsigned char)(*s))];
         int t1 = domain_temp[((unsigned char)(*(s + 1)))];
-        if (*(int32_t *)(s) == INT32_WWW)
+        if (memcmp(s, "www.", 4) == 0)
         {
             t = DOMAIN_CHAR_COUNT;
             t1 = domain_temp[((unsigned char)(*(s + 4)))];
@@ -480,17 +480,17 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
                             LOG("after:[,%d,%d,%d]:%d\n", k, m, n, filter->list_count_[j][k][m][n]);
                             pdqsort(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n], compare_prefix);
 #ifdef DEBUG
-                            for (int test = 0; test < filter->list_count_[k][m][n]; ++test)
+                            for (int test = 0; test < filter->list_count_[j][k][m][n]; ++test)
                             {
-                                LOG("unique before:[,%d,%d,%d]:%02x,%s\n", k, m, n, filter->list_https_[k][m][n][test][-1], filter->list_https_[k][m][n][test] + 2);
+                                LOG("unique before:[,%d,%d,%d]:%02x,%s\n", k, m, n, filter->list_https_[j][k][m][n][test][-1], filter->list_https_[j][k][m][n][test] + 2);
                             }
 #endif
                             char **last = unique_pf(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n]);
                             filter->list_count_[j][k][m][n] = last - filter->list_https_[j][k][m][n];
 #ifdef DEBUG
-                            for (int test = 0; test < filter->list_count_[k][m][n]; ++test)
+                            for (int test = 0; test < filter->list_count_[j][k][m][n]; ++test)
                             {
-                                LOG("unique after:[,%d,%d,%d]:%02x,%s\n", k, m, n, filter->list_https_[k][m][n][test][-1], filter->list_https_[k][m][n][test] + 2);
+                                LOG("unique after:[,%d,%d,%d]:%02x,%s\n", k, m, n, filter->list_https_[j][k][m][n][test][-1], filter->list_https_[j][k][m][n][test] + 2);
                             }
 #endif
                         }
@@ -531,7 +531,7 @@ PrefixFilter *PrefixFilter::load_case2(char *p, uint64_t size)
         {
             for (int k = 0; k < 2; ++k)
             {
-                for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
+                for (int m = 0; m < DOMAIN_CHAR_COUNT + 1; ++m)
                 {
                     for (int n = 0; n < DOMAIN_CHAR_COUNT; ++n)
                     {
@@ -554,7 +554,7 @@ PrefixFilter *PrefixFilter::load_case2(char *p, uint64_t size)
         {
             for (int k = 0; k < 2; ++k)
             {
-                for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
+                for (int m = 0; m < DOMAIN_CHAR_COUNT + 1; ++m)
                 {
                     for (int n = 0; n < DOMAIN_CHAR_COUNT; ++n)
                     {
