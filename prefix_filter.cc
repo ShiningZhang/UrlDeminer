@@ -451,17 +451,17 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
                             LOG("after:[,%d,%d,%d]:%d\n", k, m, n, filter->list_count_[j][k][m][n]);
                             pdqsort(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n], compare_prefix);
 #ifdef DEBUG
-                            for (int test = 0; test < filter->list_count_[k][m][n]; ++test)
+                            for (int test = 0; test < filter->list_count_[j][k][m][n]; ++test)
                             {
-                                LOG("unique before:[,%d,%d,%d]:%02x,%s\n", k, m, n, filter->list_https_[k][m][n][test][-1], filter->list_https_[k][m][n][test] + 2);
+                                LOG("unique before:[%d,%d,%d,%d]:%02x,%s\n",j, k, m, n, filter->list_https_[j][k][m][n][test][-1], filter->list_https_[j][k][m][n][test] + 2);
                             }
 #endif
                             char **last = unique_pf(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n]);
                             filter->list_count_[j][k][m][n] = last - filter->list_https_[j][k][m][n];
 #ifdef DEBUG
-                            for (int test = 0; test < filter->list_count_[k][m][n]; ++test)
+                            for (int test = 0; test < filter->list_count_[j][k][m][n]; ++test)
                             {
-                                LOG("unique after:[,%d,%d,%d]:%02x,%s\n", k, m, n, filter->list_https_[k][m][n][test][-1], filter->list_https_[k][m][n][test] + 2);
+                                LOG("unique after:[%d,%d,%d,%d]:%02x,%s\n",j, k, m, n, filter->list_https_[j][k][m][n][test][-1], filter->list_https_[j][k][m][n][test] + 2);
                             }
 #endif
                         }

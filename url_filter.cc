@@ -2968,7 +2968,7 @@ bool cmp_pf_large(const stUrlPfL &e1, const char *e2)
     pb += 2;
     int ret = cmpbuf_pf(e1.p_, e1.n_, pb, nb);
 #ifdef DEBUG
-    printf("cmp_pf:ret=%d,e1:%s,%d,e2:%s,%d\n", ret, e1.p_ + 2, e1.n_, e2 + 2, nb);
+    printf("cmp_pf:ret=%d,e1:%s,%d,e2:%s,%d\n", ret, e1.p_, e1.n_, e2 + 2, nb);
 #endif
     if (ret != 0)
         return ret == -1 ? true : false;
@@ -4098,6 +4098,23 @@ void SUrlFilter::pre_url()
     // SP_DEBUG("pre_url:out_size_=%d,out_=%p,out_offset_=%d\n", out_size_, out_, out_offset_);
 }
 
+struct stSURLCMP
+{
+    const char *pa;
+    int na;
+    int offset;
+    int eq_len;
+};
+
+bool surl_cmp(const stSURLCMP &e1, const char *e2)
+{
+    int nb = *(uint16_t *)e2;
+    if (nb < e1.eq_len)
+        return false;
+    int eq_len = pf_eq_len(e1.pa + e1.offset, e1.na - e1.offset, e2 + 2 + e1.offset, nb - e1.offset) + e1.offset;
+    return eq_len >= e1.eq_len;
+}
+
 void SUrlFilter::filter()
 {
     stPFRES output, res;
@@ -4145,6 +4162,7 @@ void SUrlFilter::filter()
                 p_res = upper_bound(start, end, st, cmp_pf_large);
                 if (p_res != end)
                 {
+                    LOG("pf_res 0 :%s;\n", *p_res + 2);
                     pb = *p_res;
                     nb = *(uint16_t *)(pb);
                     unsigned char type = pf_type(pb);
@@ -4160,19 +4178,22 @@ void SUrlFilter::filter()
                 --p_res;
                 if (p_res >= start)
                 {
+                    LOG("pf_res 1 :%s;\n", *p_res + 2);
                     int count = pf_->pf_range_[0][https][p_res - start];
-                    if (count < pf_->pf_count_[0][https])
+                    if (count <= pf_->pf_count_[0][https])
                     {
                         char **p = p_res + 1 - count;
                         pb = *p;
                         nb = *(uint16_t *)(pb);
                         if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                         {
+                            LOG("pf_res before:%d,%s;%d,%s;eq_len=%d\n", na, pa, nb, pb + 2, nb);
                             iter = p;
                             int final = (int)nb;
                             pb = *p_res;
                             nb = *(uint16_t *)(pb);
                             int eq_len = pf_eq_len(pa, na, pb + 2, nb);
+                            LOG("pf_res after:%d,%s;%d,%s;eq_len=%d\n", na, pa, nb, pb + 2, eq_len);
                             if (eq_len == final)
                             {
                             }
@@ -4186,11 +4207,41 @@ void SUrlFilter::filter()
                                 --p_res;
                                 --count;
                                 int offset = final / 8 * 8;
-                                while (count > 0)
+                                stSURLCMP sts = {pa, na, offset, eq_len};
+                                while (eq_len > final && p_res >= p)
+                                {
+                                    char **p_tmp = upper_bound(p, p_res + 1, sts, surl_cmp);
+                                    if (p_tmp <= p_res)
+                                    {
+                                        pb = *p_tmp;
+                                        nb = *(uint16_t *)(pb);
+                                        eq_len = pf_eq_len(pa + offset, na - offset, pb + 2 + offset, nb - offset) + offset;
+                                        if (eq_len == nb)
+                                        {
+                                            final = nb;
+                                            iter = p_tmp;
+                                            break;
+                                        }
+                                        p_res = p_tmp - 1;
+                                    }
+                                    pb = *p_res;
+                                    nb = *(uint16_t *)(pb);
+                                    eq_len = pf_eq_len(pa + offset, na - offset, pb + 2 + offset, nb - offset) + offset;
+                                    if (eq_len == nb)
+                                    {
+                                        final = nb;
+                                        iter = p_res;
+                                        break;
+                                    }
+                                    --p_res;
+                                    sts.eq_len = eq_len;
+                                    continue;
+                                }
+                                /* while (eq_len > final && count > 0)
                                 {
                                     pb = *p_res;
                                     nb = *(uint16_t *)(pb);
-                                    if (na > nb && cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset) == 0)
+                                    if (na > nb && (eq_len = pf_eq_len(pa + offset, na - offset, pb + 2 + offset, nb - offset) + offset) == nb)
                                     {
                                         final = nb;
                                         iter = p_res;
@@ -4198,13 +4249,14 @@ void SUrlFilter::filter()
                                     }
                                     --p_res;
                                     --count;
-                                }
+                                } */
                             }
                             if (final > output.len)
                             {
                                 output.len = final;
                                 output.type = ((pf_type(*iter) & 0x03) > 1 ? 1 : 0);
                                 output.hit = pf_hit((*iter), output.type);
+                                LOG("pf_res:[%d,%d]in:%s;%s;\n", output.type, output.hit, pa, *iter + 2);
                             }
                         }
                     }
