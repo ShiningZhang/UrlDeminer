@@ -540,6 +540,7 @@ int main(int argc, char **argv)
         data->split_size_ = split_mem;
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
+        data->mid_file_->uninit();
         fclose(fp);
         delete (DomainFilterMerge *)(data->domain_filter_);
         data->domain_filter_ = NULL;

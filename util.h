@@ -88,17 +88,17 @@ struct DomainPortBuf
 
 struct FileElement
 {
-    FILE *fp_[DOMAIN_CHAR_COUNT];
-    size_t size_[DOMAIN_CHAR_COUNT];
+    FILE *fp_[(DOMAIN_CHAR_COUNT+1)];
+    size_t size_[(DOMAIN_CHAR_COUNT+1)];
     int idx;
     size_t total_size_;
-    int count_[DOMAIN_CHAR_COUNT];
+    int count_[(DOMAIN_CHAR_COUNT+1)];
 };
 
 struct FileElementLarge : public FileElement
 {
-    int count1_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
-    size_t size1_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    int count1_[(DOMAIN_CHAR_COUNT+1)][DOMAIN_CHAR_COUNT];
+    size_t size1_[(DOMAIN_CHAR_COUNT+1)][DOMAIN_CHAR_COUNT];
 };
 
 struct FileElementPrefix
@@ -106,10 +106,10 @@ struct FileElementPrefix
     FILE *fp_;
     size_t wt_size_;
     size_t rd_size_;
-    size_t size1_[DOMAIN_CHAR_COUNT];
-    size_t size2_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    size_t size1_[(DOMAIN_CHAR_COUNT+1)];
+    size_t size2_[(DOMAIN_CHAR_COUNT+1)][DOMAIN_CHAR_COUNT];
     int idx_;
-    int count_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT][3][2];
+    int count_[(DOMAIN_CHAR_COUNT+1)][DOMAIN_CHAR_COUNT][3][2];
 };
 
 struct stPFCMPOFFSET

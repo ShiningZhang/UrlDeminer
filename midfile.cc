@@ -152,12 +152,12 @@ int MidFile::write_mid_large(UrlFilterLarge *filter, int size[DOMAIN_CHAR_COUNT]
     FileElementLarge *file = new FileElementLarge;
     file->idx = idx;
     file->total_size_ = 0;
-    memset(file->fp_, 0, DOMAIN_CHAR_COUNT * sizeof(FILE *));
-    memset(file->size_, 0, DOMAIN_CHAR_COUNT * sizeof(size_t));
-    memset(file->count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
-    memset(file->count1_, 0, DOMAIN_CHAR_COUNT * sizeof(int) * DOMAIN_CHAR_COUNT);
-    memset(file->size1_, 0, DOMAIN_CHAR_COUNT * sizeof(size_t) * DOMAIN_CHAR_COUNT);
-    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    memset(file->fp_, 0, (DOMAIN_CHAR_COUNT + 1) * sizeof(FILE *));
+    memset(file->size_, 0, (DOMAIN_CHAR_COUNT + 1) * sizeof(size_t));
+    memset(file->count_, 0, (DOMAIN_CHAR_COUNT + 1) * sizeof(int));
+    memset(file->count1_, 0, (DOMAIN_CHAR_COUNT + 1) * sizeof(int) * DOMAIN_CHAR_COUNT);
+    memset(file->size1_, 0, (DOMAIN_CHAR_COUNT + 1) * sizeof(size_t) * DOMAIN_CHAR_COUNT);
+    for (int i = 0; i < (DOMAIN_CHAR_COUNT + 1); ++i)
     {
         sprintf(tmp_char, "%d_%d", idx, i);
         FILE *fp = fopen(tmp_char, "wb+");
@@ -213,12 +213,12 @@ int MidFile::write_prefix(PrefixFilterLargeLoad *filter, int idx, char *buf, int
     file->idx_ = idx;
     file->wt_size_ = 0;
     file->rd_size_ = 0;
-    memset(file->size1_, 0, DOMAIN_CHAR_COUNT * sizeof(size_t));
-    memset(file->size2_, 0, DOMAIN_CHAR_COUNT * sizeof(size_t) * DOMAIN_CHAR_COUNT);
-    memset(file->count_, 0, DOMAIN_CHAR_COUNT * sizeof(int) * 3 * 2 * DOMAIN_CHAR_COUNT);
+    memset(file->size1_, 0, (DOMAIN_CHAR_COUNT + 1) * sizeof(size_t));
+    memset(file->size2_, 0, (DOMAIN_CHAR_COUNT + 1) * sizeof(size_t) * DOMAIN_CHAR_COUNT);
+    memset(file->count_, 0, (DOMAIN_CHAR_COUNT + 1) * sizeof(int) * 3 * 2 * DOMAIN_CHAR_COUNT);
     sprintf(tmp_char, "pf_%d", idx);
     FILE *fp = fopen(tmp_char, "wb+");
-    for (int m = 0; m < DOMAIN_CHAR_COUNT; ++m)
+    for (int m = 0; m < (DOMAIN_CHAR_COUNT+1); ++m)
     {
         for (int n = 0; n < DOMAIN_CHAR_COUNT; ++n)
         {

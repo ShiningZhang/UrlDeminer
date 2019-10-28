@@ -297,7 +297,7 @@ int UrlFilter::load1()
             } */
         }
     }
-    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    for (int i = 0; i < DOMAIN_CHAR_COUNT + 1; ++i)
     {
         for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
         {
@@ -2281,7 +2281,7 @@ UrlFilterLarge::~UrlFilterLarge()
 void UrlFilterLarge::filter_domainport_large()
 {
     stDPRES res, output;
-    int count[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT] = {0};
+    int count[DOMAIN_CHAR_COUNT + 1][DOMAIN_CHAR_COUNT] = {0};
     DomainFilterMerge *filter = (DomainFilterMerge *)(this->domainfilter_);
     for (int t = 0; t < DOMAIN_CHAR_COUNT; ++t)
     {
@@ -2320,11 +2320,17 @@ void UrlFilterLarge::filter_domainport_large()
                 {
                     in.start[-3] |= 0x40;
                 }
-                // arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
                 int t1 = domain_temp[(unsigned char)*in.start];
                 int t2 = domain_temp[(unsigned char)*(in.start + 1)];
+                if (memcmp(in.start, "www.", 4) == 0)
+                {
+                    t1 = DOMAIN_CHAR_COUNT;
+                    t2 = domain_temp[(unsigned char)*(in.start + 4)];
+                    *(uint16_t *)(in.start + 1) = *(uint16_t *)(in.start - 2) - 3;
+                    in.start[0] = in.start[-3];
+                    in.start += 3;
+                }
                 list_[t1][t2][count[t1][t2]++] = (in.start - 2);
-                // assert((in.start - 2) != NULL);
                 arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2));
 #ifdef DEBUG
                 printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
@@ -2370,11 +2376,17 @@ void UrlFilterLarge::filter_domainport_large()
                     {
                         in.start[-3] |= 0x40;
                     }
-                    // arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2) - 1);
                     int t1 = domain_temp[(unsigned char)*in.start];
                     int t2 = domain_temp[(unsigned char)*(in.start + 1)];
+                    if (memcmp(in.start, "www.", 4) == 0)
+                    {
+                        t1 = DOMAIN_CHAR_COUNT;
+                        t2 = domain_temp[(unsigned char)*(in.start + 4)];
+                        *(uint16_t *)(in.start + 1) = *(uint16_t *)(in.start - 2) - 3;
+                        in.start[0] = in.start[-3];
+                        in.start += 3;
+                    }
                     list_[t1][t2][count[t1][t2]++] = (in.start - 2);
-                    // assert((in.start - 2) != NULL);
                     arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2));
 #ifdef DEBUG
                     printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
@@ -2383,7 +2395,7 @@ void UrlFilterLarge::filter_domainport_large()
             }
         }
     }
-    memcpy(list_count_, count, DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT * sizeof(int));
+    memcpy(list_count_, count, (DOMAIN_CHAR_COUNT + 1) * DOMAIN_CHAR_COUNT * sizeof(int));
 }
 
 /* void UrlFilterLarge::prepare_write()
@@ -3980,7 +3992,8 @@ void SPFFilter::pre_pf()
                 {
                     // SP_DEBUG("pre_pf:[%d,%d,%d]pf_count=%d\n", i, j, k, pf_count_[i][j][k]);
                     pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large);
-                    prepare_range(pf_list_[i][j][k], pf_count_[i][j][k], pf_range_[i][j][k]);
+                    if (i < 2)
+                        prepare_range(pf_list_[i][j][k], pf_count_[i][j][k], pf_range_[i][j][k]);
                 }
             }
         }

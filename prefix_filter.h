@@ -64,9 +64,9 @@ public:
 public:
     char *p_;
     uint64_t buf_size_;
-    char **list_https_large_[3][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
-    int list_count_large_[3][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
-    int list_cc_[3][2][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    char **list_https_large_[3][2][DOMAIN_CHAR_COUNT+1][DOMAIN_CHAR_COUNT];
+    int list_count_large_[3][2][DOMAIN_CHAR_COUNT+1][DOMAIN_CHAR_COUNT];
+    int list_cc_[3][2][2][DOMAIN_CHAR_COUNT+1][DOMAIN_CHAR_COUNT];
 };
 
 #endif

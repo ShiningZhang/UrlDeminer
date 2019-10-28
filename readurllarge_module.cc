@@ -38,7 +38,7 @@ void ReadUrlLarge_Module::svc()
         UrlPFFilter *filter = NULL;
         data = gRequest;
         MidFile *mid_file = data->mid_file_;
-        data->size_split_buf = DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT;
+        data->size_split_buf = (DOMAIN_CHAR_COUNT + 1) * DOMAIN_CHAR_COUNT;
         SP_DEBUG("ReadUrlLarge_Module:begin:data->size_split_buf=%d\n", data->size_split_buf);
         uint64_t read_size = 0;
         uint64_t read_pf_size = 0;
@@ -49,7 +49,7 @@ void ReadUrlLarge_Module::svc()
         int count_url = 0;
         SPFFilter *spffilter = NULL;
         SUrlFilter *surlfilter = NULL;
-        for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+        for (int i = 0; i < (DOMAIN_CHAR_COUNT + 1); ++i)
         {
             for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
             {
