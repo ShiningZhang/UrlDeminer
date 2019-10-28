@@ -61,6 +61,7 @@ void ReadFile_Module::svc()
             SP_NEW(c_data, CRequest(data));
             c_data->buffer_ = buf;
             c_data->size_ = size;
+            c_data->idx_ = split;
 
             SP_NEW(msg, SP_Message_Block_Base((SP_Data_Block *)c_data));
             ++split;

@@ -567,7 +567,7 @@ int main(int argc, char **argv)
         SP_DEBUG("read prefix begin\n");
         SP_NEW_RETURN(modules[0], ReadFile_Module(1), -1);
         SP_NEW_RETURN(modules[1], PrefixLoadLarge_Module(8), -1);
-        SP_NEW_RETURN(modules[2], PrefixWrite_Module(1), -1);
+        SP_NEW_RETURN(modules[2], PrefixWrite_Module(8), -1);
 
         for (int i = 2; i >= 0; --i)
         {

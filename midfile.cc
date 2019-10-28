@@ -206,7 +206,7 @@ inline int write_prefix_(char **p, int &begin, int end, int buf_size, char *&buf
     return offset;
 }
 
-int MidFile::write_prefix(PrefixFilterLargeLoad *filter, int idx)
+int MidFile::write_prefix(PrefixFilterLargeLoad *filter, int idx, char *buf, int buf_size)
 {
     char tmp_char[64];
     FileElementPrefix *file = new FileElementPrefix;
@@ -234,8 +234,8 @@ int MidFile::write_prefix(PrefixFilterLargeLoad *filter, int idx)
                     {
                         do
                         {
-                            int size = write_prefix_(p, begin, end, buf_size_, buf_);
-                            fwrite(buf_, size, 1, fp);
+                            int size = write_prefix_(p, begin, end, buf_size, buf);
+                            fwrite(buf, size, 1, fp);
                             file_size += size;
                         } while (begin < end);
                     }
@@ -248,6 +248,8 @@ int MidFile::write_prefix(PrefixFilterLargeLoad *filter, int idx)
     }
     rewind(fp);
     file->fp_ = fp;
+    lock_.lock();
     prefixfile_list_.push_back(file);
+    lock_.unlock();
     return 0;
 }

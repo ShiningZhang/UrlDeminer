@@ -20,7 +20,7 @@ public:
     int write_mid_large(UrlFilterLarge *filter, int size[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT], int idx);
     void sort_file_list();
 
-    int write_prefix(PrefixFilterLargeLoad *filter, int idx);
+    int write_prefix(PrefixFilterLargeLoad *filter, int idx, char *buf, int buf_size);
 
     std::vector<FileElement *> file_list_;
     std::vector<FileElementLarge *> largefile_list_;
@@ -29,5 +29,6 @@ public:
     int wt_size_;
 
     std::vector<FileElementPrefix *> prefixfile_list_;
+    mutex lock_;
 };
 #endif

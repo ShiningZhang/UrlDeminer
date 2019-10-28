@@ -29,6 +29,8 @@ void PrefixWrite_Module::svc()
     Request *data = NULL;
     CRequest *c_data = NULL;
     MidFile *mid_file = NULL;
+    int buf_size = 128 * 1024 * 1024;
+    char *buf = (char *)malloc(buf_size * sizeof(char) + 2058);
     for (SP_Message_Block_Base *msg = 0; get(msg) != -1;)
     {
         timeval t2, start;
@@ -42,7 +44,8 @@ void PrefixWrite_Module::svc()
         PrefixFilterLargeLoad *filter = (PrefixFilterLargeLoad *)c_data->obj_;
         if (filter != NULL)
         {
-            mid_file->write_prefix(filter, data->recv_split_);
+
+            mid_file->write_prefix(filter, idx, buf, buf_size);
             delete filter;
             filter = NULL;
         }
@@ -58,10 +61,12 @@ void PrefixWrite_Module::svc()
             put_next(msg);
         }
 
+        SP_DEBUG("PrefixWrite_Module:send=%d;recv=%d\n", data->size_split_buf, data->recv_split_);
         gettimeofday(&t2, 0);
         SP_DEBUG("PrefixWrite_Module=%ldms.idx=%d\n", (t2.tv_sec - start.tv_sec) * 1000 + (t2.tv_usec - start.tv_usec) / 1000, idx);
         //SP_LOGI("PrefixWrite_Module=%ldms.\n", (t2.tv_sec-start.tv_sec)*1000+(t2.tv_usec-start.tv_usec)/1000);
     }
+    delete buf;
 }
 
 int PrefixWrite_Module::init()
