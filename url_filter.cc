@@ -188,8 +188,8 @@ int UrlFilter::load_(char *p, uint64_t size)
         b.n = domain_len - 1;
         uint16_t len = se - s - 9; // -9 +2  [-1]type:len[2]:start->end
         *(uint16_t *)(s - 2) = len - 2;
-        assert(len != 2);
-        assert(len != 1);
+        // assert(len != 2);
+        // assert(len != 1);
         --domain_end;
         if (domain_len > 4 && memcmp(domain_end - 3, ".com", 4) == 0)
         {
@@ -2606,7 +2606,7 @@ int UrlPFFilter::load_pf()
                             s += 4;
                             nb = na - 4;
                         }
-                        else if (port_type == 0)
+                        /* else if (port_type == 0)
                         {
                             if (port_size == 2 && memcmp(offset_1, "80", 2) == 0)
                             {
@@ -2619,9 +2619,9 @@ int UrlPFFilter::load_pf()
                             {
                                 port_type = 5;
                             }
-                            assert(port_size != 4);
-                            assert(port_size != 5);
-                        }
+                            // assert(port_size != 4);
+                            // assert(port_size != 5);
+                        } */
                     }
                     if (nb > 0)
                     {
@@ -3693,7 +3693,7 @@ int SPFFilter::load_pf()
                             s += 4;
                             nb = na - 4;
                         }
-                        else if (port_type == 0)
+                        /* else if (port_type == 0)
                         {
                             if (port_size == 2 && memcmp(offset_1, "80", 2) == 0)
                             {
@@ -3708,7 +3708,7 @@ int SPFFilter::load_pf()
                             }
                             assert(port_size != 4);
                             assert(port_size != 5);
-                        }
+                        } */
                     }
                     if (nb > 0)
                     {
