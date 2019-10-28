@@ -374,7 +374,7 @@ int main(int argc, char **argv)
         }
         for (int i = 0; i < data->url_filter_list_.size(); ++i)
         {
-            for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
+            for (int j = 0; j < DOMAIN_CHAR_COUNT + 1; ++j)
             {
                 for (int k = 0; k < DOMAIN_CHAR_COUNT; ++k)
                 {
