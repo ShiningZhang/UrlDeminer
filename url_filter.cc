@@ -17,8 +17,8 @@ using namespace std;
 
 UrlFilter::UrlFilter() : p_(NULL), size_(0), buf_size_(0), out_(NULL), out_size_(0), out_offset_(0)
 {
-    memset(list_, 0, DOMAIN_CHAR_COUNT * sizeof(char **) * DOMAIN_CHAR_COUNT);
-    memset(list_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int) * DOMAIN_CHAR_COUNT);
+    memset(list_, 0, DOMAIN_CHAR_COUNT * sizeof(char **) * (DOMAIN_CHAR_COUNT + 1));
+    memset(list_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int) * (DOMAIN_CHAR_COUNT + 1));
     memset(max_list_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
     memset(list_domainport_, 0, DOMAIN_CHAR_COUNT * sizeof(DomainPortBuf *));
     memset(list_domainport_count_, 0, DOMAIN_CHAR_COUNT * sizeof(int));
@@ -29,7 +29,7 @@ UrlFilter::UrlFilter() : p_(NULL), size_(0), buf_size_(0), out_(NULL), out_size_
 
 UrlFilter::~UrlFilter()
 {
-    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    for (int i = 0; i < DOMAIN_CHAR_COUNT + 1; ++i)
     {
         for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
         {
@@ -39,17 +39,20 @@ UrlFilter::~UrlFilter()
                 list_[i][j] = NULL;
             }
         }
-        if (list_domainport_[i] != NULL)
+        if (i < DOMAIN_CHAR_COUNT)
         {
-            free(list_domainport_[i]);
-            list_domainport_[i] = NULL;
-        }
-        for (int j = 0; j < 2; ++j)
-        {
-            if (list_domain_sp_[j][i] != NULL)
+            if (list_domainport_[i] != NULL)
             {
-                free(list_domain_sp_[j][i]);
-                list_domain_sp_[j][i] = NULL;
+                free(list_domainport_[i]);
+                list_domainport_[i] = NULL;
+            }
+            for (int j = 0; j < 2; ++j)
+            {
+                if (list_domain_sp_[j][i] != NULL)
+                {
+                    free(list_domain_sp_[j][i]);
+                    list_domain_sp_[j][i] = NULL;
+                }
             }
         }
     }
@@ -67,7 +70,7 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
     char *s = p;
     int count = 0;
     int domain_count[DOMAIN_CHAR_COUNT] = {0};
-    int prefix_count[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT] = {0};
+    int prefix_count[DOMAIN_CHAR_COUNT + 1][DOMAIN_CHAR_COUNT] = {0};
     int domain_sp_count[2][DOMAIN_CHAR_COUNT] = {0};
     while (s < e)
     {
@@ -110,11 +113,21 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
         {
             t = domain_temp[(unsigned char)*s];
             t1 = domain_temp[(unsigned char)*(s + 1)];
+            if (*(int32_t *)(s) == INT32_WWW)
+            {
+                t = DOMAIN_CHAR_COUNT;
+                t1 = domain_temp[(unsigned char)*(s + 4)];
+            }
         }
         else
         {
             t = domain_temp[(unsigned char)s[-1]];
             t1 = domain_temp[(unsigned char)s[0]];
+            if (*(int32_t *)(s - 1) == INT32_WWW)
+            {
+                t = DOMAIN_CHAR_COUNT;
+                t1 = domain_temp[(unsigned char)*(s + 3)];
+            }
         }
         ++prefix_count[t][t1];
         s = se + 1;
@@ -123,7 +136,7 @@ int UrlFilter::prepare_buf(char *p, uint64_t size)
     {
         this->list_domainport_count_[i] = domain_count[i];
     }
-    memcpy(this->list_count_, prefix_count, DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT * sizeof(int));
+    memcpy(this->list_count_, prefix_count, (DOMAIN_CHAR_COUNT + 1) * DOMAIN_CHAR_COUNT * sizeof(int));
     memcpy(this->list_domain_sp_count_, domain_sp_count, 2 * DOMAIN_CHAR_COUNT * sizeof(int));
     return count;
 }
@@ -238,7 +251,7 @@ UrlFilter *UrlFilter::load(char *p, uint64_t size)
         if (filter->list_domainport_count_[i] > 0)
             filter->list_domainport_[i] = (DomainPortBuf *)malloc(filter->list_domainport_count_[i] * sizeof(DomainPortBuf));
     }
-    for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+    for (int i = 0; i < DOMAIN_CHAR_COUNT + 1; ++i)
     {
         for (int j = 0; j < DOMAIN_CHAR_COUNT; ++j)
         {
@@ -1150,7 +1163,7 @@ bool cmp_dpres(const pair<int, vector<DomainPortBuf>::iterator> &e1, const pair<
 void UrlFilter::filter_domainport()
 {
     stDPRES res, output;
-    int count[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT] = {0};
+    int count[DOMAIN_CHAR_COUNT + 1][DOMAIN_CHAR_COUNT] = {0};
     DomainFilterMerge *filter = (DomainFilterMerge *)(this->domainfilter_);
     for (int t = 0; t < DOMAIN_CHAR_COUNT; ++t)
     {
@@ -1187,10 +1200,18 @@ void UrlFilter::filter_domainport()
                 {
                     in.start[-3] |= 0x40;
                 }
-                arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2));
                 int t1 = domain_temp[(unsigned char)*in.start];
                 int t2 = domain_temp[(unsigned char)*(in.start + 1)];
+                if (*(int32_t *)(in.start) == INT32_WWW)
+                {
+                    t1 = DOMAIN_CHAR_COUNT;
+                    t2 = domain_temp[(unsigned char)*(in.start + 4)];
+                    *(uint16_t *)(in.start + 1) = *(uint16_t *)(in.start - 2) - 3;
+                    in.start[0] = in.start[-3];
+                    in.start += 3;
+                }
                 list_[t1][t2][count[t1][t2]++] = (in.start - 2);
+                arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2));
                 // assert((in.start - 2) != NULL);
 #ifdef DEBUG
                 printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
@@ -1236,10 +1257,18 @@ void UrlFilter::filter_domainport()
                     {
                         in.start[-3] |= 0x40;
                     }
-                    arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2));
                     int t1 = domain_temp[(unsigned char)*in.start];
                     int t2 = domain_temp[(unsigned char)*(in.start + 1)];
+                    if (*(int32_t *)(in.start) == INT32_WWW)
+                    {
+                        t1 = DOMAIN_CHAR_COUNT;
+                        t2 = domain_temp[(unsigned char)*(in.start + 4)];
+                        *(uint16_t *)(in.start + 1) = *(uint16_t *)(in.start - 2) - 3;
+                        in.start[0] = in.start[-3];
+                        in.start += 3;
+                    }
                     list_[t1][t2][count[t1][t2]++] = (in.start - 2);
+                    arrangesuffix(in.start + 2, *(uint16_t *)(in.start - 2));
                     // assert((in.start - 2) != NULL);
 #ifdef DEBUG
                     printf("ret=%d,urlfilter:%s\n", res.ret, in.start);
@@ -1248,7 +1277,7 @@ void UrlFilter::filter_domainport()
             }
         }
     }
-    memcpy(list_count_, count, DOMAIN_CHAR_COUNT * DOMAIN_CHAR_COUNT * sizeof(int));
+    memcpy(list_count_, count, (DOMAIN_CHAR_COUNT + 1) * DOMAIN_CHAR_COUNT * sizeof(int));
 }
 
 bool cmp_pf(const char *e1, const char *e2)
@@ -1424,7 +1453,7 @@ inline char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, i
         {
             const char *pb = *res;
             uint16_t nb = *(uint16_t *)(pb);
-            if (na == nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0 )
+            if (na == nb && cmpbuf_pf(pa, na, pb + 4, nb) == 0)
             {
                 output.len = nb;
                 output.type = 2;
@@ -2136,7 +2165,7 @@ void UrlFilter::filter_prefix()
 {
     stPFRES output, res;
     PrefixFilter *filter = this->prefixfilter_;
-    for (int k = 0; k < DOMAIN_CHAR_COUNT; ++k)
+    for (int k = 0; k < DOMAIN_CHAR_COUNT + 1; ++k)
     {
         for (int k1 = 0; k1 < DOMAIN_CHAR_COUNT; ++k1)
         {
@@ -3546,9 +3575,9 @@ SPFFilter::SPFFilter()
     pf_size_ = 0;
     memset(count_, 0, 3 * 2 * sizeof(int));
     memset(rd_count_, 0, 32 * 3 * 2 * sizeof(int));
-    memset(pf_range_, 0, 3 * 2 * 2 * sizeof(int *));
-    memset(pf_list_, 0, 3 * 2 * 2 * sizeof(char *));
-    memset(pf_count_, 0, 3 * 2 * 2 * sizeof(int));
+    memset(pf_range_, 0, 3 * 2 * sizeof(int *));
+    memset(pf_list_, 0, 3 * 2 * sizeof(char *));
+    memset(pf_count_, 0, 3 * 2 * sizeof(int));
     file_size_ = 0;
     url_feature_ = 0;
     recv_size_ = 0;
@@ -3564,19 +3593,19 @@ SPFFilter::~SPFFilter()
     }
     for (int i = 0; i < 3; ++i)
     {
-        for (int j = 0; j < 2; ++j)
+        // for (int j = 0; j < 2; ++j)
         {
             for (int k = 0; k < 2; ++k)
             {
-                if (pf_list_[i][j][k] != NULL)
+                if (pf_list_[i][k] != NULL)
                 {
-                    free(pf_list_[i][j][k]);
-                    pf_list_[i][j][k] = NULL;
+                    free(pf_list_[i][k]);
+                    pf_list_[i][k] = NULL;
                 }
-                if (pf_range_[i][j][k] != NULL)
+                if (pf_range_[i][k] != NULL)
                 {
-                    free(pf_range_[i][j][k]);
-                    pf_range_[i][j][k] = NULL;
+                    free(pf_range_[i][k]);
+                    pf_range_[i][k] = NULL;
                 }
             }
         }
@@ -3600,19 +3629,19 @@ void SPFFilter::release_buf()
     pf_size_ = 0;
     for (int i = 0; i < 3; ++i)
     {
-        for (int j = 0; j < 2; ++j)
+        // for (int j = 0; j < 2; ++j)
         {
             for (int k = 0; k < 2; ++k)
             {
-                if (pf_list_[i][j][k] != NULL)
+                if (pf_list_[i][k] != NULL)
                 {
-                    free(pf_list_[i][j][k]);
-                    pf_list_[i][j][k] = NULL;
+                    free(pf_list_[i][k]);
+                    pf_list_[i][k] = NULL;
                 }
-                if (pf_range_[i][j][k] != NULL)
+                if (pf_range_[i][k] != NULL)
                 {
-                    free(pf_range_[i][j][k]);
-                    pf_range_[i][j][k] = NULL;
+                    free(pf_range_[i][k]);
+                    pf_range_[i][k] = NULL;
                 }
             }
         }
@@ -3632,12 +3661,15 @@ int SPFFilter::load_pf()
     }
     for (int i = 0; i < 3; ++i)
     {
-        for (int j = 0; j < 2; ++j)
+        // for (int j = 0; j < 2; ++j)
         {
+            int size = 0;
+            size += count_[i][0];
+            size += count_[i][1];
             for (int k = 0; k < 2; ++k)
             {
-                if (count_[i][j] > 0)
-                    pf_list_[i][j][k] = (char **)malloc(count_[i][j] * sizeof(char *));
+                if (size > 0)
+                    pf_list_[i][k] = (char **)malloc(size * sizeof(char *));
             }
         }
     }
@@ -3647,7 +3679,7 @@ int SPFFilter::load_pf()
     char *s = pf_buf_;
     char *se = pf_buf_ + pf_size_;
     s += 1;
-    int count_list[3][2][2] = {0};
+    int count_list[3][2] = {0};
     for (int c = 0; c < file_size_; ++c)
     {
         for (int i = 0; i < 3; ++i)
@@ -3715,18 +3747,19 @@ int SPFFilter::load_pf()
                         na = nb;
                         *(uint16_t *)(s - 2) = na;
                     }
+                    s[-3] = (unsigned char)j;
                     if (port_type == 1)
                     {
-                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
+                        pf_list_[i][0][count_list[i][0]++] = s - 2;
                     }
                     else if (port_type == 2)
                     {
-                        pf_list_[i][j][1][count_list[i][j][1]++] = s - 2;
+                        pf_list_[i][1][count_list[i][1]++] = s - 2;
                     }
                     else if (port_type == 0)
                     {
-                        pf_list_[i][j][0][count_list[i][j][0]++] = s - 2;
-                        pf_list_[i][j][1][count_list[i][j][1]++] = s - 2;
+                        pf_list_[i][0][count_list[i][0]++] = s - 2;
+                        pf_list_[i][1][count_list[i][1]++] = s - 2;
                     }
                     /* else if (port_type == 4)
                     {
@@ -3745,10 +3778,10 @@ int SPFFilter::load_pf()
             }
         }
     }
-    memcpy(pf_count_, count_list, 3 * 2 * 2 * sizeof(int));
+    memcpy(pf_count_, count_list, 3 * 2 * sizeof(int));
     return 0;
 }
-
+#if 0
 int SPFFilter::load_pf1()
 {
     SP_DEBUG("load_pf1\n");
@@ -3938,20 +3971,22 @@ int SPFFilter::load_pf2()
     memcpy(pf_count_, count_list, 3 * 2 * 2 * sizeof(int));
     return 0;
 }
-
+#endif
 void SPFFilter::pre_pf()
 {
     for (int i = 0; i < 3; ++i)
     {
-        for (int j = 0; j < 2; ++j)
+        // for (int j = 0; j < 2; ++j)
         {
             for (int k = 0; k < 2; ++k)
             {
-                if (pf_count_[i][j][k] > 0)
+                if (pf_count_[i][k] > 0)
                 {
-                    // SP_DEBUG("pre_pf:[%d,%d,%d]pf_count=%d\n", i, j, k, pf_count_[i][j][k]);
-                    pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large);
-                    prepare_range(pf_list_[i][j][k], pf_count_[i][j][k], pf_range_[i][j][k]);
+                    // SP_DEBUG("pre_pf:[%d,%d,%d]pf_count=%d\n", i, j, k, pf_count_[i][k]);
+                    pdqsort(pf_list_[i][k], pf_list_[i][k] + pf_count_[i][k], compare_prefix_large);
+                    char **last = unique_pf_large(pf_list_[i][k], pf_list_[i][k] + pf_count_[i][k]);
+                    pf_count_[i][k] = last - pf_list_[i][k];
+                    prepare_range(pf_list_[i][k], pf_count_[i][k], pf_range_[i][k]);
                 }
             }
         }
@@ -4106,10 +4141,10 @@ void SUrlFilter::filter()
             char **end;
             char **p_res;
             stUrlPfL st = {pa, na};
-            if (pf_->pf_count_[2][1][https] > 0)
+            if (pf_->pf_count_[2][https] > 0)
             {
-                start = pf_->pf_list_[2][1][https];
-                end = pf_->pf_list_[2][1][https] + pf_->pf_count_[2][1][https];
+                start = pf_->pf_list_[2][https];
+                end = pf_->pf_list_[2][https] + pf_->pf_count_[2][https];
                 p_res = upper_bound(start, end, st, cmp_pf_large);
                 if (p_res != end)
                 {
@@ -4119,7 +4154,7 @@ void SUrlFilter::filter()
                     {
                         output.len = 10000;
                         output.type = 2;
-                        output.hit = 1;
+                        output.hit = (int)pb[-1];
                         break;
                     }
                 }
@@ -4127,6 +4162,7 @@ void SUrlFilter::filter()
 #ifdef DEBUG
             printf("filter_prefix_:https:[%d,%d]\n", 2, 0);
 #endif
+#if 0
             if (pf_->pf_count_[2][0][https] > 0)
             {
                 start = pf_->pf_list_[2][0][https];
@@ -4145,13 +4181,14 @@ void SUrlFilter::filter()
                     }
                 }
             }
+#endif
 #ifdef DEBUG
             printf("filter_prefix_:https:[%d,%d]\n", 1, 1);
 #endif
-            if (pf_->pf_count_[1][1][https] > 0)
+            if (pf_->pf_count_[1][https] > 0)
             {
-                start = pf_->pf_list_[1][1][https];
-                end = pf_->pf_list_[1][1][https] + pf_->pf_count_[1][1][https];
+                start = pf_->pf_list_[1][https];
+                end = pf_->pf_list_[1][https] + pf_->pf_count_[1][https];
                 p_res = upper_bound(start, end, st, cmp_pf_large);
 #ifdef DEBUG
                 printf("start=%p,end=%p,p_res=%p\n", start, end, p_res);
@@ -4172,7 +4209,7 @@ void SUrlFilter::filter()
                         // --p_res;
                         // if (p_res >= start)
                         {
-                            int count = pf_->pf_range_[1][1][https][p_res - start];
+                            int count = pf_->pf_range_[1][https][p_res - start];
                             // if (count < 3)
                             if (true)
                             {
@@ -4184,21 +4221,18 @@ void SUrlFilter::filter()
                                     int final = (int)nb;
                                     output.len = final;
                                     output.type = 1;
-                                    output.hit = 1;
+                                    output.hit = (int)pb[-1];
                                     pb = *p_res;
                                     nb = *(uint16_t *)(pb);
                                     int eq_len = pf_eq_len(pa, na, pb + 2, nb);
                                     if (eq_len == final)
                                     {
-                                        output.len = final;
-                                        output.type = 1;
-                                        output.hit = 1;
                                     }
                                     else if (eq_len == nb && na > nb)
                                     {
                                         output.len = eq_len;
                                         output.type = 1;
-                                        output.hit = 1;
+                                        output.hit = (int)pb[-1];
                                     }
                                     else
                                     {
@@ -4213,7 +4247,7 @@ void SUrlFilter::filter()
                                             {
                                                 output.len = nb;
                                                 output.type = 1;
-                                                output.hit = 1;
+                                                output.hit = (int)pb[-1];
                                                 break;
                                             }
                                             --p_res;
@@ -4315,6 +4349,7 @@ void SUrlFilter::filter()
 #ifdef DEBUG
             printf("filter_prefix_:https:[%d,%d]\n", 1, 0);
 #endif
+#if 0
             if (pf_->pf_count_[1][0][https] > 0)
             {
                 start = pf_->pf_list_[1][0][https];
@@ -4501,13 +4536,14 @@ void SUrlFilter::filter()
                     }
                 }
             }
+#endif
 #ifdef DEBUG
             printf("filter_prefix_:https:[%d,%d]\n", 0, 1);
 #endif
-            if (pf_->pf_count_[0][1][https] > 0)
+            if (pf_->pf_count_[0][https] > 0)
             {
-                start = pf_->pf_list_[0][1][https];
-                end = pf_->pf_list_[0][1][https] + pf_->pf_count_[0][1][https];
+                start = pf_->pf_list_[0][https];
+                end = pf_->pf_list_[0][https] + pf_->pf_count_[0][https];
                 p_res = upper_bound(start, end, st, cmp_pf_large);
                 if (p_res != end)
                 {
@@ -4517,7 +4553,7 @@ void SUrlFilter::filter()
                     {
                         output.len = nb;
                         output.type = 0;
-                        output.hit = 1;
+                        output.hit = (int)pb[-1];
                         break;
                     }
                 }
@@ -4540,7 +4576,7 @@ void SUrlFilter::filter()
                         /*  --p_res;
                         if (p_res >= start) */
                         {
-                            int count = pf_->pf_range_[0][1][https][p_res - start];
+                            int count = pf_->pf_range_[0][https][p_res - start];
                             // if (count < 3)
                             if (true)
                             {
@@ -4567,6 +4603,7 @@ void SUrlFilter::filter()
                                 if (na > nb && cmpbuf_pf(pa, na, pb + 2, nb) == 0)
                                 {
                                     int final = (int)nb;
+                                    int hit = (int)pb[-1];
                                     pb = *p_res;
                                     nb = *(uint16_t *)(pb);
                                     int eq_len = pf_eq_len(pa, na, pb + 2, nb);
@@ -4576,6 +4613,7 @@ void SUrlFilter::filter()
                                     else if (eq_len == nb && na > nb)
                                     {
                                         final = eq_len;
+                                        hit = (int)pb[-1];
                                     }
                                     else
                                     {
@@ -4589,6 +4627,7 @@ void SUrlFilter::filter()
                                             if (na > nb && cmpbuf_pf(pa + offset, na - offset, pb + 2 + offset, nb - offset) == 0)
                                             {
                                                 final = nb;
+                                                hit = (int)pb[-1];
                                                 break;
                                             }
                                             --p_res;
@@ -4599,7 +4638,7 @@ void SUrlFilter::filter()
                                     {
                                         output.len = final;
                                         output.type = 0;
-                                        output.hit = 1;
+                                        output.hit = hit;
                                     }
                                 }
                             }
@@ -4702,6 +4741,7 @@ void SUrlFilter::filter()
 #ifdef DEBUG
             printf("filter_prefix_:https:[%d,%d]\n", 0, 0);
 #endif
+#if 0
             if (pf_->pf_count_[0][0][https] > 0)
             {
                 start = pf_->pf_list_[0][0][https];
@@ -4901,6 +4941,7 @@ void SUrlFilter::filter()
                     }
                 }
             }
+#endif
         } while (0);
         res = output;
 #ifdef DEBUG

@@ -38,6 +38,8 @@ using namespace std;
 
 #define MEM_SIZE_256 64 * 1024 * 1024
 
+#define INT32_WWW ((int32_t)(0x2e77777777))
+
 #ifdef DEBUG
 #define LOG(format_string, ...)                                                                \
     {                                                                                          \
@@ -168,6 +170,7 @@ bool compare_dp_char_eq(const char *pa, const char *pb);
 bool cmp_pf_loop1(const stPFCMPOFFSET &e1, const char *e2);
 
 char **unique_pf(char **first, char **last);
+char **unique_pf_large(char **first, char **last);
 
 inline int cmp64val(int64_t ia, int64_t ib)
 {

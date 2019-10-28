@@ -65,8 +65,8 @@ public:
     uint64_t out_size_;
     int out_offset_;
 
-    char **list_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
-    int list_count_[DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    char **list_[DOMAIN_CHAR_COUNT + 1][DOMAIN_CHAR_COUNT];
+    int list_count_[DOMAIN_CHAR_COUNT + 1][DOMAIN_CHAR_COUNT];
     int max_list_count_[DOMAIN_CHAR_COUNT];
     DomainPortBuf *list_domainport_[DOMAIN_CHAR_COUNT];
     int list_domainport_count_[DOMAIN_CHAR_COUNT];
@@ -83,7 +83,6 @@ public:
     void filter_domainport_large();
     void prepare_write();
     virtual void clear_para();
-
 };
 
 #include "SP_Data_Block.h"
@@ -133,7 +132,7 @@ class SPFFilter : public SP_Data_Block
 public:
     SPFFilter();
     virtual ~SPFFilter();
-    void load_buf(char *buf, uint64_t pf_size,  int count[3][2]);
+    void load_buf(char *buf, uint64_t pf_size, int count[3][2]);
     void release_buf();
     int load_pf();
     int load_pf1();
@@ -147,9 +146,9 @@ public:
     int count_[3][2];
     int rd_count_[32][3][2];
     int file_size_;
-    char **pf_list_[3][2][2];
-    int pf_count_[3][2][2];
-    int *pf_range_[3][2][2];
+    char **pf_list_[3][2];
+    int pf_count_[3][2];
+    int *pf_range_[3][2];
     char *pf_buf_;
     vector<char *> list_str_;
     int url_feature_; // 0:NULL 1:[][/] 2:[][:]

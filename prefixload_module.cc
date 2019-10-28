@@ -48,8 +48,8 @@ void PrefixLoad_Module::svc()
             filter = new PrefixFilterMerge();
             data->prefix_filter_ = filter;
             data->reset_para();
-            data->size_split_buf = DOMAIN_CHAR_COUNT;
-            for (int i = 0; i < DOMAIN_CHAR_COUNT; ++i)
+            data->size_split_buf = DOMAIN_CHAR_COUNT + 1;
+            for (int i = 0; i < DOMAIN_CHAR_COUNT + 1; ++i)
             {
                 SP_NEW(c_data, CRequest(data));
                 c_data->idx_ = i;

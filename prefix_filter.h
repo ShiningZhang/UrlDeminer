@@ -31,13 +31,12 @@ public:
     // *:0 +:1 =:2
     // +:0 -:1
     // http:0 https:1
-    char **list_https_[2][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    char **list_https_[2][2][DOMAIN_CHAR_COUNT+1][DOMAIN_CHAR_COUNT];
     // std::vector<char*> list_https_[3][2];
-    uint64_t size_[2][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
     char *p_;
     uint64_t buf_size_;
-    int *list_range_[2][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
-    int list_count_[2][2][DOMAIN_CHAR_COUNT][DOMAIN_CHAR_COUNT];
+    int *list_range_[2][2][DOMAIN_CHAR_COUNT+1][DOMAIN_CHAR_COUNT];
+    int list_count_[2][2][DOMAIN_CHAR_COUNT+1][DOMAIN_CHAR_COUNT];
 };
 
 class PrefixFilterMerge : public PrefixFilter
