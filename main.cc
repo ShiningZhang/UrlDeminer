@@ -536,7 +536,7 @@ int main(int argc, char **argv)
         data->fp_out_ = stdout;
         data->reset_para();
         data->mid_file_ = new MidFile();
-        data->mid_file_->init();
+        data->mid_file_->init(FILESPLITSIZE);
         data->split_size_ = split_mem;
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
@@ -582,6 +582,8 @@ int main(int argc, char **argv)
         data->fp_in_ = fp;
         data->length_ = size;
         data->reset_para();
+        data->mid_file_->uninit();
+        data->mid_file_->init(256 * 1024 * 1024);
         s_instance_stream->put(msg);
         s_instance_stream->get(msg);
         SP_DES(msg);

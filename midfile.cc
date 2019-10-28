@@ -49,10 +49,10 @@ MidFile::~MidFile()
     }
 }
 
-int MidFile::init()
+int MidFile::init(uint64_t size)
 {
-    buf_size_ = FILESPLITSIZE;
-    buf_ = (char *)malloc(FILESPLITSIZE * sizeof(char) + 2058);
+    buf_size_ = size;
+    buf_ = (char *)malloc(size * sizeof(char) + 2058);
     return buf_size_;
 }
 

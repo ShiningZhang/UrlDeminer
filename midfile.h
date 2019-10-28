@@ -13,7 +13,7 @@ class MidFile
 public:
     MidFile();
     ~MidFile();
-    int init();
+    int init(uint64_t size);
     void uninit();
     int write_buf(char *p, int size);
     int write_mid(char ***p, int *size, int idx);

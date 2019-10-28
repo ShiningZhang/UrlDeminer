@@ -4204,52 +4204,59 @@ void SUrlFilter::filter()
                             }
                             else
                             {
-                                --p_res;
+                                // --p_res;
                                 --count;
                                 int offset = final / 8 * 8;
-                                stSURLCMP sts = {pa, na, offset, eq_len};
-                                while (eq_len > final && p_res >= p)
+                                if (count > 8)
                                 {
-                                    char **p_tmp = upper_bound(p, p_res + 1, sts, surl_cmp);
-                                    if (p_tmp <= p_res)
+                                    stSURLCMP sts = {pa, na, offset, eq_len};
+                                    while (eq_len > final && p_res > p)
                                     {
-                                        pb = *p_tmp;
+                                        char **p_tmp = upper_bound(p, p_res, sts, surl_cmp);
+                                        if (p_tmp < p_res)
+                                        {
+                                            pb = *p_tmp;
+                                            nb = *(uint16_t *)(pb);
+                                            eq_len = pf_eq_len(pa + offset, na - offset, pb + 2 + offset, nb - offset) + offset;
+                                            if (eq_len == nb)
+                                            {
+                                                final = nb;
+                                                iter = p_tmp;
+                                                break;
+                                            }
+                                            p_res = p_tmp;
+                                        }
+                                        --p_res;
+                                        pb = *p_res;
                                         nb = *(uint16_t *)(pb);
                                         eq_len = pf_eq_len(pa + offset, na - offset, pb + 2 + offset, nb - offset) + offset;
                                         if (eq_len == nb)
                                         {
                                             final = nb;
-                                            iter = p_tmp;
+                                            iter = p_res;
                                             break;
                                         }
-                                        p_res = p_tmp - 1;
+                                        sts.eq_len = eq_len;
+                                        continue;
                                     }
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    eq_len = pf_eq_len(pa + offset, na - offset, pb + 2 + offset, nb - offset) + offset;
-                                    if (eq_len == nb)
-                                    {
-                                        final = nb;
-                                        iter = p_res;
-                                        break;
-                                    }
-                                    --p_res;
-                                    sts.eq_len = eq_len;
-                                    continue;
                                 }
-                                /* while (eq_len > final && count > 0)
+                                else
                                 {
-                                    pb = *p_res;
-                                    nb = *(uint16_t *)(pb);
-                                    if (na > nb && (eq_len = pf_eq_len(pa + offset, na - offset, pb + 2 + offset, nb - offset) + offset) == nb)
-                                    {
-                                        final = nb;
-                                        iter = p_res;
-                                        break;
-                                    }
                                     --p_res;
-                                    --count;
-                                } */
+                                    while (eq_len > final && count > 0)
+                                    {
+                                        pb = *p_res;
+                                        nb = *(uint16_t *)(pb);
+                                        if (na > nb && (eq_len = pf_eq_len(pa + offset, na - offset, pb + 2 + offset, nb - offset) + offset) == nb)
+                                        {
+                                            final = nb;
+                                            iter = p_res;
+                                            break;
+                                        }
+                                        --p_res;
+                                        --count;
+                                    }
+                                }
                             }
                             if (final > output.len)
                             {
