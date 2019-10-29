@@ -2934,6 +2934,24 @@ bool compare_prefix_large(const char *e1, const char *e2)
     return e1 < e2;
 }
 
+bool compare_prefix_large_eq(const char *e1, const char *e2)
+{
+    const char *pa = e1;
+    const char *pb = e2;
+    uint16_t na = *((uint16_t *)pa);
+    uint16_t nb = *((uint16_t *)pb);
+    if (na < nb)
+        return true;
+    else if (na > nb)
+        return false;
+    pa += 2;
+    pb += 2;
+    int ret = cmpbuf_pf(pa, na, pb, nb);
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    return e1 < e2;
+}
+
 void UrlPFFilter::pre_pf()
 {
     for (int i = 0; i < 3; ++i)
@@ -3014,6 +3032,23 @@ bool cmp_pf_large(const stUrlPfL &e1, const char *e2)
     if (ret != 0)
         return ret == -1 ? true : false;
     return e1.n_ <= nb;
+}
+
+bool cmp_pf_large_eq(const stUrlPfL &e1, const char *e2)
+{
+    const char *pb = e2;
+    int nb = (int)*((uint16_t *)pb);
+    int n_ret = (int)e1.n_ - nb;
+    if (n_ret != 0)
+        return n_ret < 0 ? true : false;
+    pb += 2;
+    int ret = cmpbuf_pf(e1.p_, e1.n_, pb, nb);
+#ifdef DEBUG
+    printf("cmp_pf:ret=%d,e1:%s,%d,e2:%s,%d\n", ret, e1.p_ + 2, e1.n_, e2 + 2, nb);
+#endif
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    return true;
 }
 
 bool cmp_pf_loop_large(const stPF_CMP &e1, const char *e2)
@@ -3991,9 +4026,15 @@ void SPFFilter::pre_pf()
                 if (pf_count_[i][j][k] > 0)
                 {
                     // SP_DEBUG("pre_pf:[%d,%d,%d]pf_count=%d\n", i, j, k, pf_count_[i][j][k]);
-                    pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large);
                     if (i < 2)
+                    {
+                        pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large);
                         prepare_range(pf_list_[i][j][k], pf_count_[i][j][k], pf_range_[i][j][k]);
+                    }
+                    else
+                    {
+                        pdqsort(pf_list_[i][j][k], pf_list_[i][j][k] + pf_count_[i][j][k], compare_prefix_large_eq);
+                    }
                 }
             }
         }
@@ -4152,7 +4193,7 @@ void SUrlFilter::filter()
             {
                 start = pf_->pf_list_[2][1][https];
                 end = pf_->pf_list_[2][1][https] + pf_->pf_count_[2][1][https];
-                p_res = upper_bound(start, end, st, cmp_pf_large);
+                p_res = upper_bound(start, end, st, cmp_pf_large_eq);
                 if (p_res != end)
                 {
                     pb = *p_res;
@@ -4173,7 +4214,7 @@ void SUrlFilter::filter()
             {
                 start = pf_->pf_list_[2][0][https];
                 end = pf_->pf_list_[2][0][https] + pf_->pf_count_[2][0][https];
-                p_res = upper_bound(start, end, st, cmp_pf_large);
+                p_res = upper_bound(start, end, st, cmp_pf_large_eq);
                 if (p_res != end)
                 {
                     pb = *p_res;
