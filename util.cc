@@ -343,6 +343,30 @@ bool compare_prefix(const char *e1, const char *e2)
     return e1 < e2;
 }
 
+bool compare_prefix_1(const char *e1, const char *e2)
+{
+    const char *pa = e1;
+    const char *pb = e2;
+    int na = (int)*((uint16_t *)pa);
+    int nb = (int)*((uint16_t *)pb);
+    if (na < nb)
+        return true;
+    else if (na > nb)
+        return false;
+    pa += 4;
+    pb += 4;
+    int ret = cmpbuf_pf(pa, na, pb, nb);
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    /* ret = (int)(pa[-1] & 0x07) - (int)(pb[-1] & 0x07);
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    ret = (int)(pa[-1] >> 3) - (int)(pb[-1] >> 3);
+    if (ret != 0)
+        return ret == -1 ? true : false; */
+    return e1 < e2;
+}
+
 bool compare_prefix_eq(const char *e1, const char *e2)
 {
     const char *pa = e1;

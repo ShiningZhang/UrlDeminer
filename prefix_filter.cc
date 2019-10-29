@@ -477,8 +477,17 @@ PrefixFilter *PrefixFilter::load(char *p, uint64_t size)
                     {
                         if (filter->list_count_[j][k][m][n] > 0)
                         {
-                            LOG("after:[,%d,%d,%d]:%d\n", k, m, n, filter->list_count_[j][k][m][n]);
-                            pdqsort(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n], compare_prefix);
+                            if (j < 1)
+                            {
+                                LOG("after:[%d,%d,%d]:%d\n", k, m, n, filter->list_count_[j][k][m][n]);
+                                pdqsort(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n], compare_prefix);
+                            }
+                            else
+                            {
+                                pdqsort(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n], compare_prefix_1);
+                            }
+                            // LOG("after:[,%d,%d,%d]:%d\n", k, m, n, filter->list_count_[j][k][m][n]);
+                            // pdqsort(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n], compare_prefix);
 #ifdef DEBUG
                             for (int test = 0; test < filter->list_count_[j][k][m][n]; ++test)
                             {
@@ -560,8 +569,15 @@ PrefixFilter *PrefixFilter::load_case2(char *p, uint64_t size)
                     {
                         if (pf_need[m][n] && filter->list_count_[j][k][m][n] > 0)
                         {
-                            LOG("after:[%d,%d,%d]:%d\n", k, m, n, filter->list_count_[j][k][m][n]);
-                            pdqsort(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n], compare_prefix);
+                            if (j < 1)
+                            {
+                                LOG("after:[%d,%d,%d]:%d\n", k, m, n, filter->list_count_[j][k][m][n]);
+                                pdqsort(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n], compare_prefix);
+                            }
+                            else
+                            {
+                                pdqsort(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n], compare_prefix_1);
+                            }
                             char **last = unique_pf(filter->list_https_[j][k][m][n], filter->list_https_[j][k][m][n] + filter->list_count_[j][k][m][n]);
                             filter->list_count_[j][k][m][n] = last - filter->list_https_[j][k][m][n];
                         }
@@ -688,17 +704,21 @@ struct HeapItemPf
     int idx_;
     int start_;
     char **list_;
+    bool type;
     inline bool operator<(const HeapItemPf &y) const
     {
         if (idx_ == 0 || y.idx_ == 0)
             return idx_ < y.idx_;
-        return compare_prefix(list_[start_], y.list_[y.start_]);
+        if (type)
+            return compare_prefix_1(list_[start_], y.list_[y.start_]);
+        else
+            return compare_prefix(list_[start_], y.list_[y.start_]);
     }
 };
 
 typedef HeapItemPf *pHeapItemPf;
 
-HeapItemPf MinHIpf = {0, 0, 0, 0};
+HeapItemPf MinHIpf = {0, 0, 0, 0, 0};
 
 static inline void LoserAdjust(int *ls, const HeapItemPf *arr, int s, const int n)
 {
@@ -764,6 +784,7 @@ int PrefixFilterMerge::merge(vector<PrefixFilter *> list, int idx, int idx1)
                                 heap[sl].start_ = 0;
                                 heap[sl].list_ = list[m]->list_https_[j][k][idx][idx1];
                                 heap[sl].idx_ = part_num;
+                                heap[sl].type = j == 1;
                                 // SP_DEBUG("k=%d,sl=%d,ed=%d,list=%p\n", k, sl, heap[sl].ed_, heap[sl].list_);
                                 ++sl;
                             }

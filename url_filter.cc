@@ -1297,6 +1297,26 @@ bool cmp_pf(const char *e1, const char *e2)
     return na <= nb;
 }
 
+bool cmp_pf_1(const char *e1, const char *e2)
+{
+    const char *pa = e1;
+    const char *pb = e2;
+    int na = (int)*((uint16_t *)pa);
+    int nb = (int)*((uint16_t *)pb);
+    int n_ret = na - nb;
+    if (n_ret != 0)
+        return n_ret < 0 ? true : false;
+    pa += 2 + 2;
+    pb += 2 + 2;
+    int ret = cmpbuf_pf(pa, na, pb, nb);
+#ifdef DEBUG
+    printf("cmp_pf:ret=%d,e1:%s,%d,e2:%s,%d\n", ret, e1 + 2, na, e2 + 2, nb);
+#endif
+    if (ret != 0)
+        return ret == -1 ? true : false;
+    return true;
+}
+
 int len_eq(const char *e1, const char *e2)
 {
     int na = (int)*((uint16_t *)e1);
@@ -1448,7 +1468,7 @@ inline char **filter_prefix_(const char *in, PrefixFilter *filter, bool https, i
     {
         start = filter->list_https_[1][https][idx1][idx2];
         end = filter->list_https_[1][https][idx1][idx2] + filter->list_count_[1][https][idx1][idx2];
-        res = upper_bound(start, end, in, cmp_pf);
+        res = upper_bound(start, end, in, cmp_pf_1);
         if (res != end)
         {
             const char *pb = *res;
